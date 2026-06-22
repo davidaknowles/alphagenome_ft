@@ -136,7 +136,7 @@ def _shard_batch(batch: Mapping[str, jax.Array], num_devices: int):
         per_device_batch = value.shape[0] // num_devices
         return value.reshape((num_devices, per_device_batch, *value.shape[1:]))
 
-    return {name: shard_array(name, value) for name, value in batch.items()}
+    return {name: shard_array(value) for name, value in batch.items()}
 
 
 def train(
@@ -299,6 +299,7 @@ def train(
                 state,
                 batch["sequences"],
                 batch["organism_index"],
+                requested_outputs=head_names,
                 negative_strand_mask=batch["negative_strand_mask"],
                 strand_reindexing=batch["strand_reindexing"],
             )
@@ -328,6 +329,7 @@ def train(
             state,
             batch["sequences"],
             batch["organism_index"],
+            requested_outputs=head_names,
             negative_strand_mask=batch["negative_strand_mask"],
             strand_reindexing=batch["strand_reindexing"],
         )
