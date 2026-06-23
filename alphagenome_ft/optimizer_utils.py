@@ -30,13 +30,27 @@ def is_trainable_head_path(path_str: str, trainable_heads: set[str]) -> bool:
     return False
 
 
-def label_params_for_trainable_heads(params: PyTree, trainable_head_names: Sequence[str]) -> PyTree:
-    """Label each leaf ``\"head\"`` (train) vs ``\"frozen\"`` for :func:`optax.multi_transform`."""
+def is_lora_path(path_str: str) -> bool:
+    """Return True if ``path_str`` is a LoRA adapter parameter leaf."""
+    return path_str.split("/")[-1] in {"lora_a", "lora_b"}
+
+
+def label_params_for_trainable_heads(
+    params: PyTree,
+    trainable_head_names: Sequence[str],
+    *,
+    train_lora: bool = False,
+) -> PyTree:
+    """Label each leaf ``\"train\"`` vs ``\"frozen\"`` for :func:`optax.multi_transform`."""
     head_set = {str(n) for n in trainable_head_names}
 
     def label_fn(path, _value):
         ps = parameter_path_to_str(path)
-        return "head" if is_trainable_head_path(ps, head_set) else "frozen"
+        if is_trainable_head_path(ps, head_set):
+            return "train"
+        if train_lora and is_lora_path(ps):
+            return "train"
+        return "frozen"
 
     return jax.tree_util.tree_map_with_path(label_fn, params)
 
@@ -52,6 +66,32 @@ def assert_trainable_head_params_exist(params: PyTree, trainable_head_names: Seq
             "No parameters matched trainable heads "
             f"{sorted(head_set)!r} for heads-only optimizer. "
             f"Sample head paths: {sample}"
+        )
+
+
+def assert_trainable_params_exist(
+    params: PyTree,
+    trainable_head_names: Sequence[str],
+    *,
+    train_lora: bool = False,
+) -> None:
+    """Raise if no trainable head or requested LoRA parameters are present."""
+    assert_trainable_head_params_exist(params, trainable_head_names)
+    if not train_lora:
+        return
+    lora_paths: list[str] = []
+
+    def collect(path, value):
+        if hasattr(value, "shape"):
+            ps = parameter_path_to_str(path)
+            if is_lora_path(ps):
+                lora_paths.append(ps)
+
+    jax.tree_util.tree_map_with_path(collect, params)
+    if not lora_paths:
+        raise ValueError(
+            "train_lora=True was requested, but no `lora_a` or `lora_b` "
+            "parameters were found."
         )
 
 
@@ -83,6 +123,7 @@ def create_optimizer(
     learning_rate: Any,
     weight_decay: float | None = None,
     heads_only: bool = False,
+    train_lora: bool = False,
     optimizer_type: str = "adamw",
     gradient_clip_global_norm: float | None = None,
 ) -> optax.GradientTransformation:
@@ -100,6 +141,8 @@ def create_optimizer(
         weight_decay: Optional L2 / AdamW decay. ``None`` uses Optax defaults (no extra decay
             for AdamW beyond its default).
         heads_only: If True, apply ``optax.multi_transform`` head vs frozen masking.
+        train_lora: If True with ``heads_only=True``, also train leaves named
+            ``lora_a`` or ``lora_b`` outside the selected heads.
         optimizer_type: ``\"adamw\"`` or ``\"adam\"``.
         gradient_clip_global_norm: If set, prepend ``optax.clip_by_global_norm``.
 
@@ -113,10 +156,18 @@ def create_optimizer(
     )
 
     if heads_only:
-        assert_trainable_head_params_exist(params, trainable_head_names)
-        labels = label_params_for_trainable_heads(params, trainable_head_names)
+        assert_trainable_params_exist(
+            params,
+            trainable_head_names,
+            train_lora=train_lora,
+        )
+        labels = label_params_for_trainable_heads(
+            params,
+            trainable_head_names,
+            train_lora=train_lora,
+        )
         inner = optax.multi_transform(
-            {"head": inner, "frozen": optax.set_to_zero()},
+            {"train": inner, "frozen": optax.set_to_zero()},
             labels,
         )
 

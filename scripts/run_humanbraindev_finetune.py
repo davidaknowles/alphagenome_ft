@@ -5,10 +5,21 @@ from __future__ import annotations
 
 import argparse
 from pathlib import Path
+import sys
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
 
 import pandas as pd
 
-from alphagenome_ft import create_model_with_heads
+from alphagenome_ft import (
+    BackboneLoRAConfig,
+    create_model_with_heads,
+    lora,
+    parse_lora_target_names,
+    parameter_utils,
+)
 from alphagenome_ft.finetune import (
     BigWigDataModule,
     build_fasta_index,
@@ -156,6 +167,20 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--max-train-steps", type=_positive_int_or_none, default=None)
     parser.add_argument("--learning-rate", type=float, default=1e-3)
     parser.add_argument("--weight-decay", type=float, default=1e-4)
+    parser.add_argument("--backbone-lora", action="store_true")
+    parser.add_argument("--lora-rank", type=int, default=16)
+    parser.add_argument("--lora-alpha", type=float, default=16.0)
+    parser.add_argument("--fp8-lora", action="store_true")
+    parser.add_argument("--base-param-dtype", default="float32")
+    parser.add_argument("--lora-param-dtype", default="float32")
+    parser.add_argument("--activation-dtype", default="bfloat16")
+    parser.add_argument("--base-compute-dtype", default="bfloat16")
+    parser.add_argument("--lora-compute-dtype", default=None)
+    parser.add_argument(
+        "--lora-targets",
+        default="default",
+        help="Comma-separated hk.Linear names to adapt, or 'default'.",
+    )
     parser.add_argument("--early-stopping-patience", type=int, default=2)
     parser.add_argument("--early-stopping-min-delta", type=float, default=0.0)
     parser.add_argument("--seed", type=int, default=42)
@@ -231,13 +256,51 @@ def main() -> None:
     )
 
     head_ids = [spec.head_id for spec in head_specs]
+    backbone_lora_config = None
+    if args.backbone_lora:
+        lora_compute_dtype = args.lora_compute_dtype
+        if args.fp8_lora and lora_compute_dtype is None:
+            lora_compute_dtype = "fp8"
+        backbone_lora_config = BackboneLoRAConfig(
+            rank=args.lora_rank,
+            alpha=args.lora_alpha,
+            fp8_enabled=args.fp8_lora,
+            base_param_dtype=args.base_param_dtype,
+            lora_param_dtype=args.lora_param_dtype,
+            activation_dtype=args.activation_dtype,
+            base_compute_dtype=args.base_compute_dtype,
+            lora_compute_dtype=lora_compute_dtype,
+            target_names=parse_lora_target_names(args.lora_targets),
+        )
+        print(
+            "Backbone LoRA enabled: "
+            f"rank={backbone_lora_config.rank}, "
+            f"alpha={backbone_lora_config.alpha}, "
+            f"base_param_dtype={backbone_lora_config.base_param_dtype}, "
+            f"lora_param_dtype={backbone_lora_config.lora_param_dtype}, "
+            f"activation_dtype={backbone_lora_config.activation_dtype}, "
+            f"base_compute_dtype={backbone_lora_config.base_compute_dtype}, "
+            f"lora_compute_dtype={backbone_lora_config.resolved_lora_compute_dtype()}, "
+            f"targets={sorted(backbone_lora_config.normalized_target_names())}"
+        )
+
     model = create_model_with_heads(
         args.model_version,
         heads=head_ids,
         checkpoint_path=args.checkpoint_path,
-        detach_backbone=True,
+        detach_backbone=not args.backbone_lora,
         init_seq_len=args.window_size,
+        backbone_lora_config=backbone_lora_config,
+        runtime_backbone_param_dtype=args.base_param_dtype,
     )
+    if args.backbone_lora:
+        lora_paths = lora.get_lora_parameter_paths(model._params)
+        total_params = parameter_utils.count_parameters(model._params)
+        lora_params = lora.count_lora_parameters(model._params)
+        print(f"LoRA adapter leaves: {len(lora_paths)}")
+        print(f"LoRA adapter parameters: {lora_params:,} ({lora_params / total_params:.4%})")
+        if not lora_paths:
+            raise RuntimeError("Backbone LoRA was requested but no LoRA parameters were created.")
 
     use_wandb = args.wandb_project is not None
     train(
@@ -250,6 +313,7 @@ def main() -> None:
         seed=args.seed,
         max_train_steps=args.max_train_steps,
         heads_only=True,
+        train_lora=args.backbone_lora,
         checkpoint_dir=checkpoint_dir,
         organism="HOMO_SAPIENS",
         best_metric="valid_loss",
@@ -268,6 +332,15 @@ def main() -> None:
             "split_source": args.split_source,
             "window_size": args.window_size,
             "stride": args.stride,
+            "backbone_lora": args.backbone_lora,
+            "lora_rank": args.lora_rank if args.backbone_lora else None,
+            "lora_alpha": args.lora_alpha if args.backbone_lora else None,
+            "fp8_lora": args.fp8_lora if args.backbone_lora else None,
+            "base_param_dtype": args.base_param_dtype if args.backbone_lora else None,
+            "lora_param_dtype": args.lora_param_dtype if args.backbone_lora else None,
+            "activation_dtype": args.activation_dtype if args.backbone_lora else None,
+            "base_compute_dtype": args.base_compute_dtype if args.backbone_lora else None,
+            "lora_compute_dtype": lora_compute_dtype if args.backbone_lora else None,
         },
         num_devices=args.num_devices,
     )

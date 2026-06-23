@@ -42,10 +42,51 @@ def test_heads_only_optimizer_fake_param_tree():
     new_params = optax.apply_updates(params, updates)
 
     def assert_head_moved(p_old, p_new, lab):
-        if lab == "head":
+        if lab == "train":
             assert not jnp.allclose(p_old, p_new)
 
     jax.tree_util.tree_map(assert_head_moved, params, new_params, labels)
+
+
+def test_heads_only_optimizer_can_train_lora_leaves():
+    params = {
+        "alphagenome": {
+            "transformer_tower": {
+                "q_layer": {
+                    "w": jnp.ones((2, 3)),
+                    "lora_a": jnp.ones((2, 1)),
+                    "lora_b": jnp.ones((1, 3)),
+                },
+            },
+            "head": {"my_task": {"b": jnp.array([0.5])}},
+        }
+    }
+    opt = create_optimizer(
+        params,
+        trainable_head_names=("my_task",),
+        learning_rate=1e-2,
+        weight_decay=None,
+        heads_only=True,
+        train_lora=True,
+    )
+    state = opt.init(params)
+    labels = label_params_for_trainable_heads(
+        params,
+        ("my_task",),
+        train_lora=True,
+    )
+
+    grads = jax.tree_util.tree_map(jnp.ones_like, params)
+    updates, _ = opt.update(grads, state, params)
+
+    assert labels["alphagenome"]["transformer_tower"]["q_layer"]["w"] == "frozen"
+    assert labels["alphagenome"]["transformer_tower"]["q_layer"]["lora_a"] == "train"
+    assert labels["alphagenome"]["transformer_tower"]["q_layer"]["lora_b"] == "train"
+    assert jnp.allclose(updates["alphagenome"]["transformer_tower"]["q_layer"]["w"], 0.0)
+    assert not jnp.allclose(
+        updates["alphagenome"]["transformer_tower"]["q_layer"]["lora_a"],
+        0.0,
+    )
 
 
 @pytest.mark.skipif(

@@ -49,6 +49,10 @@ coverage.xml
 .hypothesis/
 .pytest_cache/
 
+# Training outputs
+logs/
+checkpoints/
+
 # Translations
 *.mo
 *.pot
@@ -133,4 +137,3 @@ dmypy.json
 # OS
 .DS_Store
 Thumbs.db
-

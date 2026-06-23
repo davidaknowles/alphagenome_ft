@@ -63,13 +63,26 @@ def _is_trainable_head_path(path_str: str, trainable_heads: set[str]) -> bool:
     return False
 
 
-def _label_params_for_heads(params, trainable_heads: Sequence[str]):
-    """Label model parameters as trainable head params vs frozen params."""
+def _is_lora_path(path_str: str) -> bool:
+    return path_str.split("/")[-1] in {"lora_a", "lora_b"}
+
+
+def _label_params_for_heads(
+    params,
+    trainable_heads: Sequence[str],
+    *,
+    train_lora: bool = False,
+):
+    """Label model parameters as trainable params vs frozen params."""
     head_set = {str(name) for name in trainable_heads}
 
     def label_fn(path, _value):
         path_str = _keypath_to_str(path)
-        return "head" if _is_trainable_head_path(path_str, head_set) else "frozen"
+        if _is_trainable_head_path(path_str, head_set):
+            return "train"
+        if train_lora and _is_lora_path(path_str):
+            return "train"
+        return "frozen"
 
     return jax.tree_util.tree_map_with_path(label_fn, params)
 
@@ -80,8 +93,9 @@ def create_optimizer(
     learning_rate: float,
     weight_decay: float,
     heads_only: bool,
+    train_lora: bool = False,
 ):
-    """Create optimizer for full finetuning or heads-only finetuning."""
+    """Create optimizer for full finetuning or masked head/LoRA finetuning."""
     if heads_only:
         head_set = {str(name) for name in trainable_head_names}
         head_paths = parameter_utils.get_head_parameter_paths(params)
@@ -93,10 +107,24 @@ def create_optimizer(
                 f"Names tried: {sorted(head_set)}. "
                 f"Head parameter sample: {sample_paths}"
             )
-        param_labels = _label_params_for_heads(params, trainable_head_names)
+        if train_lora:
+            lora_paths = [
+                path
+                for path in parameter_utils.get_parameter_paths(params)
+                if _is_lora_path(path)
+            ]
+            if not lora_paths:
+                raise ValueError(
+                    "train_lora=True was requested, but no lora_a/lora_b parameters exist."
+                )
+        param_labels = _label_params_for_heads(
+            params,
+            trainable_head_names,
+            train_lora=train_lora,
+        )
         return optax.multi_transform(
             {
-                "head": optax.adamw(learning_rate, weight_decay=weight_decay),
+                "train": optax.adamw(learning_rate, weight_decay=weight_decay),
                 "frozen": optax.set_to_zero(),
             },
             param_labels,
@@ -150,6 +178,7 @@ def train(
     seed: int = 42,
     max_train_steps: int | None = None,
     heads_only: bool = False,
+    train_lora: bool = False,
     checkpoint_dir: Path | None = None,
     organism: str = "HOMO_SAPIENS",
     best_metric: str = "valid_loss",
@@ -176,6 +205,8 @@ def train(
         seed: Base RNG seed used for per-epoch training shuffles.
         max_train_steps: Optional global cap on optimizer updates across all epochs.
         heads_only: If True, freeze backbone and optimize selected heads only.
+        train_lora: If True with ``heads_only=True``, also optimize LoRA adapter
+            leaves named ``lora_a`` or ``lora_b`` outside selected heads.
         checkpoint_dir: Optional output directory for ``best``/``last`` checkpoints.
         organism: Organism enum name used for model organism indexing.
         best_metric: Metric name used for best-checkpoint and early-stopping tracking.
@@ -252,6 +283,7 @@ def train(
             "steps_per_epoch": steps_per_epoch,
             "total_train_steps": total_train_steps,
             "heads_only": heads_only,
+            "train_lora": train_lora,
             "organism": organism,
             "num_devices": num_devices,
             "best_metric": best_metric,
@@ -282,6 +314,7 @@ def train(
         learning_rate=learning_rate,
         weight_decay=weight_decay,
         heads_only=heads_only,
+        train_lora=train_lora,
     )
     opt_state = optimizer.init(model._params)
 
@@ -417,6 +450,12 @@ def train(
                     batch,
                 )
                 loss_scalar = float(np.asarray(loss_value)[0])
+                if not math.isfinite(loss_scalar):
+                    raise FloatingPointError(
+                        "Non-finite training loss encountered "
+                        f"at epoch={epoch}, epoch_step={epoch_step + 1}, "
+                        f"global_step={global_step + 1}: loss={loss_scalar}."
+                    )
                 train_losses.append(loss_scalar)
                 epoch_step += 1
                 global_step += 1
@@ -462,7 +501,13 @@ def train(
                     batch["strand_reindexing"] = strand_reindexing_replicated
                     head_losses = eval_step(replicated_params, replicated_state, batch)
                     for head_name in head_names:
-                        losses[head_name].append(float(np.asarray(head_losses[head_name])[0]))
+                        valid_loss = float(np.asarray(head_losses[head_name])[0])
+                        if not math.isfinite(valid_loss):
+                            raise FloatingPointError(
+                                "Non-finite validation loss encountered "
+                                f"at epoch={epoch}, head={head_name}: loss={valid_loss}."
+                            )
+                        losses[head_name].append(valid_loss)
 
                 valid_metrics = {
                     head: float(np.mean(values)) for head, values in losses.items() if values

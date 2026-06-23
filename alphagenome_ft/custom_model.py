@@ -80,6 +80,96 @@ from alphagenome_research.model.metadata import metadata as metadata_lib
 
 from alphagenome_ft import parameter_utils
 from alphagenome_ft import custom_heads as custom_heads_module
+from alphagenome_ft.fp8_lora import (
+    BackboneLoRAConfig,
+    _is_fp8_storage_dtype,
+    _resolve_fp8_param_dtype,
+    patch_haiku_linear,
+)
+
+
+def _resolve_runtime_param_dtype(dtype_name: str | None):
+    """Resolve an optional runtime parameter dtype used to reduce device memory."""
+    if dtype_name is None:
+        return None
+    normalized = str(dtype_name).strip().lower()
+    aliases = {
+        "float32": jnp.float32,
+        "fp32": jnp.float32,
+        "bfloat16": jnp.bfloat16,
+        "bf16": jnp.bfloat16,
+        "float16": jnp.float16,
+        "fp16": jnp.float16,
+    }
+    if normalized == "fp8":
+        return _resolve_fp8_param_dtype()
+    if normalized not in aliases:
+        raise ValueError(
+            "runtime_backbone_param_dtype must be one of float32/fp32, "
+            f"bfloat16/bf16, float16/fp16, or fp8; got {dtype_name!r}."
+        )
+    return aliases[normalized]
+
+
+def _cast_runtime_backbone_params(
+    params: PyTree,
+    dtype_name: str | None,
+    trainable_head_names: Sequence[str] = (),
+    fp8_base_target_names: Sequence[str] = (),
+    trainable_param_dtype: str | None = None,
+) -> PyTree:
+    """Cast frozen backbone/storage-heavy params while preserving trainable leaves."""
+    target_dtype = _resolve_runtime_param_dtype(dtype_name)
+    if target_dtype is None:
+        return params
+    trainable_dtype = _resolve_runtime_param_dtype(trainable_param_dtype)
+    trainable_head_set = {str(name) for name in trainable_head_names}
+    fp8_base_target_set = {str(name) for name in fp8_base_target_names}
+    target_is_fp8 = _is_fp8_storage_dtype(target_dtype)
+    if target_is_fp8 and not fp8_base_target_set:
+        raise ValueError(
+            "runtime_backbone_param_dtype='fp8' is currently supported only for "
+            "LoRA-patched base projection weights. Pass fp8_base_target_names."
+        )
+
+    def is_trainable_head_path(path_parts: list[str]) -> bool:
+        if not trainable_head_set:
+            return "head" in path_parts
+        for idx, part in enumerate(path_parts[:-1]):
+            if part == "head" and path_parts[idx + 1] in trainable_head_set:
+                return True
+        return False
+
+    def cast_leaf(path: tuple, value):
+        if not hasattr(value, "dtype") or not jnp.issubdtype(value.dtype, jnp.floating):
+            return value
+
+        path_parts = [str(getattr(key, "key", key)) for key in path]
+        if is_trainable_head_path(path_parts):
+            if trainable_dtype is not None and value.dtype != trainable_dtype:
+                return value.astype(trainable_dtype)
+            return value
+        if path_parts and path_parts[-1] in {"lora_a", "lora_b"}:
+            if trainable_dtype is not None and value.dtype != trainable_dtype:
+                return value.astype(trainable_dtype)
+            return value
+        if target_is_fp8:
+            if (
+                len(path_parts) >= 2
+                and path_parts[-1] == "w"
+                and path_parts[-2] in fp8_base_target_set
+            ):
+                if value.dtype == target_dtype:
+                    return value
+                return value.astype(target_dtype)
+            if value.dtype == jnp.bfloat16:
+                return value
+            return value.astype(jnp.bfloat16)
+        if value.dtype == target_dtype:
+            return value
+        return value.astype(target_dtype)
+
+    return jax.tree_util.tree_map_with_path(cast_leaf, params)
 
 
 def _resolve_user_metadata(
@@ -419,6 +509,7 @@ class CustomAlphaGenomeModel:
         learning_rate: Any,
         weight_decay: float | None = None,
         heads_only: bool = False,
+        train_lora: bool = False,
         optimizer_type: str = "adamw",
         gradient_clip_global_norm: float | None = None,
     ):
@@ -434,6 +525,7 @@ class CustomAlphaGenomeModel:
             learning_rate=learning_rate,
             weight_decay=weight_decay,
             heads_only=heads_only,
+            train_lora=train_lora,
             optimizer_type=optimizer_type,
             gradient_clip_global_norm=gradient_clip_global_norm,
         )
@@ -2127,6 +2219,8 @@ def create_model_with_heads(
     detach_backbone: bool = False,
     include_standard_heads: bool = False,
     init_seq_len: int = 2**14,
+    backbone_lora_config: BackboneLoRAConfig | None = None,
+    runtime_backbone_param_dtype: str | None = None,
 ) -> CustomAlphaGenomeModel:
     """Create an AlphaGenome model with specified heads replacing standard heads.
 
@@ -2152,6 +2246,13 @@ def create_model_with_heads(
         include_standard_heads: If True, compute the standard pretrained heads
             in addition to the requested heads. If False, skip standard heads
             to save compute/memory.
+        backbone_lora_config: Optional transformer-backbone LoRA adapter config.
+            When provided, selected AlphaGenome trunk ``hk.Linear`` projections
+            receive trainable ``lora_a``/``lora_b`` leaves.
+        runtime_backbone_param_dtype: Optional dtype used to cast restored
+            floating-point backbone parameters before final device placement.
+            This reduces VRAM for frozen/base weights. Top-level custom head
+            params and LoRA adapter leaves keep their own trainable dtypes.
 
     Returns:
         CustomAlphaGenomeModel with requested heads and pretrained backbone.
@@ -2192,6 +2293,12 @@ def create_model_with_heads(
         ```
     """
     normalized_heads = [custom_heads_module.normalize_head_name(name) for name in heads]
+
+    if backbone_lora_config is not None and use_encoder_output:
+        raise ValueError("backbone_lora_config is not compatible with use_encoder_output=True.")
+    if backbone_lora_config is not None and detach_backbone:
+        print("Backbone LoRA requested; disabling detach_backbone so adapter gradients flow.")
+        detach_backbone = False
 
     # Validate all heads are registered
     for head_name in normalized_heads:
@@ -2302,11 +2409,15 @@ def create_model_with_heads(
             # This will use pretrained params for the backbone
             # Note: AlphaGenome always creates standard heads based on metadata,
             # but we only use the embeddings, not the standard head predictions
-            alphagenome = model_lib.AlphaGenome(metadata)
-
-            # Get embeddings from the backbone (without running standard heads)
-            # We only need the embeddings, not the standard predictions
-            _, embeddings = alphagenome(dna_sequence, organism_index)
+            if backbone_lora_config is None:
+                alphagenome = model_lib.AlphaGenome(metadata)
+                # Get embeddings from the backbone (without running standard heads)
+                # We only need the embeddings, not the standard predictions
+                _, embeddings = alphagenome(dna_sequence, organism_index)
+            else:
+                with patch_haiku_linear(backbone_lora_config):
+                    alphagenome = model_lib.AlphaGenome(metadata)
+                    _, embeddings = alphagenome(dna_sequence, organism_index)
             if detach_backbone:
                 embeddings = _stop_gradient_embeddings(embeddings)
 
@@ -2378,6 +2489,25 @@ def create_model_with_heads(
 
     print("✓ Parameters merged")
 
+    if runtime_backbone_param_dtype is not None:
+        print(f"Casting runtime backbone parameters to {runtime_backbone_param_dtype}...")
+        merged_params = _cast_runtime_backbone_params(
+            merged_params,
+            runtime_backbone_param_dtype,
+            trainable_head_names=normalized_heads,
+            fp8_base_target_names=(
+                backbone_lora_config.normalized_target_names()
+                if backbone_lora_config is not None
+                else ()
+            ),
+            trainable_param_dtype=(
+                backbone_lora_config.lora_param_dtype
+                if backbone_lora_config is not None
+                else None
+            ),
+        )
+        print("✓ Runtime backbone parameters cast")
+
     # Create custom forward function for the model (JIT-compiled for performance and numerical consistency)
     @jax.jit
     def custom_forward(params, state, rng, dna_sequence, organism_index):
@@ -2424,6 +2554,8 @@ def create_model_with_custom_heads(
     include_standard_heads: bool = False,
     init_seq_len: int = 2**20,
     checkpoint_path: str | os.PathLike[str] | None = None,
+    backbone_lora_config: BackboneLoRAConfig | None = None,
+    runtime_backbone_param_dtype: str | None = None,
 ) -> CustomAlphaGenomeModel:
     """Backward-compatible wrapper for create_model_with_heads()."""
     return create_model_with_heads(
@@ -2436,6 +2568,8 @@ def create_model_with_custom_heads(
         include_standard_heads=include_standard_heads,
         init_seq_len=init_seq_len,
         checkpoint_path=checkpoint_path,
+        backbone_lora_config=backbone_lora_config,
+        runtime_backbone_param_dtype=runtime_backbone_param_dtype,
     )
 
 
