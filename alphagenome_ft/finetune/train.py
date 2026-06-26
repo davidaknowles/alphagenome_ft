@@ -367,6 +367,60 @@ def _prefetch_iterable(iterable: Iterable[Any], buffer_size: int) -> Iterator[An
         thread.join(timeout=1.0)
 
 
+def _prefetch_transformed_iterable(
+    iterable: Iterable[Any],
+    buffer_size: int,
+    transform,
+) -> Iterator[Any]:
+    if buffer_size <= 0:
+        for item in iterable:
+            yield transform(item)
+        return
+
+    item_queue: queue.Queue[tuple[str, Any]] = queue.Queue(maxsize=buffer_size)
+    stop_event = threading.Event()
+
+    def put_item(item: tuple[str, Any]) -> bool:
+        while not stop_event.is_set():
+            try:
+                item_queue.put(item, timeout=0.1)
+                return True
+            except queue.Full:
+                continue
+        return False
+
+    def worker() -> None:
+        try:
+            for item in iterable:
+                if stop_event.is_set():
+                    break
+                if not put_item(("item", transform(item))):
+                    break
+        except BaseException as exc:
+            put_item(("error", exc))
+        finally:
+            put_item(("done", None))
+
+    thread = threading.Thread(
+        target=worker,
+        name="alphagenome-device-batch-prefetch",
+        daemon=True,
+    )
+    thread.start()
+    try:
+        while True:
+            kind, payload = item_queue.get()
+            if kind == "item":
+                yield payload
+            elif kind == "error":
+                raise payload
+            else:
+                break
+    finally:
+        stop_event.set()
+        thread.join(timeout=1.0)
+
+
 def _format_host_timing_summary(title: str, stats: Mapping[str, float], count: int) -> str:
     parts = []
     if count <= 0:
@@ -703,28 +757,32 @@ def train(
                 "step_dispatch": 0.0,
                 "sync": 0.0,
             }
+            def prepare_eval_batch(batch_np):
+                prep_start = time.perf_counter()
+                batch = prepare_batch(batch_np, organism_index_value, head_names)
+                prepare_elapsed = time.perf_counter() - prep_start
+                shard_start = time.perf_counter()
+                batch = _shard_batch(batch, num_devices)
+                shard_elapsed = time.perf_counter() - shard_start
+                batch["strand_reindexing"] = strand_reindexing_replicated
+                return batch, {"prepare": prepare_elapsed, "shard": shard_elapsed}
+
             batch_iter = iter(
-                _prefetch_iterable(
-                data_module.iter_batches(split, shuffle=False),
-                prefetch_batches,
+                _prefetch_transformed_iterable(
+                    data_module.iter_batches(split, shuffle=False),
+                    prefetch_batches,
+                    prepare_eval_batch,
                 )
             )
             while True:
                 wait_start = time.perf_counter()
                 try:
-                    batch_np = next(batch_iter)
+                    batch, batch_timing = next(batch_iter)
                 except StopIteration:
                     break
                 timing_stats["batch_wait"] += time.perf_counter() - wait_start
-
-                prep_start = time.perf_counter()
-                batch = prepare_batch(batch_np, organism_index_value, head_names)
-                timing_stats["prepare"] += time.perf_counter() - prep_start
-
-                shard_start = time.perf_counter()
-                batch = _shard_batch(batch, num_devices)
-                timing_stats["shard"] += time.perf_counter() - shard_start
-                batch["strand_reindexing"] = strand_reindexing_replicated
+                timing_stats["prepare"] += batch_timing["prepare"]
+                timing_stats["shard"] += batch_timing["shard"]
                 step_start = time.perf_counter()
                 head_losses, head_stats = eval_step(replicated_params, replicated_state, batch)
                 timing_stats["step_dispatch"] += time.perf_counter() - step_start
@@ -783,28 +841,32 @@ def train(
                 "step_dispatch": 0.0,
                 "sync": 0.0,
             }
+            def prepare_train_batch(batch_np):
+                prep_start = time.perf_counter()
+                batch = prepare_batch(batch_np, organism_index_value, head_names)
+                prepare_elapsed = time.perf_counter() - prep_start
+                shard_start = time.perf_counter()
+                batch = _shard_batch(batch, num_devices)
+                shard_elapsed = time.perf_counter() - shard_start
+                batch["strand_reindexing"] = strand_reindexing_replicated
+                return batch, {"prepare": prepare_elapsed, "shard": shard_elapsed}
+
             batch_iter = iter(
-                _prefetch_iterable(
+                _prefetch_transformed_iterable(
                     data_module.iter_batches("train", seed=seed + epoch),
                     prefetch_batches,
+                    prepare_train_batch,
                 )
             )
             while True:
                 wait_start = time.perf_counter()
                 try:
-                    batch_np = next(batch_iter)
+                    batch, batch_timing = next(batch_iter)
                 except StopIteration:
                     break
                 timing_stats["batch_wait"] += time.perf_counter() - wait_start
-
-                prep_start = time.perf_counter()
-                batch = prepare_batch(batch_np, organism_index_value, head_names)
-                timing_stats["prepare"] += time.perf_counter() - prep_start
-
-                shard_start = time.perf_counter()
-                batch = _shard_batch(batch, num_devices)
-                timing_stats["shard"] += time.perf_counter() - shard_start
-                batch["strand_reindexing"] = strand_reindexing_replicated
+                timing_stats["prepare"] += batch_timing["prepare"]
+                timing_stats["shard"] += batch_timing["shard"]
                 step_start = time.perf_counter()
                 (
                     replicated_params,

@@ -181,7 +181,7 @@ python scripts/run_humanbraindev_finetune.py \
   --early-stopping-patience "${EARLY_STOPPING_PATIENCE:-2}" \
   --num-devices "${NUM_DEVICES:-1}" \
   --progress-interval "${PROGRESS_INTERVAL:-50}" \
-  --prefetch-batches "${PREFETCH_BATCHES:-2}" \
+  --prefetch-batches "${PREFETCH_BATCHES:-1}" \
   --target-workers "${TARGET_WORKERS:-8}" \
   --target-cache-dir "${TARGET_CACHE_DIR}" \
   --target-cache-dtype "${TARGET_CACHE_DTYPE:-float16}" \
