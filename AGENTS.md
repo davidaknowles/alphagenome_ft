@@ -1,6 +1,6 @@
 # Agent Instructions
 
-- This environment is a login node. Do not run substantial compute jobs directly on it.
-- Submit jobs through Slurm.
-- If a job requires a GPU, submit it with `-p gpu`.
+- If `hostname` is `ne1-login` or similar, this is a login node; submit compute-intensive jobs with Slurm.
+- Otherwise, this is a compute node and tests/GPU smoke checks can run directly here.
+- On GPU compute nodes, sandboxed commands may not see `/dev/nvidia*`; run GPU diagnostics and GPU smoke checks outside the sandbox when CUDA/JAX reports no device despite being on a GPU node.
 - Use the Python environment at `~/venv/jax`.

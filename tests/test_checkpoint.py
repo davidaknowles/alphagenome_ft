@@ -17,6 +17,7 @@ from alphagenome_ft import (
     load_checkpoint,
     get_custom_head_config,
 )
+from alphagenome_ft.custom_model import CustomAlphaGenomeModel
 from tests.conftest import MPRAHeadForTesting, require_kaggle_credentials
 
 
@@ -76,6 +77,43 @@ class TestCheckpointSaveLoad:
         assert config['save_full_model'] is False
         assert len(config['custom_heads']) == 1
         assert 'test_mpra_head' in config['custom_heads']
+
+    def test_heads_only_checkpoint_can_include_lora_adapters(self):
+        """Heads-only checkpoint slicing can include backbone LoRA leaves."""
+        model = object.__new__(CustomAlphaGenomeModel)
+        model._custom_heads = ["test_head"]
+        model._state = {}
+        model._params = {
+            "alphagenome": {
+                "transformer_tower": {
+                    "q_layer": {
+                        "w": jnp.ones((2, 2)),
+                        "lora_a": jnp.ones((2, 1)),
+                        "lora_b": jnp.ones((1, 2)),
+                    }
+                },
+                "head": {
+                    "test_head": {
+                        "linear": {"w": jnp.ones((2, 1))}
+                    }
+                },
+            }
+        }
+
+        params_without_lora, _ = model._checkpoint_slice_trees(
+            save_full_model=False,
+            save_minimal_model=False,
+            save_lora_adapters=False,
+        )
+        assert "transformer_tower" not in params_without_lora["alphagenome"]
+
+        params_with_lora, _ = model._checkpoint_slice_trees(
+            save_full_model=False,
+            save_minimal_model=False,
+            save_lora_adapters=True,
+        )
+        q_layer = params_with_lora["alphagenome"]["transformer_tower"]["q_layer"]
+        assert set(q_layer) == {"lora_a", "lora_b"}
     
     def test_save_full_model_checkpoint(self, trained_model, temp_checkpoint_dir):
         """Test saving checkpoint with full model."""

@@ -73,7 +73,7 @@ except ImportError:
     logomaker = None
 
 from alphagenome.models import dna_output, dna_client
-from dataclasses import dataclass, replace
+from dataclasses import asdict, dataclass, is_dataclass, replace
 
 from alphagenome_research.model import dna_model, model as model_lib, embeddings as embeddings_module
 from alphagenome_research.model.metadata import metadata as metadata_lib
@@ -83,7 +83,9 @@ from alphagenome_ft import custom_heads as custom_heads_module
 from alphagenome_ft.fp8_lora import (
     BackboneLoRAConfig,
     _is_fp8_storage_dtype,
+    _is_fp4_storage_dtype,
     _resolve_fp8_param_dtype,
+    _resolve_fp4_param_dtype,
     patch_haiku_linear,
 )
 
@@ -103,10 +105,12 @@ def _resolve_runtime_param_dtype(dtype_name: str | None):
     }
     if normalized == "fp8":
         return _resolve_fp8_param_dtype()
+    if normalized in {"fp4", "nvfp4"}:
+        return _resolve_fp4_param_dtype()
     if normalized not in aliases:
         raise ValueError(
             "runtime_backbone_param_dtype must be one of float32/fp32, "
-            f"bfloat16/bf16, float16/fp16, or fp8; got {dtype_name!r}."
+            f"bfloat16/bf16, float16/fp16, fp8, or fp4/nvfp4; got {dtype_name!r}."
         )
     return aliases[normalized]
 
@@ -125,10 +129,10 @@ def _cast_runtime_backbone_params(
     trainable_dtype = _resolve_runtime_param_dtype(trainable_param_dtype)
     trainable_head_set = {str(name) for name in trainable_head_names}
     fp8_base_target_set = {str(name) for name in fp8_base_target_names}
-    target_is_fp8 = _is_fp8_storage_dtype(target_dtype)
-    if target_is_fp8 and not fp8_base_target_set:
+    target_is_lowp = _is_fp8_storage_dtype(target_dtype) or _is_fp4_storage_dtype(target_dtype)
+    if target_is_lowp and not fp8_base_target_set:
         raise ValueError(
-            "runtime_backbone_param_dtype='fp8' is currently supported only for "
+            "runtime_backbone_param_dtype='fp8'/'fp4' is currently supported only for "
             "LoRA-patched base projection weights. Pass fp8_base_target_names."
         )
 
@@ -153,7 +157,7 @@ def _cast_runtime_backbone_params(
             if trainable_dtype is not None and value.dtype != trainable_dtype:
                 return value.astype(trainable_dtype)
             return value
-        if target_is_fp8:
+        if target_is_lowp:
             if (
                 len(path_parts) >= 2
                 and path_parts[-1] == "w"
@@ -713,7 +717,10 @@ class CustomAlphaGenomeModel:
     # ========================================================================
 
     def _checkpoint_slice_trees(
-        self, save_full_model: bool, save_minimal_model: bool
+        self,
+        save_full_model: bool,
+        save_minimal_model: bool,
+        save_lora_adapters: bool = False,
     ) -> tuple[PyTree, PyTree]:
         """Select the same (params, state) subtrees that :meth:`save_checkpoint` writes to disk.
 
@@ -870,6 +877,37 @@ class CustomAlphaGenomeModel:
                         "alphagenome"
                     ]["head"][head_name]
 
+        def copy_matching_leaves(source, target, condition_fn):
+            if not isinstance(source, dict):
+                return
+
+            def recurse(node, out, path=()):
+                if not isinstance(node, dict):
+                    return
+                for key, value in node.items():
+                    next_path = path + (str(key),)
+                    if isinstance(value, dict):
+                        child = out.setdefault(key, {})
+                        recurse(value, child, next_path)
+                        if child == {}:
+                            out.pop(key, None)
+                    elif condition_fn(next_path):
+                        out[key] = value
+
+            recurse(source, target)
+
+        if save_lora_adapters:
+            copy_matching_leaves(
+                self._params,
+                params_to_save,
+                lambda path: bool(path) and path[-1] in {"lora_a", "lora_b"},
+            )
+            copy_matching_leaves(
+                self._state,
+                state_to_save,
+                lambda path: bool(path) and path[-1] in {"lora_a", "lora_b"},
+            )
+
         return params_to_save, state_to_save
 
     def save_checkpoint(
@@ -878,6 +916,7 @@ class CustomAlphaGenomeModel:
         *,
         save_full_model: bool = False,
         save_minimal_model: bool = False,
+        save_lora_adapters: bool = False,
     ) -> None:
         """Save custom head parameters and configuration.
 
@@ -921,16 +960,16 @@ class CustomAlphaGenomeModel:
             return value
 
         def _serialize_head_config(config_obj):
-            import dataclasses
-
-            if dataclasses.is_dataclass(config_obj):
+            if is_dataclass(config_obj):
                 return {
                     field.name: _serialize_value(getattr(config_obj, field.name))
-                    for field in dataclasses.fields(config_obj)
+                    for field in config_obj.__dataclass_fields__.values()
                 }
             if isinstance(config_obj, dict):
                 return _serialize_value(config_obj)
             return {'value': _serialize_value(config_obj)}
+
+        lora_config = getattr(self, "_backbone_lora_config", None)
         # Save metadata about the checkpoint
         metadata = {
             'custom_heads': self._custom_heads,
@@ -943,6 +982,10 @@ class CustomAlphaGenomeModel:
             },
             'save_full_model': save_full_model,
             'save_minimal_model': save_minimal_model,
+            'save_lora_adapters': save_lora_adapters,
+            'backbone_lora_config': (
+                _serialize_value(asdict(lora_config)) if lora_config is not None else None
+            ),
             'use_encoder_output': hasattr(self, '_custom_forward_fn') and self._custom_forward_fn is not None,
         }
 
@@ -952,7 +995,7 @@ class CustomAlphaGenomeModel:
         # Subtree selection (encoder-only layouts, flat vs nested head keys): see
         # :meth:`_checkpoint_slice_trees`.
         params_to_save, state_to_save = self._checkpoint_slice_trees(
-            save_full_model, save_minimal_model
+            save_full_model, save_minimal_model, save_lora_adapters
         )
 
         # Save parameters using orbax
@@ -2535,6 +2578,7 @@ def create_model_with_heads(
         custom_heads_list=list(normalized_heads),
         head_configs=head_configs,
     )
+    custom_model._backbone_lora_config = backbone_lora_config
 
     print("✓ Model created successfully")
     print(f"  Total parameters: {custom_model.count_parameters():,}")
@@ -2777,6 +2821,7 @@ def load_checkpoint(
     device: jax.Device | None = None,
     base_checkpoint_path: str | os.PathLike[str] | None = None,
     init_seq_len: int | None = None,
+    backbone_lora_config: BackboneLoRAConfig | None = None,
 ) -> CustomAlphaGenomeModel:
     """Load a saved head checkpoint.
 
@@ -2861,7 +2906,14 @@ def load_checkpoint(
     custom_heads = config['custom_heads']
     save_full_model = config['save_full_model']
     save_minimal_model = config.get('save_minimal_model', False)
+    save_lora_adapters = config.get('save_lora_adapters', False)
     use_encoder_output = config.get('use_encoder_output', False)
+    saved_lora_config = config.get('backbone_lora_config')
+    if backbone_lora_config is None and saved_lora_config is not None:
+        saved_lora_config = dict(saved_lora_config)
+        if "target_names" in saved_lora_config:
+            saved_lora_config["target_names"] = tuple(saved_lora_config["target_names"])
+        backbone_lora_config = BackboneLoRAConfig(**saved_lora_config)
 
     # ``save_minimal_model`` checkpoints match the encoder-only Haiku transform (encoder + heads,
     # no transformer). The restore template in ``create_model_with_heads`` must use the same
@@ -2961,9 +3013,10 @@ def load_checkpoint(
         checkpoint_path=base_checkpoint_path,
         use_encoder_output=template_use_encoder,
         init_seq_len=init_for_template,
+        backbone_lora_config=backbone_lora_config,
     )
     restore_target = template_model._checkpoint_slice_trees(
-        save_full_model, save_minimal_model
+        save_full_model, save_minimal_model, save_lora_adapters
     )
     checkpointer = ocp.StandardCheckpointer()
     restore_result = checkpointer.restore(str(checkpoint_path), target=restore_target)
@@ -3435,6 +3488,17 @@ def load_checkpoint(
             import copy
             merged = copy.deepcopy(model_params)
 
+            def merge_lora_leaves(target, source):
+                if not isinstance(target, dict) or not isinstance(source, dict):
+                    return
+                for key, value in source.items():
+                    if isinstance(value, dict):
+                        if key not in target or not isinstance(target.get(key), dict):
+                            target[key] = {}
+                        merge_lora_leaves(target[key], value)
+                    elif str(key) in {"lora_a", "lora_b"}:
+                        target[key] = value
+
             # Structure 1: Flat keys like 'head/{head_name}/...' (use_encoder_output=True mode)
             # This happens when heads are created with hk.name_scope('head') outside alphagenome scope
             if isinstance(loaded_head_params, dict):
@@ -3468,6 +3532,9 @@ def load_checkpoint(
                         for head_name, head_params in loaded_head_params['alphagenome']['head'].items():
                             merged['alphagenome']['head'][head_name] = head_params
 
+            if save_lora_adapters:
+                merge_lora_leaves(merged, loaded_head_params)
+
             return merged
 
         custom_model._params = merge_head_params(custom_model._params, loaded_params)
@@ -3480,5 +3547,6 @@ def load_checkpoint(
 
     print("✓ Checkpoint loaded successfully")
     print(f"  Total parameters: {custom_model.count_parameters():,}")
+    custom_model._backbone_lora_config = backbone_lora_config
 
     return custom_model

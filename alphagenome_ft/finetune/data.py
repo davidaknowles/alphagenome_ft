@@ -3,7 +3,12 @@
 from __future__ import annotations
 
 import contextlib
+import concurrent.futures
 import gzip
+import json
+import os
+import resource
+import threading
 from collections import defaultdict
 from pathlib import Path
 from bisect import bisect_left
@@ -45,6 +50,57 @@ _ORGANISM_ALIASES = {
     "mus musculus": "MUS_MUSCULUS",
     "mm10": "MUS_MUSCULUS",
 }
+
+
+def _available_cpu_count() -> int:
+    try:
+        return max(1, len(os.sched_getaffinity(0)))
+    except (AttributeError, OSError):
+        slurm_cpus = os.environ.get("SLURM_CPUS_PER_TASK")
+        if slurm_cpus:
+            try:
+                return max(1, int(slurm_cpus))
+            except ValueError:
+                pass
+        return max(1, os.cpu_count() or 1)
+
+
+def _interval_record(interval: genome.Interval) -> dict[str, int | str | bool]:
+    return {
+        "chromosome": interval.chromosome,
+        "start": int(interval.start),
+        "end": int(interval.end),
+        "negative_strand": bool(interval.negative_strand),
+    }
+
+
+def _track_record(path: Path) -> dict[str, str | int]:
+    stat = path.stat()
+    return {
+        "path": str(path.expanduser().resolve()),
+        "size": int(stat.st_size),
+        "mtime_ns": int(stat.st_mtime_ns),
+    }
+
+
+def _json_dump(path: Path, payload: Mapping) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w") as handle:
+        json.dump(payload, handle, indent=2, sort_keys=True)
+
+
+def _json_load(path: Path) -> dict:
+    with path.open() as handle:
+        return json.load(handle)
+
+
+def _normalize_cache_dtype(dtype: str | np.dtype) -> np.dtype:
+    normalized = np.dtype(dtype)
+    if normalized not in {np.dtype("float16"), np.dtype("float32")}:
+        raise ValueError(
+            f"target_cache_dtype must be float16 or float32, got {normalized.name}."
+        )
+    return normalized
 
 # https://hgdownload.cse.ucsc.edu/goldenpath/hg38/bigZips/hg38.chrom.sizes
 # https://hgdownload.cse.ucsc.edu/goldenpath/mm10/bigZips/mm10.chrom.sizes
@@ -578,6 +634,244 @@ def prepare_intervals_from_split(
     )
 
 
+class WindowedTargetCache:
+    """Dense window-major binary cache for BigWig target values.
+
+    Format:
+      cache_dir/manifest.json
+      cache_dir/<split>/<head_id>.npy
+
+    Each ``.npy`` is a C-order array with shape
+    ``[num_windows, window_size, num_tracks]`` and dtype float16 or float32.
+    Missing/NaN BigWig values are stored as zero. ``manifest.json`` records the
+    split intervals and source BigWig path, size, and mtime for validation.
+    """
+
+    FORMAT_VERSION = 1
+
+    def __init__(
+        self,
+        cache_dir: Path,
+        *,
+        intervals: Mapping[str, Sequence[genome.Interval]],
+        head_specs: Sequence[HeadSpec],
+        dtype: str | np.dtype = "float16",
+    ) -> None:
+        self.cache_dir = Path(cache_dir).expanduser().resolve()
+        self.dtype = _normalize_cache_dtype(dtype)
+        self._intervals = {split: list(values) for split, values in intervals.items()}
+        self._head_specs = list(head_specs)
+        self._manifest_path = self.cache_dir / "manifest.json"
+        self._arrays: dict[tuple[str, str], np.memmap] = {}
+
+        if not self._manifest_path.exists():
+            raise FileNotFoundError(
+                f"Target cache manifest not found: {self._manifest_path}. "
+                "Build it first with --build-target-cache."
+            )
+        self._manifest = _json_load(self._manifest_path)
+        self._validate_manifest()
+
+    @classmethod
+    def build(
+        cls,
+        cache_dir: Path,
+        *,
+        intervals: Mapping[str, Sequence[genome.Interval]],
+        head_specs: Sequence[HeadSpec],
+        dtype: str | np.dtype = "float16",
+        workers: int = 1,
+        overwrite: bool = False,
+    ) -> None:
+        cache_dir = Path(cache_dir).expanduser().resolve()
+        dtype_np = _normalize_cache_dtype(dtype)
+        manifest_path = cache_dir / "manifest.json"
+        manifest = cls._make_manifest(intervals, head_specs, dtype_np)
+
+        if manifest_path.exists() and not overwrite:
+            existing = _json_load(manifest_path)
+            if existing == manifest:
+                print(f"Target cache already exists and matches inputs: {cache_dir}")
+                return
+            raise ValueError(
+                f"Target cache manifest already exists and does not match inputs: {manifest_path}. "
+                "Use --overwrite-target-cache to rebuild."
+            )
+
+        cache_dir.mkdir(parents=True, exist_ok=True)
+        _json_dump(manifest_path, manifest)
+
+        effective_workers = max(1, int(workers))
+        for split, split_intervals in intervals.items():
+            if not split_intervals:
+                continue
+            split_dir = cache_dir / split
+            split_dir.mkdir(parents=True, exist_ok=True)
+            for spec in head_specs:
+                output_path = split_dir / f"{spec.head_id}.npy"
+                shape = (
+                    len(split_intervals),
+                    int(split_intervals[0].end - split_intervals[0].start),
+                    len(spec.tracks),
+                )
+                if output_path.exists():
+                    output_path.unlink()
+                array = np.lib.format.open_memmap(
+                    output_path,
+                    mode="w+",
+                    dtype=dtype_np,
+                    shape=shape,
+                )
+                print(
+                    "Building target cache: "
+                    f"split={split}, head={spec.head_id}, shape={shape}, "
+                    f"dtype={dtype_np.name}, path={output_path}"
+                )
+                cls._fill_array(array, split_intervals, spec, effective_workers)
+                array.flush()
+
+    @classmethod
+    def _make_manifest(
+        cls,
+        intervals: Mapping[str, Sequence[genome.Interval]],
+        head_specs: Sequence[HeadSpec],
+        dtype: np.dtype,
+    ) -> dict:
+        return {
+            "format": "alphagenome_ft.windowed_target_cache",
+            "format_version": cls.FORMAT_VERSION,
+            "dtype": dtype.name,
+            "splits": {
+                split: [_interval_record(interval) for interval in split_intervals]
+                for split, split_intervals in intervals.items()
+            },
+            "heads": {
+                spec.head_id: {
+                    "tracks": [_track_record(Path(track.path)) for track in spec.tracks],
+                }
+                for spec in head_specs
+            },
+        }
+
+    @staticmethod
+    def _fill_array(
+        array: np.memmap,
+        intervals: Sequence[genome.Interval],
+        spec: HeadSpec,
+        workers: int,
+    ) -> None:
+        if workers <= 1:
+            handles = [pyBigWig.open(str(track.path)) for track in spec.tracks]
+            try:
+                for idx, interval in enumerate(intervals):
+                    array[idx] = WindowedTargetCache._read_window(handles, interval, array.dtype)
+                    if (idx + 1) % 100 == 0 or idx + 1 == len(intervals):
+                        print(f"  cached {idx + 1}/{len(intervals)} windows", flush=True)
+                return
+            finally:
+                for handle in handles:
+                    handle.close()
+
+        soft_limit, _ = resource.getrlimit(resource.RLIMIT_NOFILE)
+        max_workers_by_fds = max(1, int((soft_limit - 64) // max(1, len(spec.tracks))))
+        workers = min(workers, max_workers_by_fds)
+        if workers < 1:
+            workers = 1
+        print(f"  cache workers={workers} (file descriptor limit={soft_limit})", flush=True)
+
+        report_lock = threading.Lock()
+        handle_lock = threading.Lock()
+        thread_local = threading.local()
+        all_thread_handles: list[list[pyBigWig.pyBigWig]] = []
+        completed = 0
+
+        def get_handles() -> list[pyBigWig.pyBigWig]:
+            handles = getattr(thread_local, "handles", None)
+            if handles is None:
+                handles = [pyBigWig.open(str(track.path)) for track in spec.tracks]
+                thread_local.handles = handles
+                with handle_lock:
+                    all_thread_handles.append(handles)
+            return handles
+
+        def build_one(index_interval: tuple[int, genome.Interval]):
+            idx, interval = index_interval
+            values = WindowedTargetCache._read_window(get_handles(), interval, array.dtype)
+            return idx, values
+
+        try:
+            with concurrent.futures.ThreadPoolExecutor(
+                max_workers=workers,
+                thread_name_prefix="alphagenome-cache",
+            ) as executor:
+                for idx, values in executor.map(build_one, enumerate(intervals)):
+                    array[idx] = values
+                    with report_lock:
+                        completed += 1
+                        if completed % 100 == 0 or completed == len(intervals):
+                            print(f"  cached {completed}/{len(intervals)} windows", flush=True)
+        finally:
+            for handles in all_thread_handles:
+                for handle in handles:
+                    handle.close()
+
+    @staticmethod
+    def _read_window(
+        handles: Sequence[pyBigWig.pyBigWig],
+        interval: genome.Interval,
+        dtype: np.dtype,
+    ) -> np.ndarray:
+        target_len = int(interval.end - interval.start)
+        window = np.empty((target_len, len(handles)), dtype=dtype)
+        for track_idx, handle in enumerate(handles):
+            values = handle.values(interval.chromosome, interval.start, interval.end, numpy=True)
+            arr = np.asarray(values, dtype=np.float32)
+            np.nan_to_num(arr, copy=False, nan=0.0)
+            if arr.shape[0] != target_len:
+                padded = np.zeros((target_len,), dtype=np.float32)
+                limit = min(target_len, arr.shape[0])
+                padded[:limit] = arr[:limit]
+                arr = padded
+            window[:, track_idx] = arr.astype(dtype, copy=False)
+        return window
+
+    def _validate_manifest(self) -> None:
+        expected = self._make_manifest(self._intervals, self._head_specs, self.dtype)
+        if self._manifest != expected:
+            raise ValueError(
+                f"Target cache manifest does not match requested intervals/tracks: "
+                f"{self._manifest_path}"
+            )
+        for split, split_intervals in self._intervals.items():
+            for spec in self._head_specs:
+                path = self.cache_dir / split / f"{spec.head_id}.npy"
+                if not path.exists():
+                    raise FileNotFoundError(f"Target cache array missing: {path}")
+                expected_shape = (
+                    len(split_intervals),
+                    int(split_intervals[0].end - split_intervals[0].start),
+                    len(spec.tracks),
+                )
+                actual = np.load(path, mmap_mode="r")
+                if actual.shape != expected_shape or actual.dtype != self.dtype:
+                    raise ValueError(
+                        f"Target cache array has shape/dtype {actual.shape}/{actual.dtype}; "
+                        f"expected {expected_shape}/{self.dtype.name}: {path}"
+                    )
+
+    def arrays_for_split(self, split: str) -> dict[str, np.memmap]:
+        result: dict[str, np.memmap] = {}
+        for spec in self._head_specs:
+            key = (split, spec.head_id)
+            if key not in self._arrays:
+                self._arrays[key] = np.load(
+                    self.cache_dir / split / f"{spec.head_id}.npy",
+                    mmap_mode="r",
+                )
+            result[spec.head_id] = self._arrays[key]
+        return result
+
+
 class BigWigDataModule:
     """Creates training batches by streaming sequences + BigWig targets."""
 
@@ -590,6 +884,10 @@ class BigWigDataModule:
         batch_size: int,
         shuffle: bool,
         drop_last: bool = False,
+        target_workers: int = 0,
+        window_workers: int = 0,
+        target_cache_dir: Path | None = None,
+        target_cache_dtype: str | np.dtype = "float16",
     ) -> None:
         """Initialize streaming sequence/BigWig batch generation.
 
@@ -600,11 +898,22 @@ class BigWigDataModule:
             batch_size: Number of windows per yielded batch.
             shuffle: Whether to shuffle window order in ``iter_batches``.
             drop_last: If True, drop incomplete final batches.
+            target_workers: Number of host threads for reading BigWig target
+                tracks within each window. ``0`` or ``1`` reads tracks serially.
+            window_workers: Number of host threads for building windows within a
+                batch. ``0`` or ``1`` keeps batch construction serial.
+            target_cache_dir: Optional directory containing a windowed target
+                cache built from these intervals and BigWig tracks.
+            target_cache_dtype: dtype used by the target cache.
 
         Raises:
             ValueError: If no shared chromosomes exist across configured BigWigs,
                 or no training intervals remain after chromosome filtering.
         """
+        if target_workers < 0:
+            raise ValueError(f"target_workers must be non-negative, got {target_workers}.")
+        if window_workers < 0:
+            raise ValueError(f"window_workers must be non-negative, got {window_workers}.")
         filtered_intervals = self._filter_intervals_by_bigwig_chromosomes(intervals, head_specs)
         if not filtered_intervals.get("train"):
             raise ValueError(
@@ -616,7 +925,19 @@ class BigWigDataModule:
         self._batch_size = batch_size
         self._shuffle = shuffle
         self._drop_last = drop_last
+        self._target_workers = target_workers
+        self._window_workers = window_workers
         self._encoder = one_hot_encoder.DNAOneHotEncoder(dtype=np.float32)
+        self._target_cache = (
+            WindowedTargetCache(
+                target_cache_dir,
+                intervals=self._intervals,
+                head_specs=self._head_specs,
+                dtype=target_cache_dtype,
+            )
+            if target_cache_dir is not None
+            else None
+        )
 
     @staticmethod
     def _get_common_bigwig_chromosomes(
@@ -681,35 +1002,99 @@ class BigWigDataModule:
         return filtered
 
     def iter_batches(
-        self, split: str, *, seed: int | None = None
+        self, split: str, *, seed: int | None = None, shuffle: bool | None = None
     ) -> Iterator[dict[str, np.ndarray]]:
         windows = list(self._intervals.get(split, ()))
         if not windows:
             return
 
         order = np.arange(len(windows))
-        if self._shuffle:
+        should_shuffle = self._shuffle if shuffle is None else shuffle
+        if should_shuffle:
             rng = np.random.default_rng(seed)
             rng.shuffle(order)
 
         extractor = fasta_lib.FastaExtractor(str(self._fasta_path))
         with contextlib.ExitStack() as stack:
+            target_cache_arrays = (
+                self._target_cache.arrays_for_split(split) if self._target_cache is not None else None
+            )
             head_handles: dict[str, list[pyBigWig.pyBigWig]] = {}
-            for spec in self._head_specs:
-                handles = []
-                for track in spec.tracks:
-                    handles.append(stack.enter_context(pyBigWig.open(str(track.path))))
-                head_handles[spec.head_id] = handles
+            if target_cache_arrays is None:
+                for spec in self._head_specs:
+                    handles = []
+                    for track in spec.tracks:
+                        handles.append(stack.enter_context(pyBigWig.open(str(track.path))))
+                    head_handles[spec.head_id] = handles
+            available_cpus = _available_cpu_count()
+            effective_target_workers = self._target_workers
+            if self._window_workers > 1 and effective_target_workers > 1:
+                effective_target_workers = min(
+                    effective_target_workers,
+                    max(1, available_cpus // self._window_workers),
+                )
+            target_executor = None
+            if target_cache_arrays is None and effective_target_workers > 1:
+                target_executor = stack.enter_context(
+                    concurrent.futures.ThreadPoolExecutor(
+                        max_workers=effective_target_workers,
+                        thread_name_prefix="alphagenome-bigwig",
+                    )
+                )
+            window_executor = (
+                stack.enter_context(
+                    concurrent.futures.ThreadPoolExecutor(
+                        max_workers=self._window_workers,
+                        thread_name_prefix="alphagenome-window",
+                    )
+                )
+                if self._window_workers > 1
+                else None
+            )
 
             batch_indices: list[int] = []
             for idx in order:
                 batch_indices.append(int(idx))
                 if len(batch_indices) == self._batch_size:
-                    yield self._make_batch(batch_indices, windows, extractor, head_handles)
+                    if window_executor is None:
+                        yield self._make_batch(
+                            batch_indices,
+                            windows,
+                            extractor,
+                            head_handles,
+                            target_executor,
+                            target_cache_arrays,
+                        )
+                    else:
+                        yield self._make_batch_parallel(
+                            batch_indices,
+                            windows,
+                            head_handles,
+                            window_executor,
+                            target_executor,
+                            target_cache_arrays,
+                        )
                     batch_indices = []
 
             if batch_indices and not self._drop_last:
-                yield self._make_batch(batch_indices, windows, extractor, head_handles)
+                if window_executor is None:
+                    yield self._make_batch(
+                        batch_indices,
+                        windows,
+                        extractor,
+                        head_handles,
+                        target_executor,
+                        target_cache_arrays,
+                    )
+                else:
+                    yield self._make_batch_parallel(
+                        batch_indices,
+                        windows,
+                        head_handles,
+                        window_executor,
+                        target_executor,
+                        target_cache_arrays,
+                    )
 
     def _make_batch(
         self,
@@ -717,6 +1102,8 @@ class BigWigDataModule:
         windows: Sequence[genome.Interval],
         extractor: fasta_lib.FastaExtractor,
         head_handles: Mapping[str, Sequence[pyBigWig.pyBigWig]],
+        target_executor: concurrent.futures.Executor | None = None,
+        target_cache_arrays: Mapping[str, np.ndarray] | None = None,
     ) -> dict[str, np.ndarray]:
         sequences = []
         targets: dict[str, list[np.ndarray]] = {spec.head_id: [] for spec in self._head_specs}
@@ -729,11 +1116,23 @@ class BigWigDataModule:
 
             seq_len = encoded.shape[0]
             for spec in self._head_specs:
-                channel_arrays = []
-                for handle in head_handles[spec.head_id]:
-                    values = handle.values(window.chromosome, window.start, window.end)
-                    track = self._prepare_track(values, seq_len)
-                    channel_arrays.append(track)
+                if target_cache_arrays is not None:
+                    channel_arrays = target_cache_arrays[spec.head_id][idx]
+                    targets[spec.head_id].append(np.asarray(channel_arrays))
+                    continue
+                handles = head_handles[spec.head_id]
+                if target_executor is None:
+                    channel_arrays = [
+                        self._read_track(handle, window, seq_len)
+                        for handle in handles
+                    ]
+                else:
+                    channel_arrays = list(
+                        target_executor.map(
+                            lambda handle: self._read_track(handle, window, seq_len),
+                            handles,
+                        )
+                    )
                 targets[spec.head_id].append(np.stack(channel_arrays, axis=-1))
 
         batch = {
@@ -741,15 +1140,96 @@ class BigWigDataModule:
             'negative_strand_mask': np.zeros((len(batch_indices),), dtype=bool),
         }
         for head_name, arrays in targets.items():
-            batch[f'targets_{head_name}'] = np.stack(arrays, axis=0).astype(np.float32)
+            if target_cache_arrays is None:
+                batch[f'targets_{head_name}'] = np.stack(arrays, axis=0).astype(np.float32)
+            else:
+                batch[f'targets_{head_name}'] = np.stack(arrays, axis=0)
         return batch
+
+    def _make_batch_parallel(
+        self,
+        batch_indices: Sequence[int],
+        windows: Sequence[genome.Interval],
+        head_handles: Mapping[str, Sequence[pyBigWig.pyBigWig]],
+        window_executor: concurrent.futures.Executor,
+        target_executor: concurrent.futures.Executor | None = None,
+        target_cache_arrays: Mapping[str, np.ndarray] | None = None,
+    ) -> dict[str, np.ndarray]:
+        thread_local = threading.local()
+
+        def get_extractor() -> fasta_lib.FastaExtractor:
+            extractor = getattr(thread_local, "extractor", None)
+            if extractor is None:
+                extractor = fasta_lib.FastaExtractor(str(self._fasta_path))
+                thread_local.extractor = extractor
+            return extractor
+
+        def get_encoder() -> one_hot_encoder.DNAOneHotEncoder:
+            encoder = getattr(thread_local, "encoder", None)
+            if encoder is None:
+                encoder = one_hot_encoder.DNAOneHotEncoder(dtype=np.float32)
+                thread_local.encoder = encoder
+            return encoder
+
+        def build_one(idx: int) -> tuple[np.ndarray, dict[str, np.ndarray]]:
+            extractor = get_extractor()
+            encoder = get_encoder()
+            window = windows[idx]
+            seq = extractor.extract(window)
+            encoded = encoder.encode(seq).astype(np.float32)
+            seq_len = encoded.shape[0]
+            target_arrays: dict[str, np.ndarray] = {}
+            for spec in self._head_specs:
+                if target_cache_arrays is not None:
+                    target_arrays[spec.head_id] = np.asarray(target_cache_arrays[spec.head_id][idx])
+                    continue
+                handles = head_handles[spec.head_id]
+                if target_executor is None:
+                    channel_arrays = [
+                        self._read_track(handle, window, seq_len)
+                        for handle in handles
+                    ]
+                else:
+                    channel_arrays = list(
+                        target_executor.map(
+                            lambda handle: self._read_track(handle, window, seq_len),
+                            handles,
+                        )
+                    )
+                target_arrays[spec.head_id] = np.stack(channel_arrays, axis=-1).astype(np.float32)
+            return encoded, target_arrays
+
+        results = list(window_executor.map(build_one, batch_indices))
+        sequences = [encoded for encoded, _ in results]
+        targets: dict[str, list[np.ndarray]] = {spec.head_id: [] for spec in self._head_specs}
+        for _, target_arrays in results:
+            for head_name, array in target_arrays.items():
+                targets[head_name].append(array)
+
+        batch = {
+            "sequences": np.stack(sequences, axis=0),
+            "negative_strand_mask": np.zeros((len(batch_indices),), dtype=bool),
+        }
+        for head_name, arrays in targets.items():
+            batch[f"targets_{head_name}"] = np.stack(arrays, axis=0)
+        return batch
+
+    def _read_track(
+        self,
+        handle: pyBigWig.pyBigWig,
+        window: genome.Interval,
+        target_len: int,
+    ) -> np.ndarray:
+        values = handle.values(window.chromosome, window.start, window.end, numpy=True)
+        return self._prepare_track(values, target_len)
 
     @staticmethod
     def _prepare_track(values: Sequence[float] | None, target_len: int) -> np.ndarray:
         if values is None:
             padded = np.zeros((target_len,), dtype=np.float32)
             return padded
-        arr = np.nan_to_num(np.asarray(values, dtype=np.float32))
+        arr = np.asarray(values, dtype=np.float32)
+        np.nan_to_num(arr, copy=False, nan=0.0)
         if arr.shape[0] == target_len:
             return arr
         padded = np.zeros((target_len,), dtype=np.float32)

@@ -3,9 +3,13 @@
 from __future__ import annotations
 
 import functools
+import json
 import math
+import queue
+import threading
+import time
 from pathlib import Path
-from typing import Mapping, Sequence
+from typing import Any, Iterable, Iterator, Mapping, Sequence
 
 import jax
 import jax.numpy as jnp
@@ -167,6 +171,215 @@ def _shard_batch(batch: Mapping[str, jax.Array], num_devices: int):
     return {name: shard_array(value) for name, value in batch.items()}
 
 
+def _json_ready(value: Any):
+    if isinstance(value, Mapping):
+        return {str(k): _json_ready(v) for k, v in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_json_ready(v) for v in value]
+    if isinstance(value, np.ndarray):
+        return value.tolist()
+    if isinstance(value, np.generic):
+        return value.item()
+    if isinstance(value, float) and not math.isfinite(value):
+        return None
+    return value
+
+
+def _write_json(path: Path, payload: Mapping[str, Any]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w") as handle:
+        json.dump(_json_ready(payload), handle, indent=2, sort_keys=True)
+
+
+def _append_jsonl(path: Path, payload: Mapping[str, Any]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("a") as handle:
+        handle.write(json.dumps(_json_ready(payload), sort_keys=True) + "\n")
+
+
+def _select_prediction_for_targets(prediction, targets):
+    """Return the prediction array that matches 1 bp BigWig targets."""
+    if hasattr(prediction, "shape"):
+        return prediction
+    if not isinstance(prediction, Mapping):
+        raise TypeError(f"Unsupported prediction type for R2 metrics: {type(prediction)!r}")
+
+    preferred_keys = (
+        "predictions_1bp",
+        "predictions",
+        "scaled_predictions_1bp",
+    )
+    for key in preferred_keys:
+        value = prediction.get(key)
+        if hasattr(value, "shape") and value.shape == targets.shape:
+            return value
+
+    for key, value in prediction.items():
+        if (
+            str(key).startswith("predictions_")
+            and hasattr(value, "shape")
+            and value.shape == targets.shape
+        ):
+            return value
+    for key, value in prediction.items():
+        if (
+            str(key).startswith("scaled_predictions_")
+            and hasattr(value, "shape")
+            and value.shape == targets.shape
+        ):
+            return value
+
+    shapes = {
+        str(key): getattr(value, "shape", None)
+        for key, value in prediction.items()
+    }
+    raise ValueError(
+        "Could not find a prediction array matching target shape "
+        f"{targets.shape}; available prediction shapes: {shapes}"
+    )
+
+
+def _r2_stats(prediction, targets):
+    prediction = _select_prediction_for_targets(prediction, targets).astype(jnp.float32)
+    targets = targets.astype(jnp.float32)
+    residual = prediction - targets
+
+    count = jnp.asarray(targets.size, dtype=jnp.float32)
+    sum_y = jnp.sum(targets)
+    sum_y2 = jnp.sum(jnp.square(targets))
+    sse = jnp.sum(jnp.square(residual))
+
+    loci_count = jnp.asarray(targets.shape[0] * targets.shape[1], dtype=jnp.float32)
+    sum_y_by_track = jnp.sum(targets, axis=(0, 1))
+    sum_y2_by_track = jnp.sum(jnp.square(targets), axis=(0, 1))
+    sse_by_track = jnp.sum(jnp.square(residual), axis=(0, 1))
+    count_by_track = jnp.ones_like(sum_y_by_track, dtype=jnp.float32) * loci_count
+
+    target_mean_by_locus = jnp.mean(targets, axis=-1, keepdims=True)
+    sst_by_locus = jnp.sum(jnp.square(targets - target_mean_by_locus), axis=-1)
+    sse_by_locus = jnp.sum(jnp.square(residual), axis=-1)
+    valid_locus = sst_by_locus > 0
+    r2_by_locus = 1.0 - (sse_by_locus / jnp.maximum(sst_by_locus, 1e-8))
+    r2_cell_type_sum = jnp.sum(jnp.where(valid_locus, r2_by_locus, 0.0))
+    r2_cell_type_count = jnp.sum(valid_locus.astype(jnp.float32))
+
+    return {
+        "count": count,
+        "sum_y": sum_y,
+        "sum_y2": sum_y2,
+        "sse": sse,
+        "count_by_track": count_by_track,
+        "sum_y_by_track": sum_y_by_track,
+        "sum_y2_by_track": sum_y2_by_track,
+        "sse_by_track": sse_by_track,
+        "r2_cell_type_sum": r2_cell_type_sum,
+        "r2_cell_type_count": r2_cell_type_count,
+    }
+
+
+def _finalize_r2_stats(stats: Mapping[str, np.ndarray | float]) -> dict[str, float]:
+    count = float(np.asarray(stats["count"]))
+    sst = float(np.asarray(stats["sum_y2"]) - np.asarray(stats["sum_y"]) ** 2 / max(count, 1.0))
+    sse = float(np.asarray(stats["sse"]))
+    r2_global = float("nan") if sst <= 0 else 1.0 - sse / sst
+
+    count_by_track = np.asarray(stats["count_by_track"], dtype=np.float64)
+    sum_y_by_track = np.asarray(stats["sum_y_by_track"], dtype=np.float64)
+    sum_y2_by_track = np.asarray(stats["sum_y2_by_track"], dtype=np.float64)
+    sse_by_track = np.asarray(stats["sse_by_track"], dtype=np.float64)
+    sst_by_track = sum_y2_by_track - np.square(sum_y_by_track) / np.maximum(count_by_track, 1.0)
+    valid_tracks = sst_by_track > 0
+    if np.any(valid_tracks):
+        r2_over_loci = float(np.mean(1.0 - sse_by_track[valid_tracks] / sst_by_track[valid_tracks]))
+    else:
+        r2_over_loci = float("nan")
+
+    r2_cell_type_count = float(np.asarray(stats["r2_cell_type_count"]))
+    if r2_cell_type_count > 0:
+        r2_over_cell_types = float(np.asarray(stats["r2_cell_type_sum"]) / r2_cell_type_count)
+    else:
+        r2_over_cell_types = float("nan")
+
+    return {
+        "r2_global": r2_global,
+        "r2_over_loci": r2_over_loci,
+        "r2_over_cell_types": r2_over_cell_types,
+    }
+
+
+def _add_stats(total: dict[str, Any] | None, update: Mapping[str, Any]) -> dict[str, Any]:
+    update_np = {key: np.asarray(value) for key, value in update.items()}
+    if total is None:
+        return {key: np.array(value) for key, value in update_np.items()}
+    for key, value in update_np.items():
+        total[key] = total[key] + value
+    return total
+
+
+def _add_device_stats(total, update):
+    if total is None:
+        return update
+    return jax.tree_util.tree_map(lambda left, right: left + right, total, update)
+
+
+def _prefetch_iterable(iterable: Iterable[Any], buffer_size: int) -> Iterator[Any]:
+    if buffer_size <= 0:
+        yield from iterable
+        return
+
+    item_queue: queue.Queue[tuple[str, Any]] = queue.Queue(maxsize=buffer_size)
+    stop_event = threading.Event()
+
+    def put_item(item: tuple[str, Any]) -> bool:
+        while not stop_event.is_set():
+            try:
+                item_queue.put(item, timeout=0.1)
+                return True
+            except queue.Full:
+                continue
+        return False
+
+    def worker() -> None:
+        try:
+            for item in iterable:
+                if stop_event.is_set():
+                    break
+                if not put_item(("item", item)):
+                    break
+        except BaseException as exc:
+            put_item(("error", exc))
+        finally:
+            put_item(("done", None))
+
+    thread = threading.Thread(target=worker, name="alphagenome-batch-prefetch", daemon=True)
+    thread.start()
+    try:
+        while True:
+            kind, payload = item_queue.get()
+            if kind == "item":
+                yield payload
+            elif kind == "error":
+                raise payload
+            else:
+                break
+    finally:
+        stop_event.set()
+        thread.join(timeout=1.0)
+
+
+def _format_host_timing_summary(title: str, stats: Mapping[str, float], count: int) -> str:
+    parts = []
+    if count <= 0:
+        return f"  {title}: no samples"
+    for label, elapsed in stats.items():
+        if elapsed <= 0:
+            continue
+        parts.append(f"{label}={elapsed:.3f}s ({elapsed / count:.4f}s/step)")
+    if not parts:
+        return f"  {title}: no samples"
+    return f"  {title}: " + "; ".join(parts)
+
+
 def train(
     model: CustomAlphaGenomeModel,
     data_module: BigWigDataModule,
@@ -192,6 +405,10 @@ def train(
     wandb_run_name: str | None = None,
     wandb_config: dict | None = None,
     num_devices: int = 1,
+    eval_splits: Sequence[str] = ("valid",),
+    progress_interval: int = 50,
+    prefetch_batches: int = 2,
+    profile_host_timing: bool = False,
 ) -> None:
     """Run fine-tuning with pmapped train/eval steps.
 
@@ -220,6 +437,16 @@ def train(
         wandb_run_name: Optional W&B run-name override.
         wandb_config: Optional extra config keys to merge into W&B config.
         num_devices: Number of local devices to use. Defaults to single-device.
+        eval_splits: Data splits to evaluate after each epoch. Supported values
+            are any split present in the data module, typically ``train``,
+            ``valid``, and ``test``.
+        progress_interval: Synchronize and report per-step loss every this many
+            steps when verbose or W&B step logging is enabled. Larger values
+            improve overlap between host-side data loading and GPU execution.
+        prefetch_batches: Number of host-prepared batches to keep queued in a
+            background thread. Set to 0 to disable prefetching.
+        profile_host_timing: If True, print wall-clock timing buckets for host-side
+            work each epoch.
 
     Notes:
         Total planned steps are computed before training from train-set size and
@@ -263,6 +490,10 @@ def train(
 
     if num_devices < 1:
         raise ValueError(f"num_devices must be at least 1, got {num_devices}.")
+    if progress_interval < 1:
+        raise ValueError(f"progress_interval must be at least 1, got {progress_interval}.")
+    if prefetch_batches < 0:
+        raise ValueError(f"prefetch_batches must be non-negative, got {prefetch_batches}.")
 
     available_devices = jax.local_devices()
     if num_devices > len(available_devices):
@@ -290,6 +521,9 @@ def train(
             "best_metric_mode": best_metric_mode,
             "early_stopping_patience": early_stopping_patience,
             "seed": seed,
+            "eval_splits": list(eval_splits),
+            "progress_interval": progress_interval,
+            "prefetch_batches": prefetch_batches,
             **(wandb_config or {}),
         }
         wandb.init(
@@ -337,23 +571,39 @@ def train(
                 strand_reindexing=batch["strand_reindexing"],
             )
             total_loss = 0.0
+            head_losses = {}
+            head_stats = {}
             for head_name in head_names:
+                targets = batch[f"targets_{head_name}"]
                 head_loss_dict = loss_fns[head_name](
                     predictions[head_name],
                     {
-                        "targets": batch[f"targets_{head_name}"],
+                        "targets": targets,
                         "organism_index": batch["organism_index"],
                     },
                 )
-                total_loss = total_loss + head_loss_dict["loss"]
-            return total_loss
+                head_loss = head_loss_dict["loss"]
+                head_losses[head_name] = head_loss
+                head_stats[head_name] = _r2_stats(predictions[head_name], targets)
+                total_loss = total_loss + head_loss
+            return total_loss, (head_losses, head_stats)
 
-        loss_value, grads = jax.value_and_grad(loss_fn)(params)
+        (loss_value, (head_losses, head_stats)), grads = jax.value_and_grad(
+            loss_fn, has_aux=True
+        )(params)
         loss_value = jax.lax.pmean(loss_value, axis_name="data")
         grads = jax.lax.pmean(grads, axis_name="data")
+        head_losses = jax.tree_util.tree_map(
+            lambda head_loss: jax.lax.pmean(head_loss, axis_name="data"),
+            head_losses,
+        )
+        head_stats = jax.tree_util.tree_map(
+            lambda value: jax.lax.psum(value, axis_name="data"),
+            head_stats,
+        )
         updates, new_opt_state = optimizer.update(grads, current_opt_state, params)
         new_params = optax.apply_updates(params, updates)
-        return new_params, new_opt_state, loss_value
+        return new_params, new_opt_state, loss_value, head_losses, head_stats
 
     @functools.partial(jax.pmap, axis_name="data")
     def eval_step(params, state, batch):
@@ -376,11 +626,19 @@ def train(
                 },
             )
             head_losses[head_name] = loss_dict["loss"]
+        head_stats = {
+            head_name: _r2_stats(predictions[head_name], batch[f"targets_{head_name}"])
+            for head_name in head_names
+        }
         head_losses = jax.tree_util.tree_map(
             lambda loss_value: jax.lax.pmean(loss_value, axis_name="data"),
             head_losses,
         )
-        return head_losses
+        head_stats = jax.tree_util.tree_map(
+            lambda value: jax.lax.psum(value, axis_name="data"),
+            head_stats,
+        )
+        return head_losses, head_stats
 
     if verbose:
         print("JIT-compiling step functions (first call will be slow)...")
@@ -414,6 +672,9 @@ def train(
     best_value: float | None = None
     epochs_since_improvement = 0
     global_step = 0
+    metrics_history_path = checkpoint_dir / "metrics.jsonl" if checkpoint_dir else None
+
+    requested_eval_splits = tuple(dict.fromkeys(str(split) for split in eval_splits))
 
     print(
         "Train plan: "
@@ -429,6 +690,80 @@ def train(
         opt_state = _replicate_tree(opt_state, devices)
         strand_reindexing_replicated = _replicate_tree(strand_reindexing, devices)
         stop_training = False
+
+        def evaluate_split(split: str) -> dict[str, dict[str, float]]:
+            if split not in data_module._intervals or len(data_module._intervals[split]) == 0:
+                return {}
+            losses = {head: [] for head in head_names}
+            stats_by_head: dict[str, dict[str, Any] | None] = {head: None for head in head_names}
+            timing_stats = {
+                "batch_wait": 0.0,
+                "prepare": 0.0,
+                "shard": 0.0,
+                "step_dispatch": 0.0,
+                "sync": 0.0,
+            }
+            batch_iter = iter(
+                _prefetch_iterable(
+                data_module.iter_batches(split, shuffle=False),
+                prefetch_batches,
+                )
+            )
+            while True:
+                wait_start = time.perf_counter()
+                try:
+                    batch_np = next(batch_iter)
+                except StopIteration:
+                    break
+                timing_stats["batch_wait"] += time.perf_counter() - wait_start
+
+                prep_start = time.perf_counter()
+                batch = prepare_batch(batch_np, organism_index_value, head_names)
+                timing_stats["prepare"] += time.perf_counter() - prep_start
+
+                shard_start = time.perf_counter()
+                batch = _shard_batch(batch, num_devices)
+                timing_stats["shard"] += time.perf_counter() - shard_start
+                batch["strand_reindexing"] = strand_reindexing_replicated
+                step_start = time.perf_counter()
+                head_losses, head_stats = eval_step(replicated_params, replicated_state, batch)
+                timing_stats["step_dispatch"] += time.perf_counter() - step_start
+                for head_name in head_names:
+                    sync_start = time.perf_counter()
+                    loss_value = float(np.asarray(head_losses[head_name])[0])
+                    timing_stats["sync"] += time.perf_counter() - sync_start
+                    if not math.isfinite(loss_value):
+                        raise FloatingPointError(
+                            "Non-finite evaluation loss encountered "
+                            f"at split={split}, head={head_name}: loss={loss_value}."
+                        )
+                    losses[head_name].append(loss_value)
+                    stats_by_head[head_name] = _add_stats(
+                        stats_by_head[head_name],
+                        jax.tree_util.tree_map(
+                            lambda value: np.asarray(value)[0],
+                            head_stats[head_name],
+                        ),
+                    )
+
+            split_result: dict[str, dict[str, float]] = {}
+            for head_name in head_names:
+                head_result = {
+                    "loss": float(np.mean(losses[head_name])) if losses[head_name] else float("nan")
+                }
+                if stats_by_head[head_name] is not None:
+                    head_result.update(_finalize_r2_stats(stats_by_head[head_name]))
+                split_result[head_name] = head_result
+            if profile_host_timing:
+                print(
+                    _format_host_timing_summary(
+                        f"{split} host timing",
+                        timing_stats,
+                        len(losses[head_names[0]]) if head_names else 0,
+                    )
+                )
+            return split_result
+
         for epoch in range(1, num_epochs + 1):
             if verbose:
                 print(f"\n{'=' * 60}")
@@ -438,91 +773,191 @@ def train(
                 print(f"Epoch {epoch}/{num_epochs}")
 
             epoch_step = 0
-            train_losses: list[float] = []
-            for batch_np in data_module.iter_batches("train", seed=seed + epoch):
+            train_loss_sum = None
+            train_head_loss_sums = {head_name: None for head_name in head_names}
+            train_stats_by_head = {head_name: None for head_name in head_names}
+            timing_stats = {
+                "batch_wait": 0.0,
+                "prepare": 0.0,
+                "shard": 0.0,
+                "step_dispatch": 0.0,
+                "sync": 0.0,
+            }
+            batch_iter = iter(
+                _prefetch_iterable(
+                    data_module.iter_batches("train", seed=seed + epoch),
+                    prefetch_batches,
+                )
+            )
+            while True:
+                wait_start = time.perf_counter()
+                try:
+                    batch_np = next(batch_iter)
+                except StopIteration:
+                    break
+                timing_stats["batch_wait"] += time.perf_counter() - wait_start
+
+                prep_start = time.perf_counter()
                 batch = prepare_batch(batch_np, organism_index_value, head_names)
+                timing_stats["prepare"] += time.perf_counter() - prep_start
+
+                shard_start = time.perf_counter()
                 batch = _shard_batch(batch, num_devices)
+                timing_stats["shard"] += time.perf_counter() - shard_start
                 batch["strand_reindexing"] = strand_reindexing_replicated
-                replicated_params, opt_state, loss_value = train_step(
+                step_start = time.perf_counter()
+                (
+                    replicated_params,
+                    opt_state,
+                    loss_value,
+                    head_losses,
+                    head_stats,
+                ) = train_step(
                     replicated_params,
                     replicated_state,
                     opt_state,
                     batch,
                 )
-                loss_scalar = float(np.asarray(loss_value)[0])
-                if not math.isfinite(loss_scalar):
-                    raise FloatingPointError(
-                        "Non-finite training loss encountered "
-                        f"at epoch={epoch}, epoch_step={epoch_step + 1}, "
-                        f"global_step={global_step + 1}: loss={loss_scalar}."
+                timing_stats["step_dispatch"] += time.perf_counter() - step_start
+                loss_replica = loss_value[0]
+                train_loss_sum = (
+                    loss_replica if train_loss_sum is None else train_loss_sum + loss_replica
+                )
+                for head_name in head_names:
+                    head_loss_replica = head_losses[head_name][0]
+                    train_head_loss_sums[head_name] = (
+                        head_loss_replica
+                        if train_head_loss_sums[head_name] is None
+                        else train_head_loss_sums[head_name] + head_loss_replica
                     )
-                train_losses.append(loss_scalar)
+                    train_stats_by_head[head_name] = _add_device_stats(
+                        train_stats_by_head[head_name],
+                        jax.tree_util.tree_map(
+                            lambda value: value[0],
+                            head_stats[head_name],
+                        ),
+                    )
                 epoch_step += 1
                 global_step += 1
 
-                if verbose:
-                    print(
-                        # f"  step {global_step:0{step_width}d}/{total_train_steps:0{step_width}d}"
-                        # f" | epoch_step {epoch_step:04d} | loss {loss_scalar:.4f}",
-                        f"  step {epoch_step:0{step_width}d}/{steps_per_epoch:0{step_width}d}"
-                        f" | loss {loss_scalar:.4f}",
-                        end="\r",
-                        flush=True,
-                    )
+                should_sync_step = (
+                    epoch_step == 1
+                    or epoch_step % progress_interval == 0
+                    or epoch_step == steps_per_epoch
+                    or global_step >= total_train_steps
+                )
+                if should_sync_step:
+                    sync_start = time.perf_counter()
+                    loss_scalar = float(np.asarray(loss_replica))
+                    if profile_host_timing:
+                        timing_stats["sync"] += time.perf_counter() - sync_start
+                    if not math.isfinite(loss_scalar):
+                        raise FloatingPointError(
+                            "Non-finite training loss encountered "
+                            f"at epoch={epoch}, epoch_step={epoch_step}, "
+                            f"global_step={global_step}: loss={loss_scalar}."
+                        )
+                    if verbose:
+                        print(
+                            f"  step {epoch_step:0{step_width}d}/{steps_per_epoch:0{step_width}d}"
+                            f" | loss {loss_scalar:.4f}",
+                            end="\r",
+                            flush=True,
+                        )
 
-                if use_wandb:
-                    wandb.log(
-                        {
-                            "train/step_loss": loss_scalar,
-                            "epoch": epoch,
-                            "step": global_step,
-                            # "epoch_step": epoch_step,
-                        }
-                    )
+                    if use_wandb:
+                        wandb.log(
+                            {
+                                "train/step_loss": loss_scalar,
+                                "epoch": epoch,
+                                "step": global_step,
+                            }
+                        )
 
                 if global_step >= total_train_steps:
                     stop_training = True
                     break
 
-            train_loss_avg = float(np.mean(train_losses)) if train_losses else None
+            train_loss_avg = None
+            if train_loss_sum is not None and epoch_step > 0:
+                train_loss_avg = float(np.asarray(train_loss_sum / epoch_step))
+                if not math.isfinite(train_loss_avg):
+                    raise FloatingPointError(
+                        "Non-finite training loss encountered "
+                        f"at epoch={epoch}: loss={train_loss_avg}."
+                    )
             if verbose:
                 print()
+            if profile_host_timing and epoch_step > 0:
+                print(
+                    _format_host_timing_summary(
+                        "train host timing",
+                        timing_stats,
+                        epoch_step,
+                    )
+                )
             if train_loss_avg is not None:
                 print(f"  Train loss: {train_loss_avg:.4f}")
                 if use_wandb:
                     wandb.log({"train/epoch_loss": train_loss_avg, "epoch": epoch})
 
-            valid_metrics: Mapping[str, float] | None = None
-            if "valid" in data_module._intervals and len(data_module._intervals["valid"]) > 0:
-                losses = {head: [] for head in head_names}
-                for batch_np in data_module.iter_batches("valid"):
-                    batch = prepare_batch(batch_np, organism_index_value, head_names)
-                    batch = _shard_batch(batch, num_devices)
-                    batch["strand_reindexing"] = strand_reindexing_replicated
-                    head_losses = eval_step(replicated_params, replicated_state, batch)
-                    for head_name in head_names:
-                        valid_loss = float(np.asarray(head_losses[head_name])[0])
-                        if not math.isfinite(valid_loss):
-                            raise FloatingPointError(
-                                "Non-finite validation loss encountered "
-                                f"at epoch={epoch}, head={head_name}: loss={valid_loss}."
-                            )
-                        losses[head_name].append(valid_loss)
+            split_metrics: dict[str, dict[str, dict[str, float]]] = {}
+            if "train" in requested_eval_splits and epoch_step > 0:
+                train_metrics: dict[str, dict[str, float]] = {}
+                for head_name in head_names:
+                    head_loss_sum = train_head_loss_sums[head_name]
+                    head_result = {
+                        "loss": (
+                            float(np.asarray(head_loss_sum / epoch_step))
+                            if head_loss_sum is not None
+                            else float("nan")
+                        )
+                    }
+                    if train_stats_by_head[head_name] is not None:
+                        head_result.update(_finalize_r2_stats(train_stats_by_head[head_name]))
+                    train_metrics[head_name] = head_result
+                split_metrics["train"] = train_metrics
 
-                valid_metrics = {
-                    head: float(np.mean(values)) for head, values in losses.items() if values
-                }
-                print(
-                    "  Validation metrics:",
-                    ", ".join(f"{k}={v:.4f}" for k, v in valid_metrics.items()),
-                )
+            for split in requested_eval_splits:
+                metrics = split_metrics.get(split) if split == "train" else evaluate_split(split)
+                if not metrics:
+                    continue
+                split_metrics[split] = metrics
+                printable = []
+                for head_name, head_result in metrics.items():
+                    printable.append(
+                        f"{head_name}: "
+                        f"loss={head_result['loss']:.4f}, "
+                        f"r2_global={head_result['r2_global']:.4f}, "
+                        f"r2_over_loci={head_result['r2_over_loci']:.4f}, "
+                        f"r2_over_cell_types={head_result['r2_over_cell_types']:.4f}"
+                    )
+                print(f"  {split.capitalize()} metrics:", "; ".join(printable))
                 if use_wandb:
-                    valid_log = {f"valid/{head}": v for head, v in valid_metrics.items()}
-                    valid_log["valid/loss"] = float(sum(valid_metrics.values()))
-                    valid_log["epoch"] = epoch
-                    wandb.log(valid_log)
+                    split_log = {"epoch": epoch}
+                    for head_name, head_result in metrics.items():
+                        for metric_name, metric_value in head_result.items():
+                            split_log[f"{split}/{head_name}/{metric_name}"] = metric_value
+                    split_log[f"{split}/loss"] = float(
+                        sum(head_result["loss"] for head_result in metrics.values())
+                    )
+                    wandb.log(split_log)
+
+            valid_metrics: Mapping[str, float] | None = None
+            if "valid" in split_metrics:
+                valid_metrics = {
+                    head: values["loss"] for head, values in split_metrics["valid"].items()
+                }
 
             metric_label, metric_value = resolve_metric(best_metric, train_loss_avg, valid_metrics)
+            epoch_record = {
+                "epoch": epoch,
+                "global_step": global_step,
+                "train_epoch_loss": train_loss_avg,
+                "metrics": split_metrics,
+            }
+            if metrics_history_path:
+                _append_jsonl(metrics_history_path, epoch_record)
             if metric_value is not None and math.isfinite(metric_value):
                 if is_improved(metric_value, best_value):
                     best_value = metric_value
@@ -536,7 +971,12 @@ def train(
                             f"  Metric improved ({metric_label} = {metric_value:.4f}) "
                             " -- saving best checkpoint"
                         )
-                        model.save_checkpoint(checkpoint_dir / "best", save_full_model=False)
+                        model.save_checkpoint(
+                            checkpoint_dir / "best",
+                            save_full_model=False,
+                            save_lora_adapters=train_lora,
+                        )
+                        _write_json(checkpoint_dir / "best" / "metrics.json", epoch_record)
                 else:
                     epochs_since_improvement += 1
             else:
@@ -545,7 +985,12 @@ def train(
             if checkpoint_dir:
                 model._params = _unreplicate_tree(replicated_params)
                 model._state = _unreplicate_tree(replicated_state)
-                model.save_checkpoint(checkpoint_dir / "last", save_full_model=False)
+                model.save_checkpoint(
+                    checkpoint_dir / "last",
+                    save_full_model=False,
+                    save_lora_adapters=train_lora,
+                )
+                _write_json(checkpoint_dir / "last" / "metrics.json", epoch_record)
 
             if early_stopping_patience > 0 and epochs_since_improvement >= early_stopping_patience:
                 print(f"\n  Early stopping: no improvement for {epochs_since_improvement} epoch(s)")
@@ -558,7 +1003,11 @@ def train(
         model._state = _unreplicate_tree(replicated_state)
 
     if checkpoint_dir and not (checkpoint_dir / "last").exists():
-        model.save_checkpoint(checkpoint_dir / "last", save_full_model=False)
+        model.save_checkpoint(
+            checkpoint_dir / "last",
+            save_full_model=False,
+            save_lora_adapters=train_lora,
+        )
 
     print(f"\n{'=' * 60}")
     print("Training complete!")

@@ -2,7 +2,7 @@
 #SBATCH -J ag_hbd_cmp
 #SBATCH -p gpu
 #SBATCH --gres=gpu:1
-#SBATCH --cpus-per-task=8
+#SBATCH --cpus-per-task=32
 #SBATCH --mem=96G
 #SBATCH -t 24:00:00
 #SBATCH --array=0-5
@@ -41,6 +41,7 @@ fi
 case "${SLURM_ARRAY_TASK_ID}" in
   0)
     CONDITION="heads_default"
+    BATCH_SIZE_VALUE="${BATCH_SIZE_HEADS:-16}"
     METHOD_ARGS=()
     BASE_PARAM_DTYPE_VALUE="float32"
     LORA_PARAM_DTYPE_VALUE="float32"
@@ -50,6 +51,7 @@ case "${SLURM_ARRAY_TASK_ID}" in
     ;;
   1)
     CONDITION="lora_default"
+    BATCH_SIZE_VALUE="${BATCH_SIZE_LORA:-8}"
     METHOD_ARGS=(--backbone-lora)
     BASE_PARAM_DTYPE_VALUE="float32"
     LORA_PARAM_DTYPE_VALUE="float32"
@@ -59,6 +61,7 @@ case "${SLURM_ARRAY_TASK_ID}" in
     ;;
   2)
     CONDITION="heads_lora32_base16"
+    BATCH_SIZE_VALUE="${BATCH_SIZE_HEADS:-16}"
     METHOD_ARGS=()
     BASE_PARAM_DTYPE_VALUE="bf16"
     LORA_PARAM_DTYPE_VALUE="float32"
@@ -68,6 +71,7 @@ case "${SLURM_ARRAY_TASK_ID}" in
     ;;
   3)
     CONDITION="lora_lora32_base16"
+    BATCH_SIZE_VALUE="${BATCH_SIZE_LORA:-8}"
     METHOD_ARGS=(--backbone-lora)
     BASE_PARAM_DTYPE_VALUE="bf16"
     LORA_PARAM_DTYPE_VALUE="float32"
@@ -77,6 +81,7 @@ case "${SLURM_ARRAY_TASK_ID}" in
     ;;
   4)
     CONDITION="heads_lora16_base8"
+    BATCH_SIZE_VALUE="${BATCH_SIZE_HEADS:-16}"
     METHOD_ARGS=()
     BASE_PARAM_DTYPE_VALUE="fp16"
     LORA_PARAM_DTYPE_VALUE="fp16"
@@ -86,6 +91,7 @@ case "${SLURM_ARRAY_TASK_ID}" in
     ;;
   5)
     CONDITION="lora_lora16_base8"
+    BATCH_SIZE_VALUE="${BATCH_SIZE_LORA:-8}"
     METHOD_ARGS=(--backbone-lora --fp8-lora)
     BASE_PARAM_DTYPE_VALUE="fp8"
     LORA_PARAM_DTYPE_VALUE="fp16"
@@ -121,12 +127,17 @@ python scripts/run_humanbraindev_finetune.py \
   --split-source "${SPLIT_SOURCE:-chromosome}" \
   --window-size "${WINDOW_SIZE:-131072}" \
   --stride "${STRIDE:-131072}" \
-  --batch-size "${BATCH_SIZE:-1}" \
+  --batch-size "${BATCH_SIZE:-${BATCH_SIZE_VALUE}}" \
   --num-epochs "${NUM_EPOCHS:-5}" \
   --learning-rate "${LEARNING_RATE:-1e-3}" \
   --weight-decay "${WEIGHT_DECAY:-1e-4}" \
   --early-stopping-patience "${EARLY_STOPPING_PATIENCE:-2}" \
   --num-devices "${NUM_DEVICES:-1}" \
+  --progress-interval "${PROGRESS_INTERVAL:-50}" \
+  --prefetch-batches "${PREFETCH_BATCHES:-2}" \
+  --target-workers "${TARGET_WORKERS:-8}" \
+  ${TARGET_CACHE_DIR:+--target-cache-dir "$TARGET_CACHE_DIR"} \
+  --target-cache-dtype "${TARGET_CACHE_DTYPE:-float16}" \
   --base-param-dtype "${BASE_PARAM_DTYPE_VALUE}" \
   --lora-param-dtype "${LORA_PARAM_DTYPE_VALUE}" \
   --activation-dtype "${ACTIVATION_DTYPE_VALUE}" \

@@ -51,6 +51,9 @@ test = [
 fp8 = [
     "transformer-engine[jax]>=2.16.0",
 ]
+fp4 = [
+    "transformer-engine[jax]>=2.16.0",
+]
 
 [project.urls]
 Homepage = "https://github.com/genomicsxai/alphagenome_ft"

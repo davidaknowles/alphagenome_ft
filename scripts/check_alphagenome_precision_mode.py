@@ -47,7 +47,11 @@ def _register_probe_head() -> str:
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--checkpoint-path", required=True, type=Path)
-    parser.add_argument("--mode", required=True, choices=["heads_only", "lora_bf16", "lora_fp8"])
+    parser.add_argument(
+        "--mode",
+        required=True,
+        choices=["heads_only", "lora_bf16", "lora_fp8", "lora_fp4"],
+    )
     parser.add_argument("--init-seq-len", type=int, default=131072)
     parser.add_argument("--base-param-dtype", default="float32")
     parser.add_argument("--lora-param-dtype", default="float32")
@@ -85,6 +89,18 @@ def main() -> None:
             activation_dtype="bfloat16",
             base_compute_dtype="bfloat16",
             lora_compute_dtype="fp8",
+        )
+    elif args.mode == "lora_fp4":
+        detach_backbone = False
+        lora_config = BackboneLoRAConfig(
+            rank=16,
+            alpha=16.0,
+            fp4_enabled=True,
+            base_param_dtype=args.base_param_dtype,
+            lora_param_dtype=args.lora_param_dtype,
+            activation_dtype="bfloat16",
+            base_compute_dtype="bfloat16",
+            lora_compute_dtype="fp4",
         )
 
     model = create_model_with_heads(

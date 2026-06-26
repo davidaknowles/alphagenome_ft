@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 from pathlib import Path
 import sys
 
@@ -22,6 +23,7 @@ from alphagenome_ft import (
 )
 from alphagenome_ft.finetune import (
     BigWigDataModule,
+    WindowedTargetCache,
     build_fasta_index,
     load_intervals_from_dataframe,
     load_targets_config,
@@ -136,6 +138,19 @@ def parse_chrom_set(value: str) -> set[str]:
     return {item.strip() for item in value.split(",") if item.strip()}
 
 
+def _available_cpu_count() -> int:
+    try:
+        return max(1, len(os.sched_getaffinity(0)))
+    except (AttributeError, OSError):
+        slurm_cpus = os.environ.get("SLURM_CPUS_PER_TASK")
+        if slurm_cpus:
+            try:
+                return max(1, int(slurm_cpus))
+            except ValueError:
+                pass
+        return max(1, os.cpu_count() or 1)
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Heads-only AlphaGenome ATAC finetuning on human brain development BigWigs."
@@ -162,7 +177,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--limit-train", type=_positive_int_or_none, default=None)
     parser.add_argument("--limit-valid", type=_positive_int_or_none, default=None)
     parser.add_argument("--limit-test", type=_positive_int_or_none, default=None)
-    parser.add_argument("--batch-size", type=int, default=1)
+    parser.add_argument("--batch-size", type=int, default=16)
     parser.add_argument("--num-epochs", type=int, default=5)
     parser.add_argument("--max-train-steps", type=_positive_int_or_none, default=None)
     parser.add_argument("--learning-rate", type=float, default=1e-3)
@@ -171,6 +186,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--lora-rank", type=int, default=16)
     parser.add_argument("--lora-alpha", type=float, default=16.0)
     parser.add_argument("--fp8-lora", action="store_true")
+    parser.add_argument("--fp4-lora", action="store_true")
     parser.add_argument("--base-param-dtype", default="float32")
     parser.add_argument("--lora-param-dtype", default="float32")
     parser.add_argument("--activation-dtype", default="bfloat16")
@@ -183,8 +199,24 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--early-stopping-patience", type=int, default=2)
     parser.add_argument("--early-stopping-min-delta", type=float, default=0.0)
+    parser.add_argument(
+        "--eval-splits",
+        default="train,valid,test",
+        help="Comma-separated splits to evaluate after each epoch.",
+    )
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--num-devices", type=int, default=1)
+    parser.add_argument("--progress-interval", type=int, default=50)
+    parser.add_argument("--prefetch-batches", type=int, default=2)
+    parser.add_argument("--target-workers", type=int, default=0)
+    parser.add_argument("--window-workers", type=int, default=None)
+    parser.add_argument("--target-cache-dir", type=Path, default=None)
+    parser.add_argument("--target-cache-dtype", choices=("float16", "float32"), default="float16")
+    parser.add_argument("--build-target-cache", action="store_true")
+    parser.add_argument("--build-target-cache-only", action="store_true")
+    parser.add_argument("--overwrite-target-cache", action="store_true")
+    parser.add_argument("--target-cache-workers", type=int, default=None)
+    parser.add_argument("--profile-host-timing", action="store_true")
     parser.add_argument("--no-shuffle", action="store_true")
     parser.add_argument("--drop-last", action="store_true")
     parser.add_argument("--wandb-project", default=None)
@@ -246,6 +278,31 @@ def main() -> None:
     for split, split_intervals in intervals.items():
         print(f"{split}: {len(split_intervals)} interval(s)")
 
+    target_cache_dir = (
+        args.target_cache_dir.expanduser().resolve()
+        if args.target_cache_dir is not None
+        else None
+    )
+    if args.build_target_cache:
+        if target_cache_dir is None:
+            raise ValueError("--target-cache-dir is required with --build-target-cache.")
+        filtered_intervals = BigWigDataModule._filter_intervals_by_bigwig_chromosomes(
+            intervals, head_specs
+        )
+        WindowedTargetCache.build(
+            target_cache_dir,
+            intervals=filtered_intervals,
+            head_specs=head_specs,
+            dtype=args.target_cache_dtype,
+            workers=args.target_cache_workers or _available_cpu_count(),
+            overwrite=args.overwrite_target_cache,
+        )
+        if args.build_target_cache_only:
+            print(f"Target cache build complete: {target_cache_dir}")
+            return
+    elif args.build_target_cache_only:
+        raise ValueError("--build-target-cache-only requires --build-target-cache.")
+
     data_module = BigWigDataModule(
         intervals=intervals,
         fasta_path=fasta_path,
@@ -253,18 +310,32 @@ def main() -> None:
         batch_size=args.batch_size,
         shuffle=not args.no_shuffle,
         drop_last=args.drop_last,
+        target_workers=args.target_workers,
+        window_workers=(
+            args.window_workers
+            if args.window_workers is not None
+            else min(args.batch_size, _available_cpu_count())
+        ),
+        target_cache_dir=target_cache_dir,
+        target_cache_dtype=args.target_cache_dtype,
     )
 
     head_ids = [spec.head_id for spec in head_specs]
     backbone_lora_config = None
     if args.backbone_lora:
+        if args.fp8_lora and args.fp4_lora:
+            raise ValueError("--fp8-lora and --fp4-lora are mutually exclusive.")
         lora_compute_dtype = args.lora_compute_dtype
-        if args.fp8_lora and lora_compute_dtype is None:
-            lora_compute_dtype = "fp8"
+        if lora_compute_dtype is None:
+            if args.fp4_lora:
+                lora_compute_dtype = "fp4"
+            elif args.fp8_lora:
+                lora_compute_dtype = "fp8"
         backbone_lora_config = BackboneLoRAConfig(
             rank=args.lora_rank,
             alpha=args.lora_alpha,
             fp8_enabled=args.fp8_lora,
+            fp4_enabled=args.fp4_lora,
             base_param_dtype=args.base_param_dtype,
             lora_param_dtype=args.lora_param_dtype,
             activation_dtype=args.activation_dtype,
@@ -276,6 +347,8 @@ def main() -> None:
             "Backbone LoRA enabled: "
             f"rank={backbone_lora_config.rank}, "
             f"alpha={backbone_lora_config.alpha}, "
+            f"fp8_enabled={backbone_lora_config.fp8_enabled}, "
+            f"fp4_enabled={backbone_lora_config.fp4_enabled}, "
             f"base_param_dtype={backbone_lora_config.base_param_dtype}, "
             f"lora_param_dtype={backbone_lora_config.lora_param_dtype}, "
             f"activation_dtype={backbone_lora_config.activation_dtype}, "
@@ -332,10 +405,19 @@ def main() -> None:
             "split_source": args.split_source,
             "window_size": args.window_size,
             "stride": args.stride,
+            "target_workers": args.target_workers,
+            "window_workers": (
+                args.window_workers
+                if args.window_workers is not None
+                else min(args.batch_size, _available_cpu_count())
+            ),
+            "target_cache_dir": str(target_cache_dir) if target_cache_dir else None,
+            "target_cache_dtype": args.target_cache_dtype,
             "backbone_lora": args.backbone_lora,
             "lora_rank": args.lora_rank if args.backbone_lora else None,
             "lora_alpha": args.lora_alpha if args.backbone_lora else None,
             "fp8_lora": args.fp8_lora if args.backbone_lora else None,
+            "fp4_lora": args.fp4_lora if args.backbone_lora else None,
             "base_param_dtype": args.base_param_dtype if args.backbone_lora else None,
             "lora_param_dtype": args.lora_param_dtype if args.backbone_lora else None,
             "activation_dtype": args.activation_dtype if args.backbone_lora else None,
@@ -343,6 +425,10 @@ def main() -> None:
             "lora_compute_dtype": lora_compute_dtype if args.backbone_lora else None,
         },
         num_devices=args.num_devices,
+        eval_splits=tuple(item.strip() for item in args.eval_splits.split(",") if item.strip()),
+        progress_interval=args.progress_interval,
+        prefetch_batches=args.prefetch_batches,
+        profile_host_timing=args.profile_host_timing,
     )
 
 

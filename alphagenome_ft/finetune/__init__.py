@@ -10,6 +10,7 @@ from alphagenome_ft.finetune.config import (
 from alphagenome_ft.finetune.data import (
     get_fold_split,
     BigWigDataModule,
+    WindowedTargetCache,
     build_interval,
     load_intervals_from_bed,
     load_intervals_from_dataframe,
@@ -34,6 +35,7 @@ __all__ = [
     # data
     'get_fold_split',
     'BigWigDataModule',
+    'WindowedTargetCache',
     'build_interval',
     'load_intervals_from_bed',
     'load_intervals_from_dataframe',
