@@ -118,9 +118,16 @@ echo "activation_dtype=${ACTIVATION_DTYPE_VALUE}"
 echo "base_compute_dtype=${BASE_COMPUTE_DTYPE_VALUE}"
 echo "lora_compute_dtype=${LORA_COMPUTE_DTYPE_VALUE}"
 
+BIGWIG_DIR="${BIGWIG_DIR:-/gpfs/commons/home/daknowles/knowles_lab/data/multiome/humanbraindev/bigwigs}"
+DATA_DIR="$(cd "${BIGWIG_DIR}/.." && pwd)"
+TARGET_CACHE_DIR="${TARGET_CACHE_DIR:-${DATA_DIR}/alphagenome_target_cache/humanbraindev_atac_w${WINDOW_SIZE:-131072}_${TARGET_CACHE_DTYPE:-float16}}"
+
+echo "bigwig_dir=${BIGWIG_DIR}"
+echo "target_cache_dir=${TARGET_CACHE_DIR}"
+
 python scripts/run_humanbraindev_finetune.py \
   "${METHOD_ARGS[@]}" \
-  --bigwig-dir "${BIGWIG_DIR:-/gpfs/commons/home/daknowles/knowles_lab/data/multiome/humanbraindev/bigwigs}" \
+  --bigwig-dir "${BIGWIG_DIR}" \
   --fasta-path "${FASTA_PATH:-/gpfs/commons/home/daknowles/knowles_lab/index/hg38/hg38.fa}" \
   --checkpoint-path "${CHECKPOINT_PATH}" \
   --checkpoint-dir "checkpoints/${RUN_DIR}" \
@@ -136,7 +143,7 @@ python scripts/run_humanbraindev_finetune.py \
   --progress-interval "${PROGRESS_INTERVAL:-50}" \
   --prefetch-batches "${PREFETCH_BATCHES:-2}" \
   --target-workers "${TARGET_WORKERS:-8}" \
-  ${TARGET_CACHE_DIR:+--target-cache-dir "$TARGET_CACHE_DIR"} \
+  --target-cache-dir "${TARGET_CACHE_DIR}" \
   --target-cache-dtype "${TARGET_CACHE_DTYPE:-float16}" \
   --base-param-dtype "${BASE_PARAM_DTYPE_VALUE}" \
   --lora-param-dtype "${LORA_PARAM_DTYPE_VALUE}" \

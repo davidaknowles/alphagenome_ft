@@ -17,14 +17,17 @@ export PYTHONPATH="$PWD:${PYTHONPATH:-}"
 export MPLCONFIGDIR="${MPLCONFIGDIR:-/tmp/matplotlib-${USER:-daknowles}}"
 export LD_LIBRARY_PATH="/nfs/sw/easybuild/software/Python/3.12.3-GCCcore-13.3.0/lib:${LD_LIBRARY_PATH:-}"
 
-TARGET_CACHE_DIR="${TARGET_CACHE_DIR:-/scratch/${USER:-daknowles}/alphagenome_fp4/humanbraindev_atac_w${WINDOW_SIZE:-131072}_${TARGET_CACHE_DTYPE:-float16}}"
+BIGWIG_DIR="${BIGWIG_DIR:-/gpfs/commons/home/daknowles/knowles_lab/data/multiome/humanbraindev/bigwigs}"
+DATA_DIR="$(cd "${BIGWIG_DIR}/.." && pwd)"
+TARGET_CACHE_DIR="${TARGET_CACHE_DIR:-${DATA_DIR}/alphagenome_target_cache/humanbraindev_atac_w${WINDOW_SIZE:-131072}_${TARGET_CACHE_DTYPE:-float16}}"
 
+echo "bigwig_dir=${BIGWIG_DIR}"
 echo "target_cache_dir=${TARGET_CACHE_DIR}"
 echo "target_cache_dtype=${TARGET_CACHE_DTYPE:-float16}"
 echo "target_cache_workers=${TARGET_CACHE_WORKERS:-32}"
 
 python scripts/run_humanbraindev_finetune.py \
-  --bigwig-dir "${BIGWIG_DIR:-/gpfs/commons/home/daknowles/knowles_lab/data/multiome/humanbraindev/bigwigs}" \
+  --bigwig-dir "${BIGWIG_DIR}" \
   --fasta-path "${FASTA_PATH:-/gpfs/commons/home/daknowles/knowles_lab/index/hg38/hg38.fa}" \
   --checkpoint-dir /tmp/alphagenome_ft_cache_build_unused \
   --split-source "${SPLIT_SOURCE:-chromosome}" \

@@ -53,7 +53,7 @@ Build a cache and then train from it:
 
 ```bash
 python scripts/run_humanbraindev_finetune.py \
-  --target-cache-dir /scratch/$USER/alphagenome_fp4/humanbraindev_atac_w131072 \
+  --target-cache-dir /gpfs/commons/home/daknowles/knowles_lab/data/multiome/humanbraindev/alphagenome_target_cache/humanbraindev_atac_w131072_float16 \
   --build-target-cache \
   --target-cache-dtype float16 \
   --target-cache-workers 8 \
@@ -64,10 +64,14 @@ Use an existing cache without rebuilding:
 
 ```bash
 python scripts/run_humanbraindev_finetune.py \
-  --target-cache-dir /scratch/$USER/alphagenome_fp4/humanbraindev_atac_w131072 \
+  --target-cache-dir /gpfs/commons/home/daknowles/knowles_lab/data/multiome/humanbraindev/alphagenome_target_cache/humanbraindev_atac_w131072_float16 \
   ...
 ```
 
 The cache is split/window-major so shuffled training only reads complete target
 windows from the memmap. This removes BigWig decompression and interval lookup
 from the training loop.
+
+Cache builds also write a `README.md` inside the cache directory with the
+format summary, split counts, source BigWig provenance, and a link to the
+repository branch that produced it.

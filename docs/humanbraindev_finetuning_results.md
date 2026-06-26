@@ -48,7 +48,7 @@ Metrics are from `last/metrics.json`. R2 columns are for `humanbraindev_atac`.
 
 - `17829944_4` and `17829944_5` failed with `FloatingPointError: Non-finite training loss encountered at epoch=1, epoch_step=50, global_step=50: loss=nan`. These correspond to the lower-precision/base8-style configurations that did not produce metrics JSONs.
 - `17840008_1` through `17840008_5` failed with `FileNotFoundError: Target cache manifest not found: /scratch/daknowles/alphagenome_fp4/humanbraindev_atac_w131072_float16/manifest.json`.
-- The target-cache failure is operational, not a cache-format failure: `/scratch` is local to the node that built the cache. For multi-node Slurm arrays, use a shared GPFS cache path, constrain the array to the cache-building node, or stage/build the cache per node before training.
+- The target-cache failure is operational, not a cache-format failure: `/scratch` is local to the node that built the cache. The Slurm scripts now default to a shared cache next to the source BigWig data under `.../humanbraindev/alphagenome_target_cache/`.
 
 ## Artifacts
 
