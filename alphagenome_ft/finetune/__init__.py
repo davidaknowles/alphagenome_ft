@@ -24,6 +24,16 @@ from alphagenome_ft.finetune.train import (
     create_optimizer,
     train,
 )
+from alphagenome_ft.finetune.metrics import (
+    select_prediction_for_targets,
+    r2_metrics,
+)
+from alphagenome_ft.finetune.backends import (
+    BackendName,
+    PreparedRun,
+    TorchBackendConfig,
+    TorchSubprocessBackend,
+)
 
 __all__ = [
     # config
@@ -47,4 +57,12 @@ __all__ = [
     'register_predefined_heads',
     'create_optimizer',
     'train',
+    # metrics
+    'select_prediction_for_targets',
+    'r2_metrics',
+    # backends
+    'BackendName',
+    'PreparedRun',
+    'TorchBackendConfig',
+    'TorchSubprocessBackend',
 ]

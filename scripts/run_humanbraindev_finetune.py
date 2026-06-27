@@ -23,6 +23,9 @@ from alphagenome_ft import (
 )
 from alphagenome_ft.finetune import (
     BigWigDataModule,
+    PreparedRun,
+    TorchBackendConfig,
+    TorchSubprocessBackend,
     WindowedTargetCache,
     build_fasta_index,
     load_intervals_from_dataframe,
@@ -41,6 +44,10 @@ DEFAULT_BIGWIG_DIR = Path(
 )
 DEFAULT_FASTA = Path("/gpfs/commons/home/daknowles/knowles_lab/index/hg38/hg38.fa")
 DEFAULT_CHECKPOINT_DIR = Path("checkpoints/humanbraindev_atac_heads_only")
+DEFAULT_TORCH_REPO = Path(__file__).resolve().parents[2] / "alphagenome-pytorch"
+DEFAULT_TORCH_WEIGHTS = Path(
+    "/gpfs/commons/home/daknowles/projects/mpragent/outputs/models/alphagenome/model_all_folds.safetensors"
+)
 
 
 def _positive_int_or_none(value: str) -> int | None:
@@ -158,6 +165,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--bigwig-dir", type=Path, default=DEFAULT_BIGWIG_DIR)
     parser.add_argument("--fasta-path", type=Path, default=DEFAULT_FASTA)
     parser.add_argument("--checkpoint-dir", type=Path, default=DEFAULT_CHECKPOINT_DIR)
+    parser.add_argument(
+        "--backend",
+        choices=("jax", "torch"),
+        default="jax",
+        help="Training backend. The shared launcher owns data discovery and split generation.",
+    )
     parser.add_argument("--head-id", default="humanbraindev_atac")
     parser.add_argument("--model-version", default="all_folds")
     parser.add_argument("--checkpoint-path", type=Path, default=None)
@@ -222,7 +235,87 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--wandb-project", default=None)
     parser.add_argument("--wandb-entity", default=None)
     parser.add_argument("--wandb-run-name", default=None)
+
+    torch_group = parser.add_argument_group("Torch backend")
+    torch_group.add_argument("--torch-repo", type=Path, default=DEFAULT_TORCH_REPO)
+    torch_group.add_argument("--torch-python", type=Path, default=None)
+    torch_group.add_argument("--torch-pretrained-weights", type=Path, default=DEFAULT_TORCH_WEIGHTS)
+    torch_group.add_argument("--torch-output-dir", type=Path, default=None)
+    torch_group.add_argument("--torch-run-name", default=None)
+    torch_group.add_argument(
+        "--torch-mode",
+        choices=("linear-probe", "lora", "locon", "lora+locon", "full", "encoder-only"),
+        default=None,
+        help="Override PyTorch training mode. Defaults to lora when --backbone-lora is set.",
+    )
+    torch_group.add_argument(
+        "--torch-dtype",
+        choices=(
+            "bfloat16",
+            "float32",
+            "float16",
+            "bfloat16-params",
+            "float16-params",
+            "nvfp8",
+            "nvfp4",
+        ),
+        default=None,
+        help="PyTorch precision preset. Defaults are inferred from --fp4-lora/--fp8-lora.",
+    )
+    torch_group.add_argument("--torch-gradient-accumulation-steps", type=int, default=1)
+    torch_group.add_argument("--torch-warmup-steps", type=int, default=500)
+    torch_group.add_argument(
+        "--torch-fp8-recipe",
+        choices=("tensorwise", "rowwise", "rowwise_with_gw_hp"),
+        default="tensorwise",
+    )
+    torch_group.add_argument("--torch-fp8-min-feature-multiple", type=int, default=16)
+    torch_group.add_argument(
+        "--torch-fp8-skip-name-patterns",
+        default="heads,original_layer,lora_,locon_,ia3,adapter",
+    )
+    torch_group.add_argument("--torch-fp4-min-feature-multiple", type=int, default=16)
+    torch_group.add_argument(
+        "--torch-fp4-mode",
+        choices=("qat", "weight-only"),
+        default="qat",
+    )
+    torch_group.add_argument(
+        "--torch-fp4-skip-name-patterns",
+        default="heads,lora_,locon_,ia3,adapter",
+    )
+    torch_group.add_argument("--torch-gradient-checkpointing", action="store_true")
+    torch_group.add_argument("--torch-track-means-samples", type=_positive_int_or_none, default=None)
+    torch_group.add_argument("--torch-num-workers", type=int, default=4)
+    torch_group.add_argument("--torch-max-io-workers", type=int, default=16)
+    torch_group.add_argument("--torch-save-delta", action="store_true", default=True)
+    torch_group.add_argument("--torch-no-save-delta", action="store_false", dest="torch_save_delta")
+    torch_group.add_argument("--torch-no-save-checkpoints", action="store_true")
     return parser.parse_args()
+
+
+def _infer_torch_dtype(args: argparse.Namespace) -> str:
+    if args.torch_dtype is not None:
+        return args.torch_dtype
+    lowp_tokens = {
+        str(args.base_param_dtype).lower(),
+        str(args.base_compute_dtype).lower(),
+        str(args.lora_param_dtype).lower(),
+        str(args.lora_compute_dtype).lower(),
+    }
+    if args.fp4_lora or "fp4" in lowp_tokens or "nvfp4" in lowp_tokens:
+        return "nvfp4"
+    if args.fp8_lora or "fp8" in lowp_tokens or "nvfp8" in lowp_tokens:
+        return "nvfp8"
+    if str(args.activation_dtype).lower() in {"float16", "fp16"}:
+        return "float16"
+    return "bfloat16"
+
+
+def _infer_torch_mode(args: argparse.Namespace) -> str:
+    if args.torch_mode is not None:
+        return args.torch_mode
+    return "lora" if args.backbone_lora else "linear-probe"
 
 
 def main() -> None:
@@ -302,6 +395,71 @@ def main() -> None:
             return
     elif args.build_target_cache_only:
         raise ValueError("--build-target-cache-only requires --build-target-cache.")
+
+    if args.backend == "torch":
+        torch_intervals = BigWigDataModule._filter_intervals_by_bigwig_chromosomes(
+            intervals,
+            head_specs,
+        )
+        torch_output_dir = (
+            args.torch_output_dir.expanduser().resolve()
+            if args.torch_output_dir is not None
+            else checkpoint_dir
+        )
+        torch_python = args.torch_python
+        if torch_python is None:
+            default_torch_python = Path.home() / "venv" / "torch" / "bin" / "python"
+            if default_torch_python.exists():
+                torch_python = default_torch_python
+        backend = TorchSubprocessBackend(
+            TorchBackendConfig(
+                repo_dir=args.torch_repo.expanduser().resolve(),
+                pretrained_weights=args.torch_pretrained_weights.expanduser().resolve(),
+                output_dir=torch_output_dir,
+                run_name=args.torch_run_name or args.wandb_run_name,
+                mode=_infer_torch_mode(args),
+                dtype=_infer_torch_dtype(args),
+                batch_size=args.batch_size,
+                gradient_accumulation_steps=args.torch_gradient_accumulation_steps,
+                epochs=args.num_epochs,
+                learning_rate=args.learning_rate,
+                weight_decay=args.weight_decay,
+                warmup_steps=args.torch_warmup_steps,
+                lora_rank=args.lora_rank,
+                lora_alpha=int(args.lora_alpha),
+                lora_targets=(
+                    "q_proj,v_proj" if args.lora_targets == "default" else args.lora_targets
+                ),
+                fp8_recipe=args.torch_fp8_recipe,
+                fp8_min_feature_multiple=args.torch_fp8_min_feature_multiple,
+                fp8_skip_name_patterns=args.torch_fp8_skip_name_patterns,
+                fp4_min_feature_multiple=args.torch_fp4_min_feature_multiple,
+                fp4_mode=args.torch_fp4_mode,
+                fp4_skip_name_patterns=args.torch_fp4_skip_name_patterns,
+                gradient_checkpointing=args.torch_gradient_checkpointing,
+                track_means_samples=args.torch_track_means_samples,
+                num_workers=args.torch_num_workers,
+                max_io_workers=args.torch_max_io_workers,
+                save_delta=args.torch_save_delta,
+                save_checkpoints=not args.torch_no_save_checkpoints,
+                wandb=args.wandb_project is not None,
+                wandb_project=args.wandb_project,
+                wandb_entity=args.wandb_entity,
+                # Keep the venv path itself. Resolving follows the venv's python
+                # symlink to the system interpreter and loses site-packages.
+                python_executable=torch_python.expanduser() if torch_python else None,
+            )
+        )
+        backend.run(
+            PreparedRun(
+                bigwig_dir=bigwig_dir,
+                bigwigs=bigwigs,
+                fasta_path=fasta_path,
+                intervals=torch_intervals,
+                head_specs=head_specs,
+            )
+        )
+        return
 
     data_module = BigWigDataModule(
         intervals=intervals,
