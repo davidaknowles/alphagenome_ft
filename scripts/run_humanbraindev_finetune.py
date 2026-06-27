@@ -264,6 +264,13 @@ def parse_args() -> argparse.Namespace:
     )
     torch_group.add_argument("--torch-gradient-accumulation-steps", type=int, default=1)
     torch_group.add_argument("--torch-warmup-steps", type=int, default=500)
+    torch_group.add_argument("--torch-locon-rank", type=int, default=4)
+    torch_group.add_argument("--torch-locon-alpha", type=int, default=1)
+    torch_group.add_argument(
+        "--torch-locon-targets",
+        default="down_blocks.4,down_blocks.5",
+        help="Comma-separated Conv1d module substrings for PyTorch Locon modes.",
+    )
     torch_group.add_argument(
         "--torch-fp8-recipe",
         choices=("tensorwise", "rowwise", "rowwise_with_gw_hp"),
@@ -430,6 +437,9 @@ def main() -> None:
                 lora_targets=(
                     "q_proj,v_proj" if args.lora_targets == "default" else args.lora_targets
                 ),
+                locon_rank=args.torch_locon_rank,
+                locon_alpha=args.torch_locon_alpha,
+                locon_targets=args.torch_locon_targets,
                 fp8_recipe=args.torch_fp8_recipe,
                 fp8_min_feature_multiple=args.torch_fp8_min_feature_multiple,
                 fp8_skip_name_patterns=args.torch_fp8_skip_name_patterns,

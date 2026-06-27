@@ -48,6 +48,9 @@ class TorchBackendConfig:
     lora_rank: int
     lora_alpha: int
     lora_targets: str
+    locon_rank: int
+    locon_alpha: int
+    locon_targets: str
     fp8_recipe: str
     fp8_min_feature_multiple: int
     fp8_skip_name_patterns: str
@@ -125,6 +128,12 @@ class TorchSubprocessBackend:
             str(int(cfg.lora_alpha)),
             "--lora-targets",
             cfg.lora_targets,
+            "--locon-rank",
+            str(cfg.locon_rank),
+            "--locon-alpha",
+            str(cfg.locon_alpha),
+            "--locon-targets",
+            cfg.locon_targets,
             "--dtype",
             cfg.dtype,
             "--fp8-recipe",
