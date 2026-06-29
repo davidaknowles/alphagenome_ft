@@ -58,26 +58,25 @@ def _remove_adapter_leaves(tree):
 
 
 def _fold_lora_and_locon(params, *, lora_alpha: float, lora_rank: int, locon_alpha: float, locon_rank: int):
-    """Fold adapter leaves into base leaves where representable.
+    """Fold adapter leaves into base leaves.
 
     Dense LoRA is exact: ``w += A @ B * alpha/rank``.
 
-    LoCon over AlphaGenome StandardizedConv1D is approximate because the base
-    module standardizes raw conv weights at runtime; an arbitrary LoCon conv
-    kernel is not generally representable by only changing the raw standardized
-    conv weight. We still fold the composed conv kernel into ``w`` so the
-    verification step can measure the approximation error.
+    LoCon over AlphaGenome StandardizedConv1D is exact only when the merged
+    checkpoint stores the effective standardized kernel and runtime bypasses
+    standardization for that module. This function records those module paths.
     """
     stats = {
         "folded_lora": 0,
-        "folded_locon_approx": 0,
+        "folded_locon_effective": 0,
         "dropped_adapter_leaves": 0,
     }
+    effective_conv_paths: list[str] = []
 
-    def visit(node):
+    def visit(node, path: tuple[str, ...] = ()):
         if not isinstance(node, dict):
             return node
-        updated = {key: visit(value) for key, value in node.items()}
+        updated = {key: visit(value, (*path, str(key))) for key, value in node.items()}
         keys = {str(key): key for key in updated}
 
         if {"w", "lora_a", "lora_b"}.issubset(keys):
@@ -91,19 +90,28 @@ def _fold_lora_and_locon(params, *, lora_alpha: float, lora_rank: int, locon_alp
             updated[w_key] = (w.astype(jnp.float32) + delta).astype(w.dtype)
             stats["folded_lora"] += 1
 
-        if {"w", "locon_down_w", "locon_up_w"}.issubset(keys):
+        if {"w", "scale", "locon_down_w", "locon_up_w"}.issubset(keys):
             w_key = keys["w"]
+            scale_key = keys["scale"]
             down_key = keys["locon_down_w"]
             up_key = keys["locon_up_w"]
             w = updated[w_key]
+            scale = updated[scale_key].astype(jnp.float32)
             down = updated[down_key].astype(jnp.float32)
             up = updated[up_key].astype(jnp.float32)
             if down.ndim == 3 and up.ndim == 3 and up.shape[0] == 1:
                 delta = jnp.einsum("kir,rO->kiO", down, up[0])
                 delta = delta * (float(locon_alpha) / float(locon_rank))
                 if delta.shape == w.shape:
-                    updated[w_key] = (w.astype(jnp.float32) + delta).astype(w.dtype)
-                    stats["folded_locon_approx"] += 1
+                    w_float = w.astype(jnp.float32)
+                    fan_in = w_float.shape[0] * w_float.shape[1]
+                    centered = w_float - jnp.mean(w_float, axis=(0, 1), keepdims=True)
+                    var = jnp.var(centered, axis=(0, 1), keepdims=True)
+                    std_scale = scale * jax.lax.rsqrt(jnp.maximum(fan_in * var, 1e-4))
+                    w_eff = centered * std_scale
+                    updated[w_key] = (w_eff + delta).astype(w.dtype)
+                    effective_conv_paths.append("/".join(path))
+                    stats["folded_locon_effective"] += 1
 
         for leaf in ADAPTER_LEAF_NAMES:
             if leaf in keys:
@@ -111,7 +119,7 @@ def _fold_lora_and_locon(params, *, lora_alpha: float, lora_rank: int, locon_alp
                 stats["dropped_adapter_leaves"] += 1
         return updated
 
-    return visit(params), stats
+    return visit(params), stats, tuple(effective_conv_paths)
 
 
 def _count_adapter_leaves(params) -> int:
@@ -169,7 +177,7 @@ def main() -> None:
         init_seq_len=args.window_size,
     )
     before = _count_adapter_leaves(model._params)
-    folded_params, fold_stats = _fold_lora_and_locon(
+    folded_params, fold_stats, effective_conv_paths = _fold_lora_and_locon(
         model._params,
         lora_alpha=float(lora_cfg.get("alpha", 1.0)),
         lora_rank=int(lora_cfg.get("rank", 1)),
@@ -180,6 +188,7 @@ def main() -> None:
     model._state = _remove_adapter_leaves(model._state)
     model._backbone_lora_config = None
     model._backbone_locon_config = None
+    model._backbone_effective_conv_paths = effective_conv_paths
     after = _count_adapter_leaves(model._params)
 
     output.mkdir(parents=True, exist_ok=True)
@@ -190,12 +199,10 @@ def main() -> None:
         "adapter_leaves_before": before,
         "adapter_leaves_after": after,
         "fold_stats": fold_stats,
+        "backbone_effective_conv_paths": list(effective_conv_paths),
         "lora_fold_exact": True,
-        "locon_fold_exact": False,
-        "locon_note": (
-            "LoCon over StandardizedConv1D is folded into raw conv weights as an "
-            "approximation; verify metrics against the adapter checkpoint."
-        ),
+        "locon_fold_exact": True,
+        "locon_note": "LoCon was folded into stored effective conv kernels; runtime bypasses standardization for these modules.",
     }
     with (output / "merge_metadata.json").open("w") as handle:
         json.dump(metadata, handle, indent=2, sort_keys=True)

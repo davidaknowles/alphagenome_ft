@@ -974,6 +974,7 @@ class CustomAlphaGenomeModel:
 
         lora_config = getattr(self, "_backbone_lora_config", None)
         locon_config = getattr(self, "_backbone_locon_config", None)
+        effective_conv_paths = tuple(getattr(self, "_backbone_effective_conv_paths", ()) or ())
         # Save metadata about the checkpoint
         metadata = {
             'custom_heads': self._custom_heads,
@@ -993,6 +994,7 @@ class CustomAlphaGenomeModel:
             'backbone_locon_config': (
                 _serialize_value(asdict(locon_config)) if locon_config is not None else None
             ),
+            'backbone_effective_conv_paths': list(effective_conv_paths),
             'use_encoder_output': hasattr(self, '_custom_forward_fn') and self._custom_forward_fn is not None,
         }
 
@@ -2271,6 +2273,7 @@ def create_model_with_heads(
     init_seq_len: int = 2**14,
     backbone_lora_config: BackboneLoRAConfig | None = None,
     backbone_locon_config: BackboneLoConConfig | None = None,
+    backbone_effective_conv_paths: Sequence[str] | None = None,
     runtime_backbone_param_dtype: str | None = None,
 ) -> CustomAlphaGenomeModel:
     """Create an AlphaGenome model with specified heads replacing standard heads.
@@ -2303,6 +2306,9 @@ def create_model_with_heads(
         backbone_locon_config: Optional convolutional LoCon adapter config.
             When provided, selected AlphaGenome trunk ``StandardizedConv1D``
             modules receive trainable ``locon_down_w``/``locon_up_w`` leaves.
+        backbone_effective_conv_paths: Optional AlphaGenome ``StandardizedConv1D``
+            module paths whose stored ``w`` leaves are already effective
+            pre-standardized kernels and should be used directly.
         runtime_backbone_param_dtype: Optional dtype used to cast restored
             floating-point backbone parameters before final device placement.
             This reduces VRAM for frozen/base weights. Top-level custom head
@@ -2348,7 +2354,14 @@ def create_model_with_heads(
     """
     normalized_heads = [custom_heads_module.normalize_head_name(name) for name in heads]
 
-    if (backbone_lora_config is not None or backbone_locon_config is not None) and use_encoder_output:
+    effective_conv_paths = tuple(str(path) for path in (backbone_effective_conv_paths or ()))
+    has_backbone_patch = (
+        backbone_lora_config is not None
+        or backbone_locon_config is not None
+        or bool(effective_conv_paths)
+    )
+
+    if has_backbone_patch and use_encoder_output:
         raise ValueError("Backbone adapters are not compatible with use_encoder_output=True.")
     if (backbone_lora_config is not None or backbone_locon_config is not None) and detach_backbone:
         print("Backbone adapters requested; disabling detach_backbone so adapter gradients flow.")
@@ -2463,13 +2476,17 @@ def create_model_with_heads(
             # This will use pretrained params for the backbone
             # Note: AlphaGenome always creates standard heads based on metadata,
             # but we only use the embeddings, not the standard head predictions
-            if backbone_lora_config is None and backbone_locon_config is None:
+            if not has_backbone_patch:
                 alphagenome = model_lib.AlphaGenome(metadata)
                 # Get embeddings from the backbone (without running standard heads)
                 # We only need the embeddings, not the standard predictions
                 _, embeddings = alphagenome(dna_sequence, organism_index)
             else:
-                with patch_backbone_adapters(backbone_lora_config, backbone_locon_config):
+                with patch_backbone_adapters(
+                    backbone_lora_config,
+                    backbone_locon_config,
+                    effective_conv_paths,
+                ):
                     alphagenome = model_lib.AlphaGenome(metadata)
                     _, embeddings = alphagenome(dna_sequence, organism_index)
             if detach_backbone:
@@ -2591,6 +2608,7 @@ def create_model_with_heads(
     )
     custom_model._backbone_lora_config = backbone_lora_config
     custom_model._backbone_locon_config = backbone_locon_config
+    custom_model._backbone_effective_conv_paths = effective_conv_paths
 
     print("✓ Model created successfully")
     print(f"  Total parameters: {custom_model.count_parameters():,}")
@@ -2612,6 +2630,7 @@ def create_model_with_custom_heads(
     checkpoint_path: str | os.PathLike[str] | None = None,
     backbone_lora_config: BackboneLoRAConfig | None = None,
     backbone_locon_config: BackboneLoConConfig | None = None,
+    backbone_effective_conv_paths: Sequence[str] | None = None,
     runtime_backbone_param_dtype: str | None = None,
 ) -> CustomAlphaGenomeModel:
     """Backward-compatible wrapper for create_model_with_heads()."""
@@ -2627,6 +2646,7 @@ def create_model_with_custom_heads(
         checkpoint_path=checkpoint_path,
         backbone_lora_config=backbone_lora_config,
         backbone_locon_config=backbone_locon_config,
+        backbone_effective_conv_paths=backbone_effective_conv_paths,
         runtime_backbone_param_dtype=runtime_backbone_param_dtype,
     )
 
@@ -2837,6 +2857,7 @@ def load_checkpoint(
     init_seq_len: int | None = None,
     backbone_lora_config: BackboneLoRAConfig | None = None,
     backbone_locon_config: BackboneLoConConfig | None = None,
+    backbone_effective_conv_paths: Sequence[str] | None = None,
 ) -> CustomAlphaGenomeModel:
     """Load a saved head checkpoint.
 
@@ -2935,6 +2956,13 @@ def load_checkpoint(
         if "target_names" in saved_locon_config:
             saved_locon_config["target_names"] = tuple(saved_locon_config["target_names"])
         backbone_locon_config = BackboneLoConConfig(**saved_locon_config)
+    if backbone_effective_conv_paths is None:
+        saved_effective_conv_paths = (
+            config.get('backbone_effective_conv_paths')
+            or config.get('effective_conv_paths')
+            or ()
+        )
+        backbone_effective_conv_paths = tuple(str(path) for path in saved_effective_conv_paths)
 
     # ``save_minimal_model`` checkpoints match the encoder-only Haiku transform (encoder + heads,
     # no transformer). The restore template in ``create_model_with_heads`` must use the same
@@ -3036,6 +3064,7 @@ def load_checkpoint(
         init_seq_len=init_for_template,
         backbone_lora_config=backbone_lora_config,
         backbone_locon_config=backbone_locon_config,
+        backbone_effective_conv_paths=backbone_effective_conv_paths,
     )
     restore_target = template_model._checkpoint_slice_trees(
         save_full_model, save_minimal_model, save_lora_adapters
@@ -3571,5 +3600,6 @@ def load_checkpoint(
     print(f"  Total parameters: {custom_model.count_parameters():,}")
     custom_model._backbone_lora_config = backbone_lora_config
     custom_model._backbone_locon_config = backbone_locon_config
+    custom_model._backbone_effective_conv_paths = tuple(backbone_effective_conv_paths or ())
 
     return custom_model

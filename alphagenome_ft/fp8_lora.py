@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterator, Sequence
-from contextlib import contextmanager
+from contextlib import ExitStack, contextmanager
 from dataclasses import dataclass
 import math
 from typing import Literal
@@ -554,6 +554,39 @@ def _standardized_conv1d_base(
     return y + jnp.broadcast_to(bias, y.shape)
 
 
+def _effective_conv1d_base(
+    x: Float[Array, "B S D"],
+    *,
+    num_channels: int,
+    width: int,
+) -> Float[Array, "B S O"]:
+    """Conv1D path for checkpoints that store already-standardized effective weights."""
+    input_channels = x.shape[-1]
+    fan_in = width * input_channels
+    kernel_shape = (width, input_channels, num_channels)
+    w_init = hk.initializers.TruncatedNormal(stddev=1.0 / jnp.sqrt(fan_in))
+    w = hk.get_parameter("w", shape=kernel_shape, dtype=x.dtype, init=w_init)
+    # Preserve the checkpoint/tree contract for former StandardizedConv1D modules.
+    hk.get_parameter("scale", shape=[1, 1, num_channels], init=jnp.ones, dtype=w.dtype)
+
+    y = jax.lax.conv_general_dilated(
+        lhs=x,
+        rhs=w,
+        window_strides=[1],
+        padding="SAME",
+        dimension_numbers=jax.lax.ConvDimensionNumbers(
+            lhs_spec=(0, 2, 1), rhs_spec=(2, 1, 0), out_spec=(0, 2, 1)
+        ),
+    )
+    bias = hk.get_parameter(
+        "bias",
+        shape=(num_channels,),
+        dtype=x.dtype,
+        init=hk.initializers.TruncatedNormal(stddev=1e-4),
+    )
+    return y + jnp.broadcast_to(bias, y.shape)
+
+
 def _locon_delta(
     x: Float[Array, "B S D"],
     *,
@@ -644,7 +677,7 @@ class StandardizedConv1DWithLoCon(hk.Module):
             width=self._width,
             config=self._config,
         )
-        return y + delta.astype(y.dtype) * (self._config.alpha / rank)
+        return y + delta.astype(y.dtype) * (self._config.alpha / self._config.rank)
 
 
 @contextmanager
@@ -731,24 +764,62 @@ def patch_haiku_locon(config: BackboneLoConConfig) -> Iterator[None]:
 
 
 @contextmanager
+def patch_haiku_effective_conv(effective_conv_paths: Sequence[str]) -> Iterator[None]:
+    """Patch selected AlphaGenome ``StandardizedConv1D`` modules to use stored W_eff."""
+
+    from alphagenome_research.model import convolutions
+
+    original_standardized_conv = convolutions.StandardizedConv1D
+    target_names = frozenset(str(path) for path in effective_conv_paths)
+
+    class MaybeEffectiveStandardizedConv1D(hk.Module):
+        def __init__(self, num_channels: int, width: int, name: str | None = None):
+            super().__init__(name=name)
+            self._num_channels = num_channels
+            self._width = width
+
+        def __call__(self, x):
+            current_name = hk.experimental.current_name()
+            if _module_path_matches(current_name, target_names):
+                return _effective_conv1d_base(
+                    x,
+                    num_channels=self._num_channels,
+                    width=self._width,
+                )
+            return _standardized_conv1d_base(
+                x,
+                num_channels=self._num_channels,
+                width=self._width,
+            )
+
+    MaybeEffectiveStandardizedConv1D.__name__ = "StandardizedConv1D"
+    MaybeEffectiveStandardizedConv1D.__qualname__ = "StandardizedConv1D"
+    convolutions.StandardizedConv1D = MaybeEffectiveStandardizedConv1D
+    try:
+        yield
+    finally:
+        convolutions.StandardizedConv1D = original_standardized_conv
+
+
+@contextmanager
 def patch_backbone_adapters(
     lora_config: BackboneLoRAConfig | None = None,
     locon_config: BackboneLoConConfig | None = None,
+    effective_conv_paths: Sequence[str] | None = None,
 ) -> Iterator[None]:
     """Patch all requested backbone adapter module types in one scoped context."""
 
-    if lora_config is None and locon_config is None:
+    if lora_config is None and locon_config is None and not effective_conv_paths:
         yield
-    elif lora_config is None:
-        with patch_haiku_locon(locon_config):
-            yield
-    elif locon_config is None:
-        with patch_haiku_linear(lora_config):
-            yield
     else:
-        with patch_haiku_linear(lora_config):
-            with patch_haiku_locon(locon_config):
-                yield
+        with ExitStack() as stack:
+            if effective_conv_paths:
+                stack.enter_context(patch_haiku_effective_conv(effective_conv_paths))
+            if lora_config is not None:
+                stack.enter_context(patch_haiku_linear(lora_config))
+            if locon_config is not None:
+                stack.enter_context(patch_haiku_locon(locon_config))
+            yield
 
 
 def parse_lora_target_names(raw: str | None) -> tuple[str, ...]:
@@ -775,6 +846,7 @@ __all__ = [
     "parse_locon_target_names",
     "parse_lora_target_names",
     "patch_backbone_adapters",
+    "patch_haiku_effective_conv",
     "patch_haiku_linear",
     "patch_haiku_locon",
 ]

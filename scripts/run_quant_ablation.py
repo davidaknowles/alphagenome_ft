@@ -310,6 +310,8 @@ def apply_torch_quant_policy(model: Any, strategy: str, *, nf4_block_size: int =
     if strategy == "nvfp4_weight_only":
         from alphagenome_pytorch.low_precision import convert_linears_to_nvfp4_weight_only
 
+        for param in model.parameters():
+            param.requires_grad_(False)
         stats = convert_linears_to_nvfp4_weight_only(
             model,
             skip_name_patterns=("heads", "norm", "adapter", "lora_", "locon_"),
@@ -431,6 +433,21 @@ def build_data_module(args: argparse.Namespace):
 
 def load_merged_jax_model(args: argparse.Namespace, head_names: Sequence[str]):
     """Load a full merged checkpoint into a custom-head model template."""
+    checkpoint_root = args.checkpoint.expanduser().resolve()
+    checkpoint_path = checkpoint_root / "checkpoint"
+    config_path = checkpoint_root / "config.json"
+    checkpoint_config: dict[str, Any] = {}
+    if config_path.exists():
+        with config_path.open() as handle:
+            checkpoint_config = json.load(handle)
+    effective_conv_paths = tuple(
+        str(path)
+        for path in (
+            checkpoint_config.get("backbone_effective_conv_paths")
+            or checkpoint_config.get("effective_conv_paths")
+            or ()
+        )
+    )
     model = create_model_with_heads(
         args.model_version,
         heads=tuple(head_names),
@@ -439,8 +456,8 @@ def load_merged_jax_model(args: argparse.Namespace, head_names: Sequence[str]):
         else None,
         detach_backbone=True,
         init_seq_len=args.window_size,
+        backbone_effective_conv_paths=effective_conv_paths,
     )
-    checkpoint_path = args.checkpoint.expanduser().resolve() / "checkpoint"
     checkpointer = ocp.StandardCheckpointer()
     restored = checkpointer.restore(str(checkpoint_path), target=(model._params, model._state))
     if isinstance(restored, (tuple, list)) and len(restored) == 2:
@@ -543,6 +560,7 @@ def evaluate_torch(args: argparse.Namespace) -> dict[str, Any]:
     from alphagenome_pytorch.model import AlphaGenome
     from alphagenome_pytorch.extensions.finetuning.heads import create_finetuning_head
     from alphagenome_pytorch.extensions.finetuning.transfer import add_head, remove_all_heads
+    from torch_effective_conv import jax_effective_paths_to_torch, materialize_effective_convs
 
     data_module, head_specs = build_data_module(args)
     head_names = tuple(spec.head_id for spec in head_specs)
@@ -573,6 +591,11 @@ def evaluate_torch(args: argparse.Namespace) -> dict[str, Any]:
                 num_organisms=num_organisms,
             ),
         )
+        effective_torch_modules = tuple(payload.get("torch_effective_conv_modules") or ())
+        if not effective_torch_modules:
+            effective_jax_paths = tuple(str(path) for path in payload.get("backbone_effective_conv_paths", ()))
+            effective_torch_modules = jax_effective_paths_to_torch(effective_jax_paths)
+        materialize_effective_convs(model, effective_torch_modules)
         model.load_state_dict(payload["model_state_dict"], strict=True)
         model.to(device)
     else:

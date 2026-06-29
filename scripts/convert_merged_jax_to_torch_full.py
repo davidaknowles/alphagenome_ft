@@ -4,12 +4,15 @@
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 from pathlib import Path
 from typing import Any
 
 import numpy as np
 import torch
+
+from torch_effective_conv import jax_effective_paths_to_torch, materialize_effective_convs
 
 
 def _add_torch_repo(path: Path) -> None:
@@ -50,6 +53,14 @@ def _load_torch_state(path: Path) -> dict[str, torch.Tensor]:
     if isinstance(payload, dict) and "model_state_dict" in payload:
         payload = payload["model_state_dict"]
     return payload
+
+
+def _load_checkpoint_config(checkpoint: Path) -> dict[str, Any]:
+    config_path = checkpoint.expanduser().resolve().parent / "config.json"
+    if not config_path.exists():
+        return {}
+    with config_path.open() as handle:
+        return json.load(handle)
 
 
 def _discover_custom_head(
@@ -116,8 +127,21 @@ def main() -> None:
     from alphagenome_pytorch import AlphaGenome
     from alphagenome_pytorch.extensions.finetuning.heads import create_finetuning_head
     from alphagenome_pytorch.extensions.finetuning.transfer import add_head, remove_all_heads
+    from alphagenome_pytorch.jax_compat.transforms import apply_transform
+    from alphagenome_pytorch.jax_compat.weight_mapping import map_pytorch_to_jax
 
-    flat_jax = _load_jax_flat(args.jax_checkpoint.expanduser().resolve())
+    jax_checkpoint = args.jax_checkpoint.expanduser().resolve()
+    flat_jax = _load_jax_flat(jax_checkpoint)
+    checkpoint_config = _load_checkpoint_config(jax_checkpoint)
+    effective_jax_paths = tuple(
+        str(path)
+        for path in (
+            checkpoint_config.get("backbone_effective_conv_paths")
+            or checkpoint_config.get("effective_conv_paths")
+            or ()
+        )
+    )
+    effective_torch_modules = jax_effective_paths_to_torch(effective_jax_paths)
     resolutions, n_tracks, n_org = _discover_custom_head(flat_jax, args.head_id)
     custom_state = _custom_head_state(flat_jax, head_id=args.head_id, resolutions=resolutions)
 
@@ -137,6 +161,14 @@ def main() -> None:
     base_state = _load_torch_state(args.base_torch_weights.expanduser().resolve())
     model.load_state_dict(base_state, strict=False)
     merged_state = model.state_dict()
+    converted_backbone = 0
+    for key, value in list(merged_state.items()):
+        jax_key = map_pytorch_to_jax(key)
+        if jax_key is None or jax_key not in flat_jax:
+            continue
+        converted = apply_transform(key, np.asarray(flat_jax[jax_key]), tuple(value.shape))
+        merged_state[key] = torch.from_numpy(converted.copy()).to(dtype=value.dtype)
+        converted_backbone += 1
     for key, value in custom_state.items():
         if key not in merged_state:
             raise KeyError(f"Torch custom head key not present: {key}")
@@ -144,6 +176,7 @@ def main() -> None:
             raise ValueError(f"Shape mismatch for {key}: {tuple(value.shape)} vs {tuple(merged_state[key].shape)}")
         merged_state[key] = value.to(dtype=merged_state[key].dtype)
     model.load_state_dict(merged_state, strict=True)
+    materialize_effective_convs(model, effective_torch_modules)
 
     track_names: list[str]
     if args.bigwig_dir is not None:
@@ -163,14 +196,18 @@ def main() -> None:
             "resolutions": tuple(resolutions),
             "num_organisms": n_org,
             "track_names": track_names,
-            "source_jax_checkpoint": str(args.jax_checkpoint.expanduser().resolve()),
+            "source_jax_checkpoint": str(jax_checkpoint),
             "source_base_torch_weights": str(args.base_torch_weights.expanduser().resolve()),
+            "backbone_effective_conv_paths": effective_jax_paths,
+            "torch_effective_conv_modules": effective_torch_modules,
+            "converted_backbone_leaves": converted_backbone,
         },
         args.output.expanduser().resolve(),
     )
     print(
         f"Saved Torch full checkpoint to {args.output} "
-        f"(head={args.head_id}, tracks={n_tracks}, resolutions={resolutions}, organisms={n_org})"
+        f"(head={args.head_id}, tracks={n_tracks}, resolutions={resolutions}, organisms={n_org}, "
+        f"converted_backbone_leaves={converted_backbone}, effective_convs={len(effective_torch_modules)})"
     )
 
 

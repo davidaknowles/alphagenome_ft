@@ -332,7 +332,7 @@ def parse_args() -> argparse.Namespace:
     torch_group.add_argument(
         "--torch-fp4-mode",
         choices=("qat", "weight-only"),
-        default="qat",
+        default="weight-only",
     )
     torch_group.add_argument(
         "--torch-fp4-skip-name-patterns",
