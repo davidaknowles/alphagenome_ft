@@ -19,6 +19,7 @@ import optax
 from alphagenome.models import dna_model as ag_dna_model
 from alphagenome_research.model import dna_model as research_dna_model
 
+from alphagenome_ft.lora import ADAPTER_LEAF_NAMES
 from alphagenome_ft import parameter_utils
 from alphagenome_ft.custom_model import CustomAlphaGenomeModel
 from alphagenome_ft.finetune.config import HeadSpec
@@ -68,7 +69,7 @@ def _is_trainable_head_path(path_str: str, trainable_heads: set[str]) -> bool:
 
 
 def _is_lora_path(path_str: str) -> bool:
-    return path_str.split("/")[-1] in {"lora_a", "lora_b"}
+    return path_str.split("/")[-1] in ADAPTER_LEAF_NAMES
 
 
 def _label_params_for_heads(
@@ -119,7 +120,7 @@ def create_optimizer(
             ]
             if not lora_paths:
                 raise ValueError(
-                    "train_lora=True was requested, but no lora_a/lora_b parameters exist."
+                    "train_lora=True was requested, but no LoRA/LoCon adapter parameters exist."
                 )
         param_labels = _label_params_for_heads(
             params,
@@ -239,6 +240,18 @@ def _select_prediction_for_targets(prediction, targets):
     )
 
 
+def _maybe_bin_128bp_jax(value):
+    if len(value.shape) != 3:
+        return value
+    loci = value.shape[1]
+    if loci >= 8192 and loci % 128 == 0:
+        return jnp.mean(
+            value.reshape((value.shape[0], loci // 128, 128, value.shape[2])),
+            axis=2,
+        )
+    return value
+
+
 def _r2_stats(prediction, targets):
     prediction = _select_prediction_for_targets(prediction, targets).astype(jnp.float32)
     targets = targets.astype(jnp.float32)
@@ -254,6 +267,18 @@ def _r2_stats(prediction, targets):
     sum_y2_by_track = jnp.sum(jnp.square(targets), axis=(0, 1))
     sse_by_track = jnp.sum(jnp.square(residual), axis=(0, 1))
     count_by_track = jnp.ones_like(sum_y_by_track, dtype=jnp.float32) * loci_count
+
+    prediction_bins = _maybe_bin_128bp_jax(prediction)
+    target_bins = _maybe_bin_128bp_jax(targets)
+    pred_matrix = prediction_bins.reshape((-1, prediction_bins.shape[-1]))
+    target_matrix = target_bins.reshape((-1, target_bins.shape[-1]))
+    pred_row_sum = jnp.sum(pred_matrix, axis=-1)
+    target_row_sum = jnp.sum(target_matrix, axis=-1)
+    pred_track_sum = jnp.sum(pred_matrix, axis=0)
+    target_track_sum = jnp.sum(target_matrix, axis=0)
+    differential_count = jnp.asarray(pred_matrix.shape[0], dtype=jnp.float32)
+    differential_pred_sum = jnp.sum(pred_matrix)
+    differential_target_sum = jnp.sum(target_matrix)
 
     target_mean_by_locus = jnp.mean(targets, axis=-1, keepdims=True)
     sst_by_locus = jnp.sum(jnp.square(targets - target_mean_by_locus), axis=-1)
@@ -272,6 +297,17 @@ def _r2_stats(prediction, targets):
         "sum_y_by_track": sum_y_by_track,
         "sum_y2_by_track": sum_y2_by_track,
         "sse_by_track": sse_by_track,
+        "differential_count": differential_count,
+        "differential_pred_sum": differential_pred_sum,
+        "differential_target_sum": differential_target_sum,
+        "differential_pred2_sum": jnp.sum(jnp.square(pred_matrix)),
+        "differential_target2_sum": jnp.sum(jnp.square(target_matrix)),
+        "differential_pred_target_sum": jnp.sum(pred_matrix * target_matrix),
+        "differential_pred_row2_sum": jnp.sum(jnp.square(pred_row_sum)),
+        "differential_target_row2_sum": jnp.sum(jnp.square(target_row_sum)),
+        "differential_pred_target_row_sum": jnp.sum(pred_row_sum * target_row_sum),
+        "differential_pred_track_sum": pred_track_sum,
+        "differential_target_track_sum": target_track_sum,
         "r2_cell_type_sum": r2_cell_type_sum,
         "r2_cell_type_count": r2_cell_type_count,
     }
@@ -299,11 +335,40 @@ def _finalize_r2_stats(stats: Mapping[str, np.ndarray | float]) -> dict[str, flo
         r2_over_cell_types = float(np.asarray(stats["r2_cell_type_sum"]) / r2_cell_type_count)
     else:
         r2_over_cell_types = float("nan")
+    differential_count = float(np.asarray(stats["differential_count"]))
+    pred_sum = float(np.asarray(stats["differential_pred_sum"]))
+    target_sum = float(np.asarray(stats["differential_target_sum"]))
+    pred_track_sum = np.asarray(stats["differential_pred_track_sum"], dtype=np.float64)
+    target_track_sum = np.asarray(stats["differential_target_track_sum"], dtype=np.float64)
+    differential_tracks = float(pred_track_sum.shape[0])
+    pred_ss = (
+        float(np.asarray(stats["differential_pred2_sum"]))
+        - float(np.asarray(stats["differential_pred_row2_sum"])) / differential_tracks
+        - float(np.sum(np.square(pred_track_sum))) / differential_count
+        + pred_sum * pred_sum / (differential_count * differential_tracks)
+    )
+    target_ss = (
+        float(np.asarray(stats["differential_target2_sum"]))
+        - float(np.asarray(stats["differential_target_row2_sum"])) / differential_tracks
+        - float(np.sum(np.square(target_track_sum))) / differential_count
+        + target_sum * target_sum / (differential_count * differential_tracks)
+    )
+    pred_target_cov = (
+        float(np.asarray(stats["differential_pred_target_sum"]))
+        - float(np.asarray(stats["differential_pred_target_row_sum"])) / differential_tracks
+        - float(np.sum(pred_track_sum * target_track_sum)) / differential_count
+        + pred_sum * target_sum / (differential_count * differential_tracks)
+    )
+    if pred_ss <= 0 or target_ss <= 0:
+        differential_pearson_r = float("nan")
+    else:
+        differential_pearson_r = float(pred_target_cov / np.sqrt(pred_ss * target_ss))
 
     return {
         "r2_global": r2_global,
         "r2_over_loci": r2_over_loci,
         "r2_over_cell_types": r2_over_cell_types,
+        "differential_pearson_r": differential_pearson_r,
     }
 
 
@@ -457,6 +522,10 @@ def train(
     wandb_project: str | None = None,
     wandb_entity: str | None = None,
     wandb_run_name: str | None = None,
+    wandb_group: str | None = None,
+    wandb_tags: Sequence[str] | None = None,
+    wandb_job_type: str | None = None,
+    wandb_mode: str | None = None,
     wandb_config: dict | None = None,
     num_devices: int = 1,
     eval_splits: Sequence[str] = ("valid",),
@@ -489,6 +558,10 @@ def train(
         wandb_project: Optional W&B project name override.
         wandb_entity: Optional W&B entity/team override.
         wandb_run_name: Optional W&B run-name override.
+        wandb_group: Optional W&B group for related runs.
+        wandb_tags: Optional W&B tags.
+        wandb_job_type: Optional W&B job type.
+        wandb_mode: Optional W&B mode, such as ``online`` or ``offline``.
         wandb_config: Optional extra config keys to merge into W&B config.
         num_devices: Number of local devices to use. Defaults to single-device.
         eval_splits: Data splits to evaluate after each epoch. Supported values
@@ -584,6 +657,10 @@ def train(
             project=wandb_project or "alphagenome-ft",
             entity=wandb_entity,
             name=wandb_run_name,
+            group=wandb_group,
+            tags=list(wandb_tags or ()),
+            job_type=wandb_job_type,
+            mode=wandb_mode,
             config=wb_config,
         )
 
@@ -698,7 +775,8 @@ def train(
         print("JIT-compiling step functions (first call will be slow)...")
 
     def aggregate_valid_loss(metrics: Mapping[str, float]) -> float | None:
-        return float(sum(metrics.values())) if metrics else None
+        losses = [metrics[head_name] for head_name in head_names if head_name in metrics]
+        return float(sum(losses)) if losses else None
 
     def resolve_metric(
         metric_name: str,
@@ -709,6 +787,10 @@ def train(
             return "train_loss", train_loss
         if metric_name in {"valid", "val", "valid_loss", "val_loss"}:
             return "valid_loss", aggregate_valid_loss(valid_metrics or {})
+        for prefix in ("valid_", "val_"):
+            if metric_name.startswith(prefix):
+                key = metric_name.removeprefix(prefix)
+                return f"valid/{key}", (valid_metrics or {}).get(key)
         if metric_name.startswith("valid:") or metric_name.startswith("valid/"):
             head = metric_name.split(":", 1)[-1].split("/", 1)[-1]
             return f"valid/{head}", (valid_metrics or {}).get(head)
@@ -930,6 +1012,7 @@ def train(
                     if use_wandb:
                         wandb.log(
                             {
+                                "step/train_loss": loss_scalar,
                                 "train/step_loss": loss_scalar,
                                 "epoch": epoch,
                                 "step": global_step,
@@ -961,7 +1044,13 @@ def train(
             if train_loss_avg is not None:
                 print(f"  Train loss: {train_loss_avg:.4f}")
                 if use_wandb:
-                    wandb.log({"train/epoch_loss": train_loss_avg, "epoch": epoch})
+                    wandb.log(
+                        {
+                            "epoch/train_loss": train_loss_avg,
+                            "train/epoch_loss": train_loss_avg,
+                            "epoch": epoch,
+                        }
+                    )
 
             split_metrics: dict[str, dict[str, dict[str, float]]] = {}
             if "train" in requested_eval_splits and epoch_step > 0:
@@ -992,24 +1081,33 @@ def train(
                         f"loss={head_result['loss']:.4f}, "
                         f"r2_global={head_result['r2_global']:.4f}, "
                         f"r2_over_loci={head_result['r2_over_loci']:.4f}, "
-                        f"r2_over_cell_types={head_result['r2_over_cell_types']:.4f}"
+                        f"r2_over_cell_types={head_result['r2_over_cell_types']:.4f}, "
+                        f"differential_pearson_r={head_result['differential_pearson_r']:.4f}"
                     )
                 print(f"  {split.capitalize()} metrics:", "; ".join(printable))
                 if use_wandb:
                     split_log = {"epoch": epoch}
+                    split_loss = float(sum(head_result["loss"] for head_result in metrics.values()))
+                    split_log[f"epoch/{split}_loss"] = split_loss
                     for head_name, head_result in metrics.items():
                         for metric_name, metric_value in head_result.items():
                             split_log[f"{split}/{head_name}/{metric_name}"] = metric_value
-                    split_log[f"{split}/loss"] = float(
-                        sum(head_result["loss"] for head_result in metrics.values())
-                    )
+                            split_log[f"epoch/{split}/{head_name}/{metric_name}"] = metric_value
+                    if len(metrics) == 1:
+                        head_result = next(iter(metrics.values()))
+                        for metric_name, metric_value in head_result.items():
+                            split_log[f"epoch/{split}_{metric_name}"] = metric_value
+                    split_log[f"{split}/loss"] = split_loss
                     wandb.log(split_log)
 
             valid_metrics: Mapping[str, float] | None = None
             if "valid" in split_metrics:
-                valid_metrics = {
-                    head: values["loss"] for head, values in split_metrics["valid"].items()
-                }
+                valid_metrics = {}
+                for head, values in split_metrics["valid"].items():
+                    valid_metrics[head] = values["loss"]
+                    for metric_name, metric_value in values.items():
+                        valid_metrics.setdefault(metric_name, metric_value)
+                        valid_metrics[f"{head}/{metric_name}"] = metric_value
 
             metric_label, metric_value = resolve_metric(best_metric, train_loss_avg, valid_metrics)
             epoch_record = {

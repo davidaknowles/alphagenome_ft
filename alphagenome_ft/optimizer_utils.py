@@ -15,6 +15,7 @@ import optax
 from jaxtyping import PyTree
 
 from alphagenome_ft import parameter_utils
+from alphagenome_ft.lora import ADAPTER_LEAF_NAMES
 
 
 def parameter_path_to_str(path_tuple: tuple) -> str:
@@ -31,8 +32,8 @@ def is_trainable_head_path(path_str: str, trainable_heads: set[str]) -> bool:
 
 
 def is_lora_path(path_str: str) -> bool:
-    """Return True if ``path_str`` is a LoRA adapter parameter leaf."""
-    return path_str.split("/")[-1] in {"lora_a", "lora_b"}
+    """Return True if ``path_str`` is a LoRA/LoCon adapter parameter leaf."""
+    return path_str.split("/")[-1] in ADAPTER_LEAF_NAMES
 
 
 def label_params_for_trainable_heads(
@@ -90,7 +91,7 @@ def assert_trainable_params_exist(
     jax.tree_util.tree_map_with_path(collect, params)
     if not lora_paths:
         raise ValueError(
-            "train_lora=True was requested, but no `lora_a` or `lora_b` "
+            "train_lora=True was requested, but no LoRA/LoCon adapter "
             "parameters were found."
         )
 
@@ -141,8 +142,8 @@ def create_optimizer(
         weight_decay: Optional L2 / AdamW decay. ``None`` uses Optax defaults (no extra decay
             for AdamW beyond its default).
         heads_only: If True, apply ``optax.multi_transform`` head vs frozen masking.
-        train_lora: If True with ``heads_only=True``, also train leaves named
-            ``lora_a`` or ``lora_b`` outside the selected heads.
+        train_lora: If True with ``heads_only=True``, also train LoRA/LoCon
+            adapter leaves outside the selected heads.
         optimizer_type: ``\"adamw\"`` or ``\"adam\"``.
         gradient_clip_global_norm: If set, prepend ``optax.clip_by_global_norm``.
 

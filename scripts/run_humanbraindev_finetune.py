@@ -15,9 +15,11 @@ if str(REPO_ROOT) not in sys.path:
 import pandas as pd
 
 from alphagenome_ft import (
+    BackboneLoConConfig,
     BackboneLoRAConfig,
     create_model_with_heads,
     lora,
+    parse_locon_target_names,
     parse_lora_target_names,
     parameter_utils,
 )
@@ -145,6 +147,20 @@ def parse_chrom_set(value: str) -> set[str]:
     return {item.strip() for item in value.split(",") if item.strip()}
 
 
+def parse_csv_list(value: str | None) -> tuple[str, ...]:
+    if not value:
+        return ()
+    return tuple(item.strip() for item in value.split(",") if item.strip())
+
+
+def metadata_value(value: object) -> str:
+    if value is None:
+        return "null"
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    return str(value)
+
+
 def _available_cpu_count() -> int:
     try:
         return max(1, len(os.sched_getaffinity(0)))
@@ -170,6 +186,18 @@ def parse_args() -> argparse.Namespace:
         choices=("jax", "torch"),
         default="jax",
         help="Training backend. The shared launcher owns data discovery and split generation.",
+    )
+    parser.add_argument(
+        "--precision",
+        choices=("default", "bf16", "nvfp8", "nvfp4"),
+        default="default",
+        help="Backend-neutral precision preset. Explicit backend flags still override this.",
+    )
+    parser.add_argument(
+        "--adapter-strategy",
+        choices=("lora", "lora+locon"),
+        default="lora",
+        help="Backend-neutral adapter strategy for backbone finetuning.",
     )
     parser.add_argument("--head-id", default="humanbraindev_atac")
     parser.add_argument("--model-version", default="all_folds")
@@ -200,6 +228,15 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--lora-alpha", type=float, default=16.0)
     parser.add_argument("--fp8-lora", action="store_true")
     parser.add_argument("--fp4-lora", action="store_true")
+    parser.add_argument("--locon-rank", type=int, default=4)
+    parser.add_argument("--locon-alpha", type=float, default=1.0)
+    parser.add_argument("--locon-param-dtype", default="float32")
+    parser.add_argument("--locon-compute-dtype", default=None)
+    parser.add_argument(
+        "--locon-targets",
+        default="default",
+        help="Comma-separated JAX StandardizedConv1D path substrings to adapt, or 'default'.",
+    )
     parser.add_argument("--base-param-dtype", default="float32")
     parser.add_argument("--lora-param-dtype", default="float32")
     parser.add_argument("--activation-dtype", default="bfloat16")
@@ -212,6 +249,8 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--early-stopping-patience", type=int, default=2)
     parser.add_argument("--early-stopping-min-delta", type=float, default=0.0)
+    parser.add_argument("--best-metric", default="valid_loss")
+    parser.add_argument("--best-metric-mode", choices=("min", "max"), default="min")
     parser.add_argument(
         "--eval-splits",
         default="train,valid,test",
@@ -235,6 +274,14 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--wandb-project", default=None)
     parser.add_argument("--wandb-entity", default=None)
     parser.add_argument("--wandb-run-name", default=None)
+    parser.add_argument("--wandb-group", default=None)
+    parser.add_argument(
+        "--wandb-tags",
+        default=None,
+        help="Comma-separated W&B tags shared across JAX and torch backends.",
+    )
+    parser.add_argument("--wandb-job-type", default=None)
+    parser.add_argument("--wandb-mode", choices=("online", "offline", "disabled"), default=None)
 
     torch_group = parser.add_argument_group("Torch backend")
     torch_group.add_argument("--torch-repo", type=Path, default=DEFAULT_TORCH_REPO)
@@ -304,6 +351,12 @@ def parse_args() -> argparse.Namespace:
 def _infer_torch_dtype(args: argparse.Namespace) -> str:
     if args.torch_dtype is not None:
         return args.torch_dtype
+    if args.precision == "nvfp8":
+        return "nvfp8"
+    if args.precision == "nvfp4":
+        return "nvfp4"
+    if args.precision == "bf16":
+        return "bfloat16"
     lowp_tokens = {
         str(args.base_param_dtype).lower(),
         str(args.base_compute_dtype).lower(),
@@ -322,11 +375,40 @@ def _infer_torch_dtype(args: argparse.Namespace) -> str:
 def _infer_torch_mode(args: argparse.Namespace) -> str:
     if args.torch_mode is not None:
         return args.torch_mode
+    if args.adapter_strategy == "lora+locon":
+        return "lora+locon"
     return "lora" if args.backbone_lora else "linear-probe"
+
+
+def _apply_precision_preset(args: argparse.Namespace) -> None:
+    if args.precision == "nvfp8":
+        if args.fp4_lora:
+            args.fp4_lora = False
+        if args.base_param_dtype == "float32":
+            args.base_param_dtype = "fp8"
+        if args.lora_param_dtype == "float32":
+            args.lora_param_dtype = "bfloat16"
+        if args.lora_compute_dtype is None:
+            args.lora_compute_dtype = "bfloat16"
+    elif args.precision == "nvfp4":
+        if args.fp8_lora:
+            args.fp8_lora = False
+        if args.base_param_dtype == "float32":
+            args.base_param_dtype = "fp4"
+        if args.lora_param_dtype == "float32":
+            args.lora_param_dtype = "bfloat16"
+        if args.lora_compute_dtype is None:
+            args.lora_compute_dtype = "bfloat16"
+    elif args.precision == "bf16":
+        if args.base_param_dtype == "float32":
+            args.base_param_dtype = "bfloat16"
+        if args.lora_param_dtype == "float32":
+            args.lora_param_dtype = "bfloat16"
 
 
 def main() -> None:
     args = parse_args()
+    _apply_precision_preset(args)
 
     bigwig_dir = args.bigwig_dir.expanduser().resolve()
     fasta_path = args.fasta_path.expanduser().resolve()
@@ -437,9 +519,13 @@ def main() -> None:
                 lora_targets=(
                     "q_proj,v_proj" if args.lora_targets == "default" else args.lora_targets
                 ),
-                locon_rank=args.torch_locon_rank,
+                locon_rank=args.torch_locon_rank or args.locon_rank,
                 locon_alpha=args.torch_locon_alpha,
-                locon_targets=args.torch_locon_targets,
+                locon_targets=(
+                    "down_blocks.4,down_blocks.5"
+                    if args.torch_locon_targets == "default"
+                    else args.torch_locon_targets
+                ),
                 fp8_recipe=args.torch_fp8_recipe,
                 fp8_min_feature_multiple=args.torch_fp8_min_feature_multiple,
                 fp8_skip_name_patterns=args.torch_fp8_skip_name_patterns,
@@ -452,9 +538,34 @@ def main() -> None:
                 max_io_workers=args.torch_max_io_workers,
                 save_delta=args.torch_save_delta,
                 save_checkpoints=not args.torch_no_save_checkpoints,
+                best_metric=args.best_metric,
+                best_metric_mode=args.best_metric_mode,
+                early_stopping_patience=args.early_stopping_patience,
+                early_stopping_min_delta=args.early_stopping_min_delta,
                 wandb=args.wandb_project is not None,
                 wandb_project=args.wandb_project,
                 wandb_entity=args.wandb_entity,
+                wandb_run_name=args.wandb_run_name,
+                wandb_group=args.wandb_group,
+                wandb_tags=parse_csv_list(args.wandb_tags),
+                wandb_job_type=args.wandb_job_type,
+                wandb_mode=args.wandb_mode,
+                run_metadata=(
+                    ("backend", args.backend),
+                    ("precision", args.precision),
+                    ("adapter_strategy", args.adapter_strategy),
+                    ("backbone_lora", metadata_value(args.backbone_lora)),
+                    ("base_param_dtype", metadata_value(args.base_param_dtype)),
+                    ("base_compute_dtype", metadata_value(args.base_compute_dtype)),
+                    ("lora_param_dtype", metadata_value(args.lora_param_dtype)),
+                    ("lora_compute_dtype", metadata_value(args.lora_compute_dtype)),
+                    ("activation_dtype", metadata_value(args.activation_dtype)),
+                    ("bigwig_dir", str(bigwig_dir)),
+                    ("num_bigwigs", metadata_value(len(bigwigs))),
+                    ("split_source", args.split_source),
+                    ("window_size", metadata_value(args.window_size)),
+                    ("stride", metadata_value(args.stride)),
+                ),
                 # Keep the venv path itself. Resolving follows the venv's python
                 # symlink to the system interpreter and loses site-packages.
                 python_executable=torch_python.expanduser() if torch_python else None,
@@ -490,6 +601,7 @@ def main() -> None:
 
     head_ids = [spec.head_id for spec in head_specs]
     backbone_lora_config = None
+    backbone_locon_config = None
     if args.backbone_lora:
         if args.fp8_lora and args.fp4_lora:
             raise ValueError("--fp8-lora and --fp4-lora are mutually exclusive.")
@@ -524,6 +636,23 @@ def main() -> None:
             f"lora_compute_dtype={backbone_lora_config.resolved_lora_compute_dtype()}, "
             f"targets={sorted(backbone_lora_config.normalized_target_names())}"
         )
+        if args.adapter_strategy == "lora+locon":
+            locon_compute_dtype = args.locon_compute_dtype or args.activation_dtype
+            backbone_locon_config = BackboneLoConConfig(
+                rank=args.locon_rank,
+                alpha=args.locon_alpha,
+                param_dtype=args.locon_param_dtype,
+                compute_dtype=locon_compute_dtype,
+                target_names=parse_locon_target_names(args.locon_targets),
+            )
+            print(
+                "Backbone LoCon enabled: "
+                f"rank={backbone_locon_config.rank}, "
+                f"alpha={backbone_locon_config.alpha}, "
+                f"param_dtype={backbone_locon_config.param_dtype}, "
+                f"compute_dtype={backbone_locon_config.compute_dtype}, "
+                f"targets={sorted(backbone_locon_config.normalized_target_names())}"
+            )
 
     model = create_model_with_heads(
         args.model_version,
@@ -532,6 +661,7 @@ def main() -> None:
         detach_backbone=not args.backbone_lora,
         init_seq_len=args.window_size,
         backbone_lora_config=backbone_lora_config,
+        backbone_locon_config=backbone_locon_config,
         runtime_backbone_param_dtype=args.base_param_dtype,
     )
     if args.backbone_lora:
@@ -557,8 +687,8 @@ def main() -> None:
         train_lora=args.backbone_lora,
         checkpoint_dir=checkpoint_dir,
         organism="HOMO_SAPIENS",
-        best_metric="valid_loss",
-        best_metric_mode="min",
+        best_metric=args.best_metric,
+        best_metric_mode=args.best_metric_mode,
         early_stopping_patience=args.early_stopping_patience,
         early_stopping_min_delta=args.early_stopping_min_delta,
         verbose=True,
@@ -566,7 +696,14 @@ def main() -> None:
         wandb_project=args.wandb_project,
         wandb_entity=args.wandb_entity,
         wandb_run_name=args.wandb_run_name,
+        wandb_group=args.wandb_group,
+        wandb_tags=parse_csv_list(args.wandb_tags),
+        wandb_job_type=args.wandb_job_type,
+        wandb_mode=args.wandb_mode,
         wandb_config={
+            "backend": args.backend,
+            "precision": args.precision,
+            "adapter_strategy": args.adapter_strategy,
             "bigwig_dir": str(bigwig_dir),
             "num_bigwigs": len(bigwigs),
             "fasta_path": str(fasta_path),

@@ -63,9 +63,19 @@ class TorchBackendConfig:
     max_io_workers: int
     save_delta: bool
     save_checkpoints: bool
+    best_metric: str
+    best_metric_mode: str
+    early_stopping_patience: int
+    early_stopping_min_delta: float
     wandb: bool
     wandb_project: str | None
     wandb_entity: str | None
+    wandb_run_name: str | None
+    wandb_group: str | None
+    wandb_tags: tuple[str, ...]
+    wandb_job_type: str | None
+    wandb_mode: str | None
+    run_metadata: tuple[tuple[str, str], ...] = ()
     python_executable: Path | None = None
 
 
@@ -152,9 +162,20 @@ class TorchSubprocessBackend:
             str(cfg.num_workers),
             "--max-io-workers",
             str(cfg.max_io_workers),
+            "--best-metric",
+            cfg.best_metric,
+            "--best-metric-mode",
+            cfg.best_metric_mode,
+            "--early-stopping-patience",
+            str(cfg.early_stopping_patience),
+            "--early-stopping-min-delta",
+            str(cfg.early_stopping_min_delta),
         ]
-        if cfg.run_name:
-            cmd.extend(["--run-name", cfg.run_name])
+        for key, value in cfg.run_metadata:
+            cmd.extend(["--run-metadata", f"{key}={value}"])
+        run_name = cfg.run_name or cfg.wandb_run_name
+        if run_name:
+            cmd.extend(["--run-name", run_name])
         if cfg.track_means_samples is not None:
             cmd.extend(["--track-means-samples", str(cfg.track_means_samples)])
         if cfg.gradient_checkpointing:
@@ -167,6 +188,14 @@ class TorchSubprocessBackend:
             cmd.extend(["--wandb", "--wandb-project", cfg.wandb_project or "alphagenome-finetune"])
             if cfg.wandb_entity:
                 cmd.extend(["--wandb-entity", cfg.wandb_entity])
+            if cfg.wandb_group:
+                cmd.extend(["--wandb-group", cfg.wandb_group])
+            if cfg.wandb_tags:
+                cmd.extend(["--wandb-tags", ",".join(cfg.wandb_tags)])
+            if cfg.wandb_job_type:
+                cmd.extend(["--wandb-job-type", cfg.wandb_job_type])
+            if cfg.wandb_mode:
+                cmd.extend(["--wandb-mode", cfg.wandb_mode])
         return cmd
 
     def run(self, prepared: PreparedRun) -> None:

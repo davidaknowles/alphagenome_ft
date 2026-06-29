@@ -2,7 +2,8 @@
 LoRA (Low-Rank Adaptation) utilities for AlphaGenome finetuning.
 
 Provides building blocks for parameter-efficient finetuning by adding small
-low-rank matrices to selected linear layers while keeping the backbone frozen.
+low-rank matrices to selected linear or convolutional layers while keeping the
+backbone frozen.
 
 Typical usage pattern:
 1. Write custom Haiku modules/heads that use LoRALinear instead of hk.Linear.
@@ -20,6 +21,9 @@ import jax.numpy as jnp
 from jaxtyping import Array, Float, PyTree
 
 from alphagenome_ft.parameter_utils import _keypath_to_str
+
+
+ADAPTER_LEAF_NAMES = frozenset(("lora_a", "lora_b", "locon_down_w", "locon_up_w"))
 
 
 @dataclass
@@ -107,10 +111,10 @@ class LoRALinear(hk.Module):
 
 
 def get_lora_parameter_paths(params: PyTree) -> list[str]:
-    """Return all parameter paths that correspond to LoRA adapter matrices.
+    """Return all parameter paths that correspond to LoRA/LoCon adapter matrices.
 
-    A path is considered a LoRA path when its final segment is ``lora_a`` or
-    ``lora_b``.
+    A path is considered an adapter path when its final segment is one of
+    ``lora_a``, ``lora_b``, ``locon_down_w``, or ``locon_up_w``.
 
     Args:
         params: Haiku parameter tree (e.g. ``model._params``).
@@ -126,7 +130,7 @@ def get_lora_parameter_paths(params: PyTree) -> list[str]:
             return
         path_str = _keypath_to_str(path_tuple)
         leaf = path_str.split('/')[-1]
-        if leaf in ('lora_a', 'lora_b'):
+        if leaf in ADAPTER_LEAF_NAMES:
             paths.append(path_str)
 
     jax.tree_util.tree_map_with_path(collect, params)
@@ -134,13 +138,13 @@ def get_lora_parameter_paths(params: PyTree) -> list[str]:
 
 
 def count_lora_parameters(params: PyTree) -> int:
-    """Count the total number of trainable LoRA adapter elements.
+    """Count the total number of trainable LoRA/LoCon adapter elements.
 
     Args:
         params: Haiku parameter tree (e.g. ``model._params``).
 
     Returns:
-        Total element count across all ``lora_a`` and ``lora_b`` arrays.
+        Total element count across all adapter arrays.
     """
     lora_paths = set(get_lora_parameter_paths(params))
     total = 0

@@ -3,7 +3,12 @@ import jax
 import jax.numpy as jnp
 import pytest
 
-from alphagenome_ft.fp8_lora import BackboneLoRAConfig, patch_haiku_linear
+from alphagenome_ft.fp8_lora import (
+    BackboneLoConConfig,
+    BackboneLoRAConfig,
+    patch_haiku_linear,
+    patch_haiku_locon,
+)
 from alphagenome_ft.lora import get_lora_parameter_paths
 from alphagenome_ft.custom_model import _cast_runtime_backbone_params
 
@@ -25,6 +30,48 @@ def test_patch_haiku_linear_adds_lora_only_to_named_targets():
     assert sorted(get_lora_parameter_paths(params)) == [
         "q_layer/lora_a",
         "q_layer/lora_b",
+    ]
+
+
+def test_patch_haiku_locon_adds_locon_only_to_matching_conv_paths():
+    from alphagenome_research.model import convolutions
+
+    config = BackboneLoConConfig(
+        rank=2,
+        alpha=1.0,
+        target_names=("target_block",),
+    )
+
+    def forward(x):
+        with patch_haiku_locon(config):
+            adapted = convolutions.ConvBlock(
+                num_channels=4,
+                width=3,
+                name="target_block",
+            )(x, is_training=True)
+            plain = convolutions.ConvBlock(
+                num_channels=4,
+                width=3,
+                name="plain_block",
+            )(x, is_training=True)
+        return adapted + plain
+
+    transformed = hk.transform_with_state(forward)
+    params, state = transformed.init(
+        jax.random.PRNGKey(0),
+        jnp.ones((1, 8, 3), dtype=jnp.bfloat16),
+    )
+    del state
+
+    adapted_key = "target_block/standardized_conv1_d"
+    plain_key = "plain_block/standardized_conv1_d"
+    assert {"w", "scale", "bias", "locon_down_w", "locon_up_w"} <= set(
+        params[adapted_key]
+    )
+    assert set(params[plain_key]) == {"w", "scale", "bias"}
+    assert sorted(get_lora_parameter_paths(params)) == [
+        f"{adapted_key}/locon_down_w",
+        f"{adapted_key}/locon_up_w",
     ]
 
 

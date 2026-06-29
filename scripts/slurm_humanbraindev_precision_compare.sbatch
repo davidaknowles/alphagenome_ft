@@ -196,4 +196,8 @@ python scripts/run_humanbraindev_finetune.py \
   ${LIMIT_VALID:+--limit-valid "$LIMIT_VALID"} \
   ${LIMIT_TEST:+--limit-test "$LIMIT_TEST"} \
   ${WANDB_PROJECT:+--wandb-project "$WANDB_PROJECT"} \
-  ${WANDB_ENTITY:+--wandb-entity "$WANDB_ENTITY"}
+  ${WANDB_ENTITY:+--wandb-entity "$WANDB_ENTITY"} \
+  ${WANDB_GROUP:+--wandb-group "$WANDB_GROUP"} \
+  ${WANDB_TAGS:+--wandb-tags "$WANDB_TAGS"} \
+  ${WANDB_JOB_TYPE:+--wandb-job-type "$WANDB_JOB_TYPE"} \
+  ${WANDB_MODE:+--wandb-mode "$WANDB_MODE"}

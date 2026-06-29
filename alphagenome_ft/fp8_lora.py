@@ -1,4 +1,4 @@
-"""FP8/NVFP4-ready LoRA adapters for AlphaGenome backbone projections."""
+"""FP8/NVFP4-ready LoRA and LoCon adapters for AlphaGenome backbones."""
 
 from __future__ import annotations
 
@@ -9,6 +9,7 @@ import math
 from typing import Literal
 
 import haiku as hk
+import jax
 import jax.numpy as jnp
 from jaxtyping import Array, Float
 
@@ -49,6 +50,11 @@ DEFAULT_BACKBONE_LORA_TARGETS: tuple[str, ...] = (
     "linear_y_q",
     "linear_y_k",
     "linear_pair",
+)
+
+DEFAULT_BACKBONE_LOCON_TARGETS: tuple[str, ...] = (
+    "downres_block_4",
+    "downres_block_5",
 )
 
 
@@ -165,8 +171,43 @@ class BackboneLoRAConfig:
             )
 
 
+@dataclass(frozen=True)
+class BackboneLoConConfig:
+    """Configuration for convolutional LoRA adapters.
+
+    LoCon applies a trainable low-rank convolutional residual to selected
+    ``StandardizedConv1D`` modules in the AlphaGenome convolutional trunk. The
+    original convolution parameters keep their normal names, while adapter
+    weights are stored as ``locon_down_w`` and ``locon_up_w`` leaves.
+    """
+
+    rank: int = 4
+    alpha: float = 1.0
+    param_dtype: ParamDType = "float32"
+    compute_dtype: ComputeDType = "bfloat16"
+    target_names: Sequence[str] = DEFAULT_BACKBONE_LOCON_TARGETS
+
+    def normalized_target_names(self) -> frozenset[str]:
+        return frozenset(str(name) for name in self.target_names)
+
+    def validate(self) -> None:
+        if self.rank < 1:
+            raise ValueError(f"LoCon rank must be positive, got {self.rank}.")
+        _resolve_param_dtype(self.param_dtype, field_name="locon_param_dtype")
+        _resolve_compute_dtype(self.compute_dtype, field_name="locon_compute_dtype")
+
+
 def _default_w_init(input_size: int):
     return hk.initializers.TruncatedNormal(stddev=1.0 / math.sqrt(input_size))
+
+
+def _low_precision_safe_init(init):
+    def wrapped(shape, dtype):
+        if _is_low_precision_storage_dtype(dtype):
+            return init(shape, jnp.float32).astype(dtype)
+        return init(shape, dtype)
+
+    return wrapped
 
 
 def _canonical_dtype_name(value: str, *, field_name: str) -> str:
@@ -407,7 +448,7 @@ class LinearWithLoRA(hk.Module):
             "w",
             shape=(input_size, self._output_size),
             dtype=base_param_dtype,
-            init=w_init,
+            init=_low_precision_safe_init(w_init),
         )
         y = _dense(
             activation,
@@ -460,6 +501,149 @@ class LinearWithLoRA(hk.Module):
             precision=lora_precision,
             label="LoRA B",
         )
+        return y + delta.astype(y.dtype) * (self._config.alpha / self._config.rank)
+
+
+def _module_path_matches(path: str, target_names: frozenset[str]) -> bool:
+    normalized_path = path.replace(".", "_")
+    for target in target_names:
+        normalized_target = target.replace(".", "_")
+        if normalized_target in normalized_path:
+            return True
+    return False
+
+
+def _standardized_conv1d_base(
+    x: Float[Array, "B S D"],
+    *,
+    num_channels: int,
+    width: int,
+) -> Float[Array, "B S O"]:
+    input_channels = x.shape[-1]
+    fan_in = width * input_channels
+    kernel_shape = (width, input_channels, num_channels)
+    w_init = hk.initializers.TruncatedNormal(stddev=1.0 / jnp.sqrt(fan_in))
+    w = hk.get_parameter("w", shape=kernel_shape, dtype=x.dtype, init=w_init)
+
+    w_standardized = w - jnp.mean(w, axis=(0, 1), keepdims=True)
+    var_w = jnp.var(w_standardized, axis=(0, 1), keepdims=True)
+    scale = hk.get_parameter(
+        "scale",
+        shape=[1, 1, num_channels],
+        init=jnp.ones,
+        dtype=w.dtype,
+    )
+    scale = scale * jax.lax.rsqrt(jnp.maximum(fan_in * var_w, 1e-4))
+    w_standardized = w_standardized * scale
+
+    y = jax.lax.conv_general_dilated(
+        lhs=x,
+        rhs=w_standardized,
+        window_strides=[1],
+        padding="SAME",
+        dimension_numbers=jax.lax.ConvDimensionNumbers(
+            lhs_spec=(0, 2, 1), rhs_spec=(2, 1, 0), out_spec=(0, 2, 1)
+        ),
+    )
+    bias = hk.get_parameter(
+        "bias",
+        shape=(num_channels,),
+        dtype=x.dtype,
+        init=hk.initializers.TruncatedNormal(stddev=1e-4),
+    )
+    return y + jnp.broadcast_to(bias, y.shape)
+
+
+def _locon_delta(
+    x: Float[Array, "B S D"],
+    *,
+    num_channels: int,
+    width: int,
+    config: BackboneLoConConfig,
+) -> Float[Array, "B S O"]:
+    input_channels = x.shape[-1]
+    rank = config.rank
+    if rank > num_channels:
+        raise ValueError(f"LoCon rank {rank} must be <= output channels {num_channels}.")
+    param_dtype = _resolve_param_dtype(
+        config.param_dtype,
+        field_name="locon_param_dtype",
+    )
+    activation = _cast_for_compute(
+        x,
+        config.compute_dtype,
+        fallback_dtype=x.dtype,
+    )
+    down_w = hk.get_parameter(
+        "locon_down_w",
+        shape=(width, input_channels, rank),
+        dtype=param_dtype,
+        init=hk.initializers.VarianceScaling(),
+    )
+    up_w = hk.get_parameter(
+        "locon_up_w",
+        shape=(1, rank, num_channels),
+        dtype=param_dtype,
+        init=hk.initializers.Constant(0.0),
+    )
+    down_w = _cast_for_compute(
+        down_w,
+        config.compute_dtype,
+        fallback_dtype=activation.dtype,
+    )
+    up_w = _cast_for_compute(
+        up_w,
+        config.compute_dtype,
+        fallback_dtype=activation.dtype,
+    )
+    delta = jax.lax.conv_general_dilated(
+        lhs=activation,
+        rhs=down_w,
+        window_strides=[1],
+        padding="SAME",
+        dimension_numbers=jax.lax.ConvDimensionNumbers(
+            lhs_spec=(0, 2, 1), rhs_spec=(2, 1, 0), out_spec=(0, 2, 1)
+        ),
+    )
+    return jax.lax.conv_general_dilated(
+        lhs=delta,
+        rhs=up_w,
+        window_strides=[1],
+        padding="SAME",
+        dimension_numbers=jax.lax.ConvDimensionNumbers(
+            lhs_spec=(0, 2, 1), rhs_spec=(2, 1, 0), out_spec=(0, 2, 1)
+        ),
+    )
+
+
+class StandardizedConv1DWithLoCon(hk.Module):
+    """Drop-in ``StandardizedConv1D`` replacement with trainable LoCon leaves."""
+
+    def __init__(
+        self,
+        num_channels: int,
+        width: int,
+        config: BackboneLoConConfig,
+        name: str | None = None,
+    ) -> None:
+        super().__init__(name=name)
+        config.validate()
+        self._num_channels = int(num_channels)
+        self._width = int(width)
+        self._config = config
+
+    def __call__(self, x: Float[Array, "B S D"]) -> Float[Array, "B S O"]:
+        y = _standardized_conv1d_base(
+            x,
+            num_channels=self._num_channels,
+            width=self._width,
+        )
+        delta = _locon_delta(
+            x,
+            num_channels=self._num_channels,
+            width=self._width,
+            config=self._config,
+        )
         return y + delta.astype(y.dtype) * (self._config.alpha / rank)
 
 
@@ -505,6 +689,68 @@ def patch_haiku_linear(config: BackboneLoRAConfig) -> Iterator[None]:
         hk.Linear = original_linear  # type: ignore[assignment]
 
 
+@contextmanager
+def patch_haiku_locon(config: BackboneLoConConfig) -> Iterator[None]:
+    """Patch AlphaGenome ``StandardizedConv1D`` modules for selected LoCon targets."""
+
+    from alphagenome_research.model import convolutions
+
+    original_standardized_conv = convolutions.StandardizedConv1D
+    target_names = config.normalized_target_names()
+
+    class MaybeLoConStandardizedConv1D(hk.Module):
+        def __init__(self, num_channels: int, width: int, name: str | None = None):
+            super().__init__(name=name)
+            self._num_channels = num_channels
+            self._width = width
+
+        def __call__(self, x):
+            current_name = hk.experimental.current_name()
+            y = _standardized_conv1d_base(
+                x,
+                num_channels=self._num_channels,
+                width=self._width,
+            )
+            if _module_path_matches(current_name, target_names):
+                delta = _locon_delta(
+                    x,
+                    num_channels=self._num_channels,
+                    width=self._width,
+                    config=config,
+                )
+                return y + delta.astype(y.dtype) * (config.alpha / config.rank)
+            return y
+
+    MaybeLoConStandardizedConv1D.__name__ = "StandardizedConv1D"
+    MaybeLoConStandardizedConv1D.__qualname__ = "StandardizedConv1D"
+    convolutions.StandardizedConv1D = MaybeLoConStandardizedConv1D
+    try:
+        yield
+    finally:
+        convolutions.StandardizedConv1D = original_standardized_conv
+
+
+@contextmanager
+def patch_backbone_adapters(
+    lora_config: BackboneLoRAConfig | None = None,
+    locon_config: BackboneLoConConfig | None = None,
+) -> Iterator[None]:
+    """Patch all requested backbone adapter module types in one scoped context."""
+
+    if lora_config is None and locon_config is None:
+        yield
+    elif lora_config is None:
+        with patch_haiku_locon(locon_config):
+            yield
+    elif locon_config is None:
+        with patch_haiku_linear(lora_config):
+            yield
+    else:
+        with patch_haiku_linear(lora_config):
+            with patch_haiku_locon(locon_config):
+                yield
+
+
 def parse_lora_target_names(raw: str | None) -> tuple[str, ...]:
     """Parse comma-separated target names from CLI/env settings."""
     if raw is None or raw.strip().lower() in {"", "default", "all"}:
@@ -512,10 +758,23 @@ def parse_lora_target_names(raw: str | None) -> tuple[str, ...]:
     return tuple(item.strip() for item in raw.split(",") if item.strip())
 
 
+def parse_locon_target_names(raw: str | None) -> tuple[str, ...]:
+    """Parse comma-separated LoCon target path substrings from CLI/env settings."""
+    if raw is None or raw.strip().lower() in {"", "default", "all"}:
+        return DEFAULT_BACKBONE_LOCON_TARGETS
+    return tuple(item.strip() for item in raw.split(",") if item.strip())
+
+
 __all__ = [
+    "BackboneLoConConfig",
     "BackboneLoRAConfig",
+    "DEFAULT_BACKBONE_LOCON_TARGETS",
     "DEFAULT_BACKBONE_LORA_TARGETS",
     "LinearWithLoRA",
+    "StandardizedConv1DWithLoCon",
+    "parse_locon_target_names",
     "parse_lora_target_names",
+    "patch_backbone_adapters",
     "patch_haiku_linear",
+    "patch_haiku_locon",
 ]

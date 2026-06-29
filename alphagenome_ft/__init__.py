@@ -61,9 +61,13 @@ from alphagenome_ft.lora import (
 )
 from alphagenome_ft.parameter_utils import freeze_except_lora
 from alphagenome_ft.fp8_lora import (
+    BackboneLoConConfig,
     BackboneLoRAConfig,
+    DEFAULT_BACKBONE_LOCON_TARGETS,
     DEFAULT_BACKBONE_LORA_TARGETS,
     LinearWithLoRA,
+    StandardizedConv1DWithLoCon,
+    parse_locon_target_names,
     parse_lora_target_names,
 )
 from alphagenome_ft.optimizer_utils import (
@@ -118,9 +122,13 @@ __all__ = [
     'get_lora_parameter_paths',
     'count_lora_parameters',
     'freeze_except_lora',
+    'BackboneLoConConfig',
     'BackboneLoRAConfig',
+    'DEFAULT_BACKBONE_LOCON_TARGETS',
     'DEFAULT_BACKBONE_LORA_TARGETS',
     'LinearWithLoRA',
+    'StandardizedConv1DWithLoCon',
+    'parse_locon_target_names',
     'parse_lora_target_names',
     # Optimizer masking (true backbone freeze during training)
     'create_optimizer',
