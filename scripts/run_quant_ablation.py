@@ -541,6 +541,8 @@ def evaluate_torch(args: argparse.Namespace) -> dict[str, Any]:
     import torch.nn.functional as F
     from alphagenome_pytorch.config import DtypePolicy
     from alphagenome_pytorch.model import AlphaGenome
+    from alphagenome_pytorch.extensions.finetuning.heads import create_finetuning_head
+    from alphagenome_pytorch.extensions.finetuning.transfer import add_head, remove_all_heads
 
     data_module, head_specs = build_data_module(args)
     head_names = tuple(spec.head_id for spec in head_specs)
@@ -548,14 +550,37 @@ def evaluate_torch(args: argparse.Namespace) -> dict[str, Any]:
         raise ValueError(f"Torch eval currently expects one head, got {head_names}")
     head_name = head_names[0]
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    dtype_policy = DtypePolicy.mixed_precision()
+    dtype_policy = DtypePolicy.full_float32()
     if args.strategy == "bf16_params":
         dtype_policy = DtypePolicy.aggressive_bfloat16()
-    model = AlphaGenome.from_pretrained(
-        args.torch_weights.expanduser().resolve(),
-        dtype_policy=dtype_policy,
-        device=device,
-    )
+    weights_path = args.torch_weights.expanduser().resolve()
+    if weights_path.suffix in {".pt", ".pth"}:
+        payload = torch.load(weights_path, map_location="cpu", weights_only=False)
+        if not isinstance(payload, dict) or "model_state_dict" not in payload:
+            raise ValueError(f"Torch checkpoint lacks model_state_dict: {weights_path}")
+        assay_type = payload.get("assay_type", "atac")
+        resolutions = tuple(int(res) for res in payload.get("resolutions", (128,)))
+        num_organisms = int(payload.get("num_organisms", 1))
+        model = AlphaGenome(num_organisms=2, dtype_policy=dtype_policy)
+        model = remove_all_heads(model)
+        add_head(
+            model,
+            head_name,
+            create_finetuning_head(
+                assay_type,
+                n_tracks=len(head_specs[0].tracks),
+                resolutions=resolutions,
+                num_organisms=num_organisms,
+            ),
+        )
+        model.load_state_dict(payload["model_state_dict"], strict=True)
+        model.to(device)
+    else:
+        model = AlphaGenome.from_pretrained(
+            weights_path,
+            dtype_policy=dtype_policy,
+            device=device,
+        )
     model.eval()
     quant_stats = apply_torch_quant_policy(model, args.strategy, nf4_block_size=args.nf4_block_size)
 

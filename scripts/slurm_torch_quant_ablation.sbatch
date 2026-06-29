@@ -20,6 +20,9 @@ TORCH_WEIGHTS="${TORCH_WEIGHTS:?Set TORCH_WEIGHTS.}"
 TORCH_REPO="${TORCH_REPO:-/gpfs/commons/home/daknowles/projects/alphagenome-pytorch}"
 TARGET_CACHE_DIR="${TARGET_CACHE_DIR:-}"
 
+export PYTHONPATH="$HOME/venv/jax/lib/python3.12/site-packages:${PYTHONPATH:-}"
+export PYTORCH_CUDA_ALLOC_CONF="${PYTORCH_CUDA_ALLOC_CONF:-expandable_segments:False}"
+
 mapfile -t STRATEGIES < "$STRATEGY_FILE"
 STRATEGY="${STRATEGIES[$SLURM_ARRAY_TASK_ID]}"
 RUN_DIR="$OUTPUT_ROOT/torch_$STRATEGY"
