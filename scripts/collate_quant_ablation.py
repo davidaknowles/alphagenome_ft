@@ -38,6 +38,8 @@ def main() -> None:
     root = args.root.expanduser().resolve()
     rows = []
     for metrics_path in sorted(root.glob("*/metrics.json")):
+        if metrics_path.parent.name.startswith("smoke_"):
+            continue
         payload = _load(metrics_path)
         if not payload:
             continue
