@@ -388,6 +388,8 @@ def _apply_precision_preset(args: argparse.Namespace) -> None:
             args.base_param_dtype = "fp8"
         if args.lora_param_dtype == "float32":
             args.lora_param_dtype = "bfloat16"
+        if args.locon_param_dtype == "float32":
+            args.locon_param_dtype = "bfloat16"
         if args.lora_compute_dtype is None:
             args.lora_compute_dtype = "bfloat16"
     elif args.precision == "nvfp4":
@@ -397,6 +399,8 @@ def _apply_precision_preset(args: argparse.Namespace) -> None:
             args.base_param_dtype = "fp4"
         if args.lora_param_dtype == "float32":
             args.lora_param_dtype = "bfloat16"
+        if args.locon_param_dtype == "float32":
+            args.locon_param_dtype = "bfloat16"
         if args.lora_compute_dtype is None:
             args.lora_compute_dtype = "bfloat16"
     elif args.precision == "bf16":
@@ -404,6 +408,8 @@ def _apply_precision_preset(args: argparse.Namespace) -> None:
             args.base_param_dtype = "bfloat16"
         if args.lora_param_dtype == "float32":
             args.lora_param_dtype = "bfloat16"
+        if args.locon_param_dtype == "float32":
+            args.locon_param_dtype = "bfloat16"
 
 
 def main() -> None:
@@ -497,7 +503,7 @@ def main() -> None:
         )
         torch_python = args.torch_python
         if torch_python is None:
-            default_torch_python = Path.home() / "venv" / "torch" / "bin" / "python"
+            default_torch_python = Path.home() / "venv" / "torchfix" / "bin" / "python"
             if default_torch_python.exists():
                 torch_python = default_torch_python
         backend = TorchSubprocessBackend(
@@ -558,6 +564,7 @@ def main() -> None:
                     ("base_param_dtype", metadata_value(args.base_param_dtype)),
                     ("base_compute_dtype", metadata_value(args.base_compute_dtype)),
                     ("lora_param_dtype", metadata_value(args.lora_param_dtype)),
+                    ("locon_param_dtype", metadata_value(args.locon_param_dtype)),
                     ("lora_compute_dtype", metadata_value(args.lora_compute_dtype)),
                     ("activation_dtype", metadata_value(args.activation_dtype)),
                     ("bigwig_dir", str(bigwig_dir)),
@@ -725,6 +732,7 @@ def main() -> None:
             "fp4_lora": args.fp4_lora if args.backbone_lora else None,
             "base_param_dtype": args.base_param_dtype if args.backbone_lora else None,
             "lora_param_dtype": args.lora_param_dtype if args.backbone_lora else None,
+            "locon_param_dtype": args.locon_param_dtype if args.backbone_lora else None,
             "activation_dtype": args.activation_dtype if args.backbone_lora else None,
             "base_compute_dtype": args.base_compute_dtype if args.backbone_lora else None,
             "lora_compute_dtype": lora_compute_dtype if args.backbone_lora else None,

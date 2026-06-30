@@ -39,7 +39,7 @@ def _positive_int_or_none(value: str) -> int | None:
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--backend", choices=("jax", "torch"), required=True)
-    parser.add_argument("--precision", choices=("default", "nvfp8"), required=True)
+    parser.add_argument("--precision", choices=("default", "bf16", "nvfp8", "nvfp4"), required=True)
     parser.add_argument("--adapter-strategy", choices=("lora", "lora+locon"), required=True)
     parser.add_argument("--output-root", type=Path, required=True)
     parser.add_argument("--run-name", default=None)
@@ -47,6 +47,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--fasta-path", type=Path, default=DEFAULT_FASTA)
     parser.add_argument("--jax-checkpoint", type=Path, default=DEFAULT_JAX_CHECKPOINT)
     parser.add_argument("--torch-weights", type=Path, default=DEFAULT_TORCH_WEIGHTS)
+    parser.add_argument("--target-cache-dir", type=Path, default=None)
+    parser.add_argument("--target-cache-dtype", choices=("float16", "float32"), default="float16")
     parser.add_argument("--limit-train", type=_positive_int_or_none, default=None)
     parser.add_argument("--limit-valid", type=_positive_int_or_none, default=None)
     parser.add_argument("--limit-test", type=_positive_int_or_none, default=None)
@@ -255,8 +257,12 @@ def _command(args: argparse.Namespace, run_dir: Path, run_name: str) -> list[str
         str(args.target_workers),
         "--window-workers",
         str(args.window_workers),
+        "--target-cache-dtype",
+        args.target_cache_dtype,
         "--no-shuffle",
     ]
+    if args.target_cache_dir is not None:
+        cmd.extend(["--target-cache-dir", str(args.target_cache_dir)])
     if args.limit_train is not None:
         cmd.extend(["--limit-train", str(args.limit_train)])
     if args.limit_valid is not None:
@@ -270,6 +276,8 @@ def _command(args: argparse.Namespace, run_dir: Path, run_name: str) -> list[str
     else:
         cmd.extend(
             [
+                "--torch-python",
+                str(Path.home() / "venv" / "torchfix" / "bin" / "python"),
                 "--lora-targets",
                 "q_proj,v_proj",
                 "--torch-output-dir",

@@ -20,7 +20,7 @@ export XLA_PYTHON_CLIENT_PREALLOCATE=false
 export TF_GPU_ALLOCATOR=cuda_malloc_async
 
 : "${AG_BACKEND:?Set AG_BACKEND=jax or torch}"
-: "${AG_PRECISION:?Set AG_PRECISION=default or nvfp8}"
+: "${AG_PRECISION:?Set AG_PRECISION=default, bf16, nvfp8, or nvfp4}"
 : "${AG_ADAPTER_STRATEGY:?Set AG_ADAPTER_STRATEGY=lora or lora+locon}"
 : "${AG_OUTPUT_ROOT:=/gpfs/commons/home/daknowles/projects/alphagenome_fp4/outputs/precision_adapter_compare}"
 
@@ -48,6 +48,8 @@ python scripts/run_precision_adapter_cell.py \
   --best-metric-mode "${BEST_METRIC_MODE:-max}" \
   --early-stopping-patience "${EARLY_STOPPING_PATIENCE:-3}" \
   --early-stopping-min-delta "${EARLY_STOPPING_MIN_DELTA:-0.0}" \
+  ${TARGET_CACHE_DIR:+--target-cache-dir "$TARGET_CACHE_DIR"} \
+  --target-cache-dtype "${TARGET_CACHE_DTYPE:-float16}" \
   ${MAX_TRAIN_STEPS:+--max-train-steps "$MAX_TRAIN_STEPS"} \
   ${LIMIT_TRAIN:+--limit-train "$LIMIT_TRAIN"} \
   ${LIMIT_VALID:+--limit-valid "$LIMIT_VALID"} \
