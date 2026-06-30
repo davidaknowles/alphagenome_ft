@@ -23,6 +23,23 @@ Torch was run on RTX PRO 6000 Blackwell nodes using `~/venv/torchfix` with PyTor
 
 Primary accuracy metric is `differential_pearson_r`: subtract cell-type mean, then locus/bin mean, then compute Pearson correlation over the residualized predictions and targets. The loss values are included for provenance but are not the primary comparison, and are not directly comparable across the JAX and Torch implementations because the output scaling/loss conventions differ.
 
+## Strategy Descriptions
+
+| Strategy | Description |
+|---|---|
+| `default` | No additional quantization or dtype conversion beyond the backend's normal merged-checkpoint evaluation path. |
+| `bf16_params` | Evaluate with eligible floating-point parameters cast to `bfloat16`. In Torch, `Converted = -1` is a sentinel for whole-model dtype conversion rather than a layer count. |
+| `fp8_linear_conservative` | JAX: simulated FP8 roundtrip for large non-sensitive linear weights only. Torch: TorchAO FP8 conversion for eligible linear modules, skipping heads, norms, adapters, LoRA, and LoCon. |
+| `fp8_linear_aggressive` | JAX: simulated FP8 roundtrip for all non-sensitive linear weights. Torch: same TorchAO FP8 conversion policy as `fp8_linear_conservative`; the suffix was retained for naming parity but does not change Torch layer selection. |
+| `fp8_1x1conv` | JAX only. Simulated FP8 roundtrip for non-sensitive linear weights plus 1x1 convolution weights. |
+| `fp8_late_conv` | JAX only. Simulated FP8 roundtrip for non-sensitive linear weights plus wider convolution weights in late downsampling blocks 4 and 5. |
+| `nf4_linear_conservative` | JAX: simulated NF4 block quantize/dequantize roundtrip for large non-sensitive linear weights only. Torch: simulated NF4 roundtrip for eligible linear modules, skipping heads, norms, embeddings, adapters, LoRA, and LoCon. |
+| `nf4_linear_aggressive` | JAX: simulated NF4 roundtrip for all non-sensitive linear weights. Torch: same eligible-linear NF4 policy as `nf4_linear_conservative`; the suffix was retained for naming parity but does not change Torch layer selection. |
+| `nf4_1x1conv` | Simulated NF4 roundtrip for eligible linear weights plus 1x1 convolution weights. |
+| `nf4_late_conv` | Simulated NF4 roundtrip for eligible linear weights plus wider convolution weights in late downsampling blocks 4 and 5. |
+| `nf4_all_conv` | Simulated NF4 roundtrip for eligible linear, 1x1 convolution, and wider convolution weights, excluding sensitive/stem convolution paths. |
+| `nvfp4_weight_only` | Torch only. TorchAO NVFP4 weight-only conversion for frozen eligible linear modules, skipping heads, norms, adapters, LoRA, and LoCon. This uses compact TorchAO weight storage rather than only simulating quantize/dequantize. |
+
 ## Results
 
 JAX used batch size 8 and Torch used batch size 1. `Examples/s` is therefore the relevant cross-backend throughput column; `Batches/s` is retained only for reproducibility.
