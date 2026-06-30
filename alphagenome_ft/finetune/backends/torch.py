@@ -54,9 +54,14 @@ class TorchBackendConfig:
     fp8_recipe: str
     fp8_min_feature_multiple: int
     fp8_skip_name_patterns: str
+    fp8_include_name_patterns: str
     fp4_min_feature_multiple: int
     fp4_mode: str
     fp4_skip_name_patterns: str
+    fp4_include_name_patterns: str
+    nf4_min_feature_multiple: int
+    nf4_skip_name_patterns: str
+    nf4_include_name_patterns: str
     gradient_checkpointing: bool
     track_means_samples: int | None
     num_workers: int
@@ -152,12 +157,22 @@ class TorchSubprocessBackend:
             str(cfg.fp8_min_feature_multiple),
             "--fp8-skip-name-patterns",
             cfg.fp8_skip_name_patterns,
+            "--fp8-include-name-patterns",
+            cfg.fp8_include_name_patterns,
             "--fp4-min-feature-multiple",
             str(cfg.fp4_min_feature_multiple),
             "--fp4-mode",
             cfg.fp4_mode,
             "--fp4-skip-name-patterns",
             cfg.fp4_skip_name_patterns,
+            "--fp4-include-name-patterns",
+            cfg.fp4_include_name_patterns,
+            "--nf4-min-feature-multiple",
+            str(cfg.nf4_min_feature_multiple),
+            "--nf4-skip-name-patterns",
+            cfg.nf4_skip_name_patterns,
+            "--nf4-include-name-patterns",
+            cfg.nf4_include_name_patterns,
             "--num-workers",
             str(cfg.num_workers),
             "--max-io-workers",

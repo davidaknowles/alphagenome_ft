@@ -189,7 +189,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--precision",
-        choices=("default", "bf16", "nvfp8", "nvfp4"),
+        choices=("default", "bf16", "nvfp8", "nvfp4", "nvfp8_linear", "nf4_linear"),
         default="default",
         help="Backend-neutral precision preset. Explicit backend flags still override this.",
     )
@@ -305,6 +305,7 @@ def parse_args() -> argparse.Namespace:
             "float16-params",
             "nvfp8",
             "nvfp4",
+            "nf4",
         ),
         default=None,
         help="PyTorch precision preset. Defaults are inferred from --fp4-lora/--fp8-lora.",
@@ -328,6 +329,7 @@ def parse_args() -> argparse.Namespace:
         "--torch-fp8-skip-name-patterns",
         default="heads,original_layer,lora_,locon_,ia3,adapter",
     )
+    torch_group.add_argument("--torch-fp8-include-name-patterns", default="")
     torch_group.add_argument("--torch-fp4-min-feature-multiple", type=int, default=16)
     torch_group.add_argument(
         "--torch-fp4-mode",
@@ -338,6 +340,13 @@ def parse_args() -> argparse.Namespace:
         "--torch-fp4-skip-name-patterns",
         default="heads,lora_,locon_,ia3,adapter",
     )
+    torch_group.add_argument("--torch-fp4-include-name-patterns", default="")
+    torch_group.add_argument("--torch-nf4-min-feature-multiple", type=int, default=16)
+    torch_group.add_argument(
+        "--torch-nf4-skip-name-patterns",
+        default="heads,original_layer,lora_,locon_,ia3,adapter",
+    )
+    torch_group.add_argument("--torch-nf4-include-name-patterns", default="")
     torch_group.add_argument("--torch-gradient-checkpointing", action="store_true")
     torch_group.add_argument("--torch-track-means-samples", type=_positive_int_or_none, default=None)
     torch_group.add_argument("--torch-num-workers", type=int, default=4)
@@ -351,10 +360,12 @@ def parse_args() -> argparse.Namespace:
 def _infer_torch_dtype(args: argparse.Namespace) -> str:
     if args.torch_dtype is not None:
         return args.torch_dtype
-    if args.precision == "nvfp8":
+    if args.precision in {"nvfp8", "nvfp8_linear"}:
         return "nvfp8"
     if args.precision == "nvfp4":
         return "nvfp4"
+    if args.precision == "nf4_linear":
+        return "nf4"
     if args.precision == "bf16":
         return "bfloat16"
     lowp_tokens = {
@@ -381,7 +392,7 @@ def _infer_torch_mode(args: argparse.Namespace) -> str:
 
 
 def _apply_precision_preset(args: argparse.Namespace) -> None:
-    if args.precision == "nvfp8":
+    if args.precision in {"nvfp8", "nvfp8_linear"}:
         if args.fp4_lora:
             args.fp4_lora = False
         if args.base_param_dtype == "float32":
@@ -392,6 +403,8 @@ def _apply_precision_preset(args: argparse.Namespace) -> None:
             args.locon_param_dtype = "bfloat16"
         if args.lora_compute_dtype is None:
             args.lora_compute_dtype = "bfloat16"
+        if args.precision == "nvfp8_linear" and not args.torch_fp8_include_name_patterns:
+            args.torch_fp8_include_name_patterns = "tower"
     elif args.precision == "nvfp4":
         if args.fp8_lora:
             args.fp8_lora = False
@@ -403,6 +416,17 @@ def _apply_precision_preset(args: argparse.Namespace) -> None:
             args.locon_param_dtype = "bfloat16"
         if args.lora_compute_dtype is None:
             args.lora_compute_dtype = "bfloat16"
+    elif args.precision == "nf4_linear":
+        if args.base_param_dtype == "float32":
+            args.base_param_dtype = "bfloat16"
+        if args.lora_param_dtype == "float32":
+            args.lora_param_dtype = "bfloat16"
+        if args.locon_param_dtype == "float32":
+            args.locon_param_dtype = "bfloat16"
+        if args.lora_compute_dtype is None:
+            args.lora_compute_dtype = "bfloat16"
+        if not args.torch_nf4_include_name_patterns:
+            args.torch_nf4_include_name_patterns = "tower"
     elif args.precision == "bf16":
         if args.base_param_dtype == "float32":
             args.base_param_dtype = "bfloat16"
@@ -415,6 +439,11 @@ def _apply_precision_preset(args: argparse.Namespace) -> None:
 def main() -> None:
     args = parse_args()
     _apply_precision_preset(args)
+    if args.backend == "jax" and args.precision in {"nvfp8_linear", "nf4_linear"}:
+        raise ValueError(
+            f"JAX precision preset {args.precision!r} is not implemented as a real "
+            "transformer-linears-only quantized path. Use the torch backend for this preset."
+        )
 
     bigwig_dir = args.bigwig_dir.expanduser().resolve()
     fasta_path = args.fasta_path.expanduser().resolve()
@@ -535,9 +564,14 @@ def main() -> None:
                 fp8_recipe=args.torch_fp8_recipe,
                 fp8_min_feature_multiple=args.torch_fp8_min_feature_multiple,
                 fp8_skip_name_patterns=args.torch_fp8_skip_name_patterns,
+                fp8_include_name_patterns=args.torch_fp8_include_name_patterns,
                 fp4_min_feature_multiple=args.torch_fp4_min_feature_multiple,
                 fp4_mode=args.torch_fp4_mode,
                 fp4_skip_name_patterns=args.torch_fp4_skip_name_patterns,
+                fp4_include_name_patterns=args.torch_fp4_include_name_patterns,
+                nf4_min_feature_multiple=args.torch_nf4_min_feature_multiple,
+                nf4_skip_name_patterns=args.torch_nf4_skip_name_patterns,
+                nf4_include_name_patterns=args.torch_nf4_include_name_patterns,
                 gradient_checkpointing=args.torch_gradient_checkpointing,
                 track_means_samples=args.torch_track_means_samples,
                 num_workers=args.torch_num_workers,
@@ -567,6 +601,9 @@ def main() -> None:
                     ("locon_param_dtype", metadata_value(args.locon_param_dtype)),
                     ("lora_compute_dtype", metadata_value(args.lora_compute_dtype)),
                     ("activation_dtype", metadata_value(args.activation_dtype)),
+                    ("torch_dtype", metadata_value(_infer_torch_dtype(args))),
+                    ("torch_fp8_include_name_patterns", metadata_value(args.torch_fp8_include_name_patterns)),
+                    ("torch_nf4_include_name_patterns", metadata_value(args.torch_nf4_include_name_patterns)),
                     ("bigwig_dir", str(bigwig_dir)),
                     ("num_bigwigs", metadata_value(len(bigwigs))),
                     ("split_source", args.split_source),

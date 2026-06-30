@@ -39,7 +39,11 @@ def _positive_int_or_none(value: str) -> int | None:
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--backend", choices=("jax", "torch"), required=True)
-    parser.add_argument("--precision", choices=("default", "bf16", "nvfp8", "nvfp4"), required=True)
+    parser.add_argument(
+        "--precision",
+        choices=("default", "bf16", "nvfp8", "nvfp4", "nvfp8_linear", "nf4_linear"),
+        required=True,
+    )
     parser.add_argument("--adapter-strategy", choices=("lora", "lora+locon"), required=True)
     parser.add_argument("--output-root", type=Path, required=True)
     parser.add_argument("--run-name", default=None)
@@ -323,6 +327,9 @@ def _probe_args(args: argparse.Namespace, batch_size: int) -> argparse.Namespace
     probe.limit_train = max(batch_size, 1)
     probe.limit_valid = 1
     probe.limit_test = 1
+    # Probe intervals intentionally differ from the full run, so an exact
+    # target-cache manifest cannot match them.
+    probe.target_cache_dir = None
     probe.num_epochs = 1
     probe.max_train_steps = 1 if probe.backend == "jax" else None
     probe.wandb_project = None
