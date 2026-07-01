@@ -170,7 +170,12 @@ if triton is not None:
             chan_idx = offs_k // kernel_width
             kernel_idx = offs_k - chan_idx * kernel_width
             input_pos = pos_idx[:, None] + kernel_idx[None, :] - pad_left
-            x_offsets = batch_idx[:, None] * in_channels * length + chan_idx[None, :] * length + input_pos
+            # Long 131k windows at larger batch sizes exceed int32 offsets.
+            x_offsets = (
+                batch_idx[:, None].to(tl.int64) * in_channels * length
+                + chan_idx[None, :].to(tl.int64) * length
+                + input_pos.to(tl.int64)
+            )
             x_mask = (
                 (offs_m[:, None] < total_positions)
                 & (offs_k[None, :] < in_channels * kernel_width)
@@ -188,7 +193,11 @@ if triton is not None:
         if has_bias:
             bias = tl.load(bias_ptr + offs_n, mask=offs_n < out_channels, other=0.0).to(tl.float32)
             acc += bias[None, :]
-        out_offsets = batch_idx[:, None] * out_channels * length + offs_n[None, :] * length + pos_idx[:, None]
+        out_offsets = (
+            batch_idx[:, None].to(tl.int64) * out_channels * length
+            + offs_n[None, :].to(tl.int64) * length
+            + pos_idx[:, None].to(tl.int64)
+        )
         out_mask = (offs_m[:, None] < total_positions) & (offs_n[None, :] < out_channels)
         tl.store(out_ptr + out_offsets, acc, mask=out_mask)
 
@@ -228,7 +237,12 @@ if triton is not None:
             chan_idx = offs_k // kernel_width
             kernel_idx = offs_k - chan_idx * kernel_width
             input_pos = pos_idx[:, None] + kernel_idx[None, :] - pad_left
-            x_offsets = batch_idx[:, None] * in_channels * length + chan_idx[None, :] * length + input_pos
+            # Long 131k windows at larger batch sizes exceed int32 offsets.
+            x_offsets = (
+                batch_idx[:, None].to(tl.int64) * in_channels * length
+                + chan_idx[None, :].to(tl.int64) * length
+                + input_pos.to(tl.int64)
+            )
             x_mask = (
                 (offs_m[:, None] < total_positions)
                 & (offs_k[None, :] < in_channels * kernel_width)
@@ -250,7 +264,11 @@ if triton is not None:
         if has_bias:
             bias = tl.load(bias_ptr + offs_n, mask=offs_n < out_channels, other=0.0).to(tl.float32)
             acc += bias[None, :]
-        out_offsets = batch_idx[:, None] * out_channels * length + offs_n[None, :] * length + pos_idx[:, None]
+        out_offsets = (
+            batch_idx[:, None].to(tl.int64) * out_channels * length
+            + offs_n[None, :].to(tl.int64) * length
+            + pos_idx[:, None].to(tl.int64)
+        )
         out_mask = (offs_m[:, None] < total_positions) & (offs_n[None, :] < out_channels)
         tl.store(out_ptr + out_offsets, acc, mask=out_mask)
 

@@ -124,14 +124,16 @@ Batch 20 full test root: `outputs/quant_ablation/20260701_134238_triton_conv1d_b
 
 Batch 20 confirms the custom Triton kernels preserve the full-test metric. Quantizing all wider convs cuts actual device memory from `36.5 GiB` to `25.7 GiB`, but throughput falls from `13.29` to `9.35 examples/s` for the best Triton all-conv variant.
 
-Batch 32 full test root: `outputs/quant_ablation/20260701_135127_triton_conv1d_batch32_fulltest`
+An initial batch-32 run showed a metric collapse. Debugging found the cause: Triton pointer offsets for the long 131k activations were overflowing 32-bit integer range once `batch * channels * length` exceeded `2^31`. The kernel now computes activation and output pointer offsets in int64.
+
+Patched batch 32 full test root: `outputs/quant_ablation/20260701_143654_triton_int64_offsets_batch32_fulltest`
 
 | strategy | examples/s | nvidia-smi max MiB | torch alloc MiB | diff Pearson | status |
 |---|---:|---:|---:|---:|---|
-| triton_int8_weight_only_conv1d_stdconv_effective | 9.24 | 43609 | 27880 | 0.4348 | invalid metric |
-| triton_int8_dynamic_conv1d_stdconv_effective | 8.59 | 43609 | 27880 | 0.4348 | invalid metric |
+| triton_int8_weight_only_conv1d_stdconv_effective | 8.93 | 43609 | 27880 | 0.8101 | valid, slower |
+| triton_int8_dynamic_conv1d_stdconv_effective | 8.13 | 43609 | 27880 | 0.8101 | valid, slower |
 
-Batch 32 stays within the `<=48 GiB` actual-memory target for the all-conv Triton kernels, but the metric collapses. A threshold smoke (`outputs/quant_ablation/20260701_135617_triton_batch_threshold_smoke`) showed the all-conv Triton path is metric-stable for batch sizes 16 and 20, then degrades at batch 24 and above. Standalone layer checks at batch 32 have low relative error, so this appears to be a model-level interaction that still needs debugging before batch 32 can be trusted.
+Batch 32 stays within the `<=48 GiB` actual-memory target for the all-conv Triton kernels after the int64-offset fix, but larger physical batch does not recover throughput. The weight-only Triton all-conv path is still slower at batch 32 than at batch 20, and both are slower than the bf16 standardized-conv materialized baseline.
 
 ## Takeaways
 
@@ -139,5 +141,5 @@ Batch 32 stays within the `<=48 GiB` actual-memory target for the all-conv Trito
 - Pointwise Conv1d(k=1) quantization converts 10 additional modules. Wider Conv1d kernels still need a real quantized Conv1d backend or model rewrite; unfolding them into Linear would likely trade weight memory for much larger activations.
 - For the best measured throughput under the `<=48 GiB` target, use `bf16_params_stdconv_effective` at physical batch 20.
 - Use the NVFP4/NF4 `_stdconv_effective` variants only if the small torch-allocation reduction is worth the lower throughput and slightly lower differential Pearson.
-- Use `triton_int8_weight_only_conv1d_stdconv_effective` at batch 20 only when actual device memory is more important than throughput; it is the best wider-conv memory reducer tested here, not the fastest path.
-- Do not use the all-conv Triton variants at batch 24 or higher until the batch-size-dependent metric collapse is fixed.
+- Use `triton_int8_weight_only_conv1d_stdconv_effective` when actual device memory is more important than throughput; it is the best wider-conv memory reducer tested here, not the fastest path.
+- The all-conv Triton kernels are now metric-stable at batch 32 after the int64 pointer-offset fix, but batch 32 remains slower than batch 20.
