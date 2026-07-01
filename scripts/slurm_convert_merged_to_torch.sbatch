@@ -12,15 +12,13 @@ set -euo pipefail
 
 ROOT="${ROOT:-/gpfs/commons/home/daknowles/projects/alphagenome_fp4}"
 TORCH_REPO="${TORCH_REPO:-/gpfs/commons/home/daknowles/projects/alphagenome-pytorch}"
-PYTHON="${PYTHON:-$HOME/venv/torch/bin/python}"
+PYTHON="${PYTHON:-$HOME/venv/torchfix/bin/python}"
 JAX_CHECKPOINT="${JAX_CHECKPOINT:?Set JAX_CHECKPOINT to merged_jax/checkpoint.}"
 TORCH_WEIGHTS="${TORCH_WEIGHTS:?Set TORCH_WEIGHTS to output .pth path.}"
 BASE_TORCH_WEIGHTS="${BASE_TORCH_WEIGHTS:-${TORCH_WEIGHTS%.pth}.base.safetensors}"
 BIGWIG_DIR="${BIGWIG_DIR:-/gpfs/commons/home/daknowles/knowles_lab/data/multiome/humanbraindev/bigwigs}"
 HEAD_ID="${HEAD_ID:-humanbraindev_atac}"
 ASSAY_TYPE="${ASSAY_TYPE:-atac}"
-
-export PYTHONPATH="$HOME/venv/jax/lib/python3.12/site-packages:${PYTHONPATH:-}"
 
 mkdir -p "$(dirname "$TORCH_WEIGHTS")" "$ROOT/logs/quant_ablation"
 cd "$TORCH_REPO"

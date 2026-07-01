@@ -1,12 +1,11 @@
 #!/usr/bin/env python
-"""Evaluate merged AlphaGenome checkpoints under eval-only quantization policies."""
+"""Evaluate merged AlphaGenome checkpoints under implemented quantized inference paths."""
 
 from __future__ import annotations
 
 import argparse
 import csv
 import json
-import math
 import os
 from pathlib import Path
 import subprocess
@@ -52,27 +51,14 @@ DEFAULT_BIGWIG_DIR = Path(
 DEFAULT_FASTA = Path("/gpfs/commons/home/daknowles/knowles_lab/index/hg38/hg38.fa")
 DEFAULT_MERGED = Path("outputs/quant_ablation/merged_jax_default_lora_locon")
 
-NF4_CODEBOOK = jnp.asarray(
-    [
-        -1.0,
-        -0.6961928009986877,
-        -0.5250730514526367,
-        -0.39491748809814453,
-        -0.28444138169288635,
-        -0.18477343022823334,
-        -0.09105003625154495,
-        0.0,
-        0.07958029955625534,
-        0.16093020141124725,
-        0.24611230194568634,
-        0.33791524171829224,
-        0.44070982933044434,
-        0.5626170039176941,
-        0.7229568362236023,
-        1.0,
-    ],
-    dtype=jnp.float32,
-)
+TORCH_TRUE_QUANT_STRATEGIES: dict[str, dict[str, Any]] = {
+    "torchao_float8_linear": {"kind": "float8", "include": ()},
+    "torchao_float8_tower_linear": {"kind": "float8", "include": ("tower",)},
+    "torchao_nvfp4_weight_only_linear": {"kind": "nvfp4", "include": ()},
+    "torchao_nvfp4_weight_only_tower_linear": {"kind": "nvfp4", "include": ("tower",)},
+    "bnb_nf4_weight_only_linear": {"kind": "bnb_nf4", "include": ()},
+    "bnb_nf4_weight_only_tower_linear": {"kind": "bnb_nf4", "include": ("tower",)},
+}
 
 
 def _json_dump(path: Path, payload: Mapping[str, Any]) -> None:
@@ -107,79 +93,14 @@ def _path_is_sensitive(path: str) -> bool:
     return any(token in lowered for token in sensitive_tokens)
 
 
-def _path_is_stem(path: str) -> bool:
-    lowered = path.lower()
-    return "conv1" in lowered or "dna_embedder" in lowered or "sequence_encoder/conv" in lowered
-
-
-def _path_is_late_conv(path: str) -> bool:
-    lowered = path.lower().replace(".", "_")
-    return (
-        ("down_blocks_4" in lowered or "down_blocks_5" in lowered)
-        or ("down_res_block_4" in lowered or "down_res_block_5" in lowered)
-        or ("down_blocks/4" in lowered or "down_blocks/5" in lowered)
-    )
-
-
-def _classify_leaf(path: str, value: Any) -> str:
-    if not _is_float_array(value):
-        return "other"
-    if path.endswith("/w") and getattr(value, "ndim", 0) == 2:
-        return "linear"
-    if path.endswith("/w") and getattr(value, "ndim", 0) == 3:
-        width = int(value.shape[0])
-        return "conv1x1" if width == 1 else "conv"
-    return "other"
-
-
-def _policy_selects(path: str, value: Any, strategy: str) -> bool:
-    if _path_is_sensitive(path):
-        return False
-    kind = _classify_leaf(path, value)
-    if kind == "other":
-        return False
-    conservative = "conservative" in strategy
-    aggressive = "aggressive" in strategy
-    if "linear" in strategy:
-        return kind == "linear" and (aggressive or value.size >= 262_144)
-    if "1x1conv" in strategy:
-        return kind == "linear" or kind == "conv1x1"
-    if "late_conv" in strategy:
-        return kind == "linear" or (kind == "conv" and _path_is_late_conv(path))
-    if "all_conv" in strategy:
-        return kind in {"linear", "conv1x1", "conv"} and not _path_is_stem(path)
-    return False
-
-
-def _nf4_roundtrip(value, *, block_size: int = 64):
-    original_dtype = value.dtype
-    flat = value.astype(jnp.float32).reshape(-1)
-    if flat.size == 0:
-        return value
-    pad = (-flat.size) % block_size
-    if pad:
-        flat = jnp.pad(flat, (0, pad))
-    blocks = flat.reshape((-1, block_size))
-    scale = jnp.max(jnp.abs(blocks), axis=1, keepdims=True)
-    scale = jnp.maximum(scale, jnp.asarray(1e-8, dtype=jnp.float32))
-    normalized = jnp.clip(blocks / scale, -1.0, 1.0)
-    distances = jnp.abs(normalized[..., None] - NF4_CODEBOOK[None, None, :])
-    indices = jnp.argmin(distances, axis=-1)
-    dequant = NF4_CODEBOOK[indices] * scale
-    dequant = dequant.reshape(-1)[: value.size].reshape(value.shape)
-    return dequant.astype(original_dtype)
-
-
-def _fp8_roundtrip(value):
-    original_dtype = value.dtype
-    if not hasattr(jnp, "float8_e4m3fn"):
-        raise RuntimeError("This JAX build does not expose jnp.float8_e4m3fn.")
-    return value.astype(jnp.float8_e4m3fn).astype(original_dtype)
-
-
 def apply_jax_quant_policy(params, strategy: str, *, nf4_block_size: int = 64):
     if strategy == "default":
         return params, {"strategy": strategy, "converted": 0, "simulated_storage": False}
+    if strategy not in {"bf16_params"}:
+        raise ValueError(
+            f"Unsupported JAX strategy {strategy!r}. JAX NF4/FP8 ablations were "
+            "roundtrip simulations; use the torch backend for implemented true quantized paths."
+        )
     converted_paths: list[str] = []
 
     def convert(path_tuple, value):
@@ -189,14 +110,7 @@ def apply_jax_quant_policy(params, strategy: str, *, nf4_block_size: int = 64):
                 converted_paths.append(path)
                 return value.astype(jnp.bfloat16)
             return value
-        if not _policy_selects(path, value, strategy):
-            return value
-        converted_paths.append(path)
-        if strategy.startswith("nf4_"):
-            return _nf4_roundtrip(value, block_size=nf4_block_size)
-        if strategy.startswith("fp8_"):
-            return _fp8_roundtrip(value)
-        raise ValueError(f"Unknown quantization strategy: {strategy}")
+        return value
 
     converted = jax.tree_util.tree_map_with_path(convert, params)
     return converted, {
@@ -208,116 +122,70 @@ def apply_jax_quant_policy(params, strategy: str, *, nf4_block_size: int = 64):
     }
 
 
-def _torch_policy_selects(name: str, module: Any, strategy: str) -> bool:
-    import torch.nn as nn
-
-    lowered = name.lower()
-    if any(token in lowered for token in ("heads", "norm", "embedding", "adapter", "lora_", "locon_")):
-        return False
-    if isinstance(module, nn.Linear):
-        if "linear" in strategy:
-            return True
-        if "1x1conv" in strategy or "late_conv" in strategy or "all_conv" in strategy:
-            return True
-    if isinstance(module, nn.Conv1d):
-        kernel = int(module.kernel_size[0])
-        if "1x1conv" in strategy:
-            return kernel == 1
-        if "late_conv" in strategy:
-            return kernel > 1 and (
-                "down_blocks.4" in lowered
-                or "down_blocks.5" in lowered
-                or "down_res_block_4" in lowered
-                or "down_res_block_5" in lowered
-            )
-        if "all_conv" in strategy:
-            return kernel > 1 and "dna_embedder" not in lowered and "conv1" not in lowered
-    return False
-
-
-def _nf4_roundtrip_np(array: np.ndarray, *, block_size: int = 64) -> np.ndarray:
-    codebook = np.asarray(
-        [
-            -1.0,
-            -0.6961928009986877,
-            -0.5250730514526367,
-            -0.39491748809814453,
-            -0.28444138169288635,
-            -0.18477343022823334,
-            -0.09105003625154495,
-            0.0,
-            0.07958029955625534,
-            0.16093020141124725,
-            0.24611230194568634,
-            0.33791524171829224,
-            0.44070982933044434,
-            0.5626170039176941,
-            0.7229568362236023,
-            1.0,
-        ],
-        dtype=np.float32,
-    )
-    original_shape = array.shape
-    flat = array.astype(np.float32, copy=False).reshape(-1)
-    pad = (-flat.size) % block_size
-    if pad:
-        flat = np.pad(flat, (0, pad))
-    blocks = flat.reshape((-1, block_size))
-    scale = np.maximum(np.max(np.abs(blocks), axis=1, keepdims=True), 1e-8)
-    normalized = np.clip(blocks / scale, -1.0, 1.0)
-    indices = np.argmin(np.abs(normalized[..., None] - codebook[None, None, :]), axis=-1)
-    return (codebook[indices] * scale).reshape(-1)[: np.prod(original_shape)].reshape(original_shape)
-
-
 def apply_torch_quant_policy(model: Any, strategy: str, *, nf4_block_size: int = 64) -> dict[str, Any]:
     if strategy == "default":
         return {"strategy": strategy, "converted": 0, "simulated_storage": False}
-    converted: list[str] = []
     if strategy == "bf16_params":
         import torch
 
         model.to(dtype=torch.bfloat16)
         return {"strategy": strategy, "converted": -1, "simulated_storage": False}
-    if strategy.startswith("nf4_"):
-        import torch
+    if strategy not in TORCH_TRUE_QUANT_STRATEGIES:
+        raise ValueError(
+            f"Unsupported torch strategy {strategy!r}. Supported true quant strategies: "
+            f"{', '.join(sorted(TORCH_TRUE_QUANT_STRATEGIES))}."
+        )
 
-        with torch.no_grad():
-            for name, module in model.named_modules():
-                if not _torch_policy_selects(name, module, strategy):
-                    continue
-                weight = getattr(module, "weight", None)
-                if weight is None:
-                    continue
-                dequant = _nf4_roundtrip_np(weight.detach().float().cpu().numpy(), block_size=nf4_block_size)
-                weight.copy_(torch.as_tensor(dequant, device=weight.device, dtype=weight.dtype))
-                converted.append(f"{name}.weight")
-        return {
-            "strategy": strategy,
-            "converted": len(converted),
-            "converted_paths": converted[:200],
-            "converted_paths_truncated": len(converted) > 200,
-            "simulated_storage": True,
-        }
-    if strategy.startswith("fp8_"):
+    config = TORCH_TRUE_QUANT_STRATEGIES[strategy]
+    include_patterns = tuple(config["include"])
+    kind = str(config["kind"])
+    if kind == "float8":
         from alphagenome_pytorch.low_precision import convert_linears_to_float8_training
 
         stats = convert_linears_to_float8_training(
             model,
             recipe="tensorwise",
-            skip_name_patterns=("heads", "norm", "adapter", "lora_", "locon_"),
+            include_name_patterns=include_patterns,
         )
-        return {**stats.__dict__, "strategy": strategy, "simulated_storage": False}
-    if strategy == "nvfp4_weight_only":
+        return {
+            **stats.__dict__,
+            "strategy": strategy,
+            "converted": stats.converted_linears,
+            "simulated_storage": False,
+        }
+    if kind == "nvfp4":
         from alphagenome_pytorch.low_precision import convert_linears_to_nvfp4_weight_only
 
         for param in model.parameters():
             param.requires_grad_(False)
         stats = convert_linears_to_nvfp4_weight_only(
             model,
-            skip_name_patterns=("heads", "norm", "adapter", "lora_", "locon_"),
+            include_name_patterns=include_patterns,
         )
-        return {**stats.__dict__, "strategy": strategy, "simulated_storage": False}
-    raise ValueError(f"Unsupported torch strategy: {strategy}")
+        return {
+            **stats.__dict__,
+            "strategy": strategy,
+            "converted": stats.converted_linears,
+            "simulated_storage": False,
+        }
+    if kind == "bnb_nf4":
+        import torch
+        from alphagenome_pytorch.low_precision import convert_linears_to_bnb_nf4_weight_only
+
+        for param in model.parameters():
+            param.requires_grad_(False)
+        stats = convert_linears_to_bnb_nf4_weight_only(
+            model,
+            compute_dtype=torch.bfloat16,
+            include_name_patterns=include_patterns,
+        )
+        return {
+            **stats.__dict__,
+            "strategy": strategy,
+            "converted": stats.converted_linears,
+            "simulated_storage": False,
+        }
+    raise AssertionError(f"Unhandled strategy config: {strategy}")
 
 
 class GpuSampler:
@@ -505,6 +373,7 @@ def evaluate_jax(args: argparse.Namespace) -> dict[str, Any]:
 
     split_results: dict[str, Any] = {}
     total_batches = 0
+    total_examples = 0
     start_time = time.perf_counter()
     with model._device_context:
         for split in args.splits.split(","):
@@ -514,7 +383,9 @@ def evaluate_jax(args: argparse.Namespace) -> dict[str, Any]:
             losses = {head: [] for head in head_names}
             stats_by_head: dict[str, dict[str, Any] | None] = {head: None for head in head_names}
             batches = 0
+            examples = 0
             for batch_np in data_module.iter_batches(split, shuffle=False):
+                batch_examples = int(batch_np["sequences"].shape[0])
                 batch = prepare_batch(batch_np, organism_index_value, head_names)
                 batch["strand_reindexing"] = strand_reindexing
                 head_losses, head_stats = eval_step(model._params, model._state, batch)
@@ -523,6 +394,8 @@ def evaluate_jax(args: argparse.Namespace) -> dict[str, Any]:
                     stats_by_head[head_name] = _add_stats(stats_by_head[head_name], head_stats[head_name])
                 batches += 1
                 total_batches += 1
+                examples += batch_examples
+                total_examples += batch_examples
                 if args.max_batches and batches >= args.max_batches:
                     break
             split_results[split] = {}
@@ -530,6 +403,7 @@ def evaluate_jax(args: argparse.Namespace) -> dict[str, Any]:
                 metrics = {
                     "loss": float(np.mean(losses[head_name])) if losses[head_name] else float("nan"),
                     "batches": batches,
+                    "examples": examples,
                 }
                 if stats_by_head[head_name] is not None:
                     metrics.update(_finalize_r2_stats(stats_by_head[head_name]))
@@ -542,8 +416,11 @@ def evaluate_jax(args: argparse.Namespace) -> dict[str, Any]:
         "splits": split_results,
         "quantization": quant_stats,
         "elapsed_sec": elapsed,
+        "batch_size": args.batch_size,
         "batches": total_batches,
         "batches_per_sec": total_batches / elapsed if elapsed > 0 else None,
+        "examples": total_examples,
+        "examples_per_sec": total_examples / elapsed if elapsed > 0 else None,
     }
 
 
@@ -569,7 +446,7 @@ def evaluate_torch(args: argparse.Namespace) -> dict[str, Any]:
     head_name = head_names[0]
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     dtype_policy = DtypePolicy.full_float32()
-    if args.strategy == "bf16_params":
+    if args.strategy == "bf16_params" or args.strategy in TORCH_TRUE_QUANT_STRATEGIES:
         dtype_policy = DtypePolicy.aggressive_bfloat16()
     weights_path = args.torch_weights.expanduser().resolve()
     if weights_path.suffix in {".pt", ".pth"}:
@@ -606,9 +483,13 @@ def evaluate_torch(args: argparse.Namespace) -> dict[str, Any]:
         )
     model.eval()
     quant_stats = apply_torch_quant_policy(model, args.strategy, nf4_block_size=args.nf4_block_size)
+    if device.type == "cuda":
+        torch.cuda.synchronize(device)
+        torch.cuda.reset_peak_memory_stats(device)
 
     split_results: dict[str, Any] = {}
     total_batches = 0
+    total_examples = 0
     start_time = time.perf_counter()
     with torch.no_grad():
         for split in args.splits.split(","):
@@ -619,8 +500,10 @@ def evaluate_torch(args: argparse.Namespace) -> dict[str, Any]:
             targets: list[np.ndarray] = []
             losses: list[float] = []
             batches = 0
+            examples = 0
             for batch_np in data_module.iter_batches(split, shuffle=False):
                 seq = torch.as_tensor(batch_np["sequences"], device=device, dtype=torch.float32)
+                batch_examples = int(seq.shape[0])
                 org = torch.zeros((seq.shape[0],), device=device, dtype=torch.long)
                 target_np = _maybe_bin_128bp_np(np.asarray(batch_np[f"targets_{head_name}"], dtype=np.float32))
                 target = torch.as_tensor(target_np, device=device, dtype=torch.float32)
@@ -638,6 +521,8 @@ def evaluate_torch(args: argparse.Namespace) -> dict[str, Any]:
                 targets.append(target.detach().cpu().numpy())
                 batches += 1
                 total_batches += 1
+                examples += batch_examples
+                total_examples += batch_examples
                 if args.max_batches and batches >= args.max_batches:
                     break
             if preds:
@@ -646,17 +531,27 @@ def evaluate_torch(args: argparse.Namespace) -> dict[str, Any]:
                 metrics = r2_metrics(pred_all, target_all)
                 metrics["loss"] = float(np.mean(losses))
                 metrics["batches"] = batches
+                metrics["examples"] = examples
             else:
                 metrics = {
                     "loss": float("nan"),
                     "batches": 0,
+                    "examples": 0,
                     "r2_global": float("nan"),
                     "r2_over_loci": float("nan"),
                     "r2_over_cell_types": float("nan"),
                     "differential_pearson_r": float("nan"),
                 }
             split_results[split] = {head_name: metrics}
+    if device.type == "cuda":
+        torch.cuda.synchronize(device)
     elapsed = time.perf_counter() - start_time
+    cuda_memory = None
+    if device.type == "cuda":
+        cuda_memory = {
+            "max_allocated_mib": torch.cuda.max_memory_allocated(device) / 1024**2,
+            "max_reserved_mib": torch.cuda.max_memory_reserved(device) / 1024**2,
+        }
     return {
         "backend": "torch",
         "strategy": args.strategy,
@@ -664,24 +559,47 @@ def evaluate_torch(args: argparse.Namespace) -> dict[str, Any]:
         "splits": split_results,
         "quantization": quant_stats,
         "elapsed_sec": elapsed,
+        "batch_size": args.batch_size,
         "batches": total_batches,
         "batches_per_sec": total_batches / elapsed if elapsed > 0 else None,
+        "examples": total_examples,
+        "examples_per_sec": total_examples / elapsed if elapsed > 0 else None,
+        "torch_cuda_memory": cuda_memory,
     }
 
 
 def write_markdown(path: Path, metrics: Mapping[str, Any]) -> None:
+    examples_per_sec = metrics.get("examples_per_sec")
+    examples_per_sec_text = (
+        f"{float(examples_per_sec):.4f}" if examples_per_sec is not None else "NA"
+    )
     lines = [
         f"# Quant ablation: {metrics['backend']} {metrics['strategy']}",
         "",
         f"- checkpoint: `{metrics['checkpoint']}`",
+        f"- batch_size: `{metrics.get('batch_size')}`",
         f"- elapsed_sec: `{metrics['elapsed_sec']:.2f}`",
+        f"- examples_per_sec: `{examples_per_sec_text}`",
         f"- batches: `{metrics['batches']}`",
+        f"- examples: `{metrics.get('examples')}`",
         f"- converted leaves: `{metrics['quantization'].get('converted')}`",
         f"- simulated storage: `{metrics['quantization'].get('simulated_storage')}`",
-        "",
-        "| split | head | loss | diff Pearson | r2_global | r2_over_loci | batches |",
-        "|---|---|---:|---:|---:|---:|---:|",
     ]
+    torch_cuda = metrics.get("torch_cuda_memory")
+    if isinstance(torch_cuda, dict):
+        lines.extend(
+            [
+                f"- torch max allocated MiB: `{torch_cuda.get('max_allocated_mib'):.0f}`",
+                f"- torch max reserved MiB: `{torch_cuda.get('max_reserved_mib'):.0f}`",
+            ]
+        )
+    lines.extend(
+        [
+            "",
+            "| split | head | loss | diff Pearson | r2_global | r2_over_loci | batches |",
+            "|---|---|---:|---:|---:|---:|---:|",
+        ]
+    )
     for split, heads in metrics["splits"].items():
         for head, values in heads.items():
             lines.append(

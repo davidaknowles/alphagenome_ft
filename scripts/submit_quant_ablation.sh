@@ -23,15 +23,6 @@ STRATEGY_FILE="$OUTPUT_ROOT/strategies.txt"
 cat > "$STRATEGY_FILE" <<'STRATEGIES'
 default
 bf16_params
-nf4_linear_conservative
-nf4_linear_aggressive
-nf4_1x1conv
-nf4_late_conv
-nf4_all_conv
-fp8_linear_conservative
-fp8_linear_aggressive
-fp8_1x1conv
-fp8_late_conv
 STRATEGIES
 
 N_STRATEGIES=$(grep -cve '^[[:space:]]*$' "$STRATEGY_FILE")
