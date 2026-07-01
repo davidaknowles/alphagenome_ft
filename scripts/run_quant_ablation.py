@@ -119,6 +119,18 @@ TORCH_TRUE_QUANT_STRATEGIES: dict[str, dict[str, Any]] = {
         "include": (),
         "bf16_params": True,
     },
+    "bf16_triton_conv_flexattn": {
+        "kind": "triton_int8_conv1d",
+        "include": (),
+        "bf16_params": True,
+        "attention_backend": "flex_mha",
+    },
+    "bf16_triton_conv_tritonattn": {
+        "kind": "triton_int8_conv1d",
+        "include": (),
+        "bf16_params": True,
+        "attention_backend": "triton_mha",
+    },
     "nvfp4_linear1x1_triton_conv": {
         "kind": "nvfp4_triton_int8_conv1d",
         "include": (),
@@ -179,6 +191,17 @@ def _load_local_torch_low_precision():
         raise ImportError(f"Could not load local low precision helpers from {module_path}")
     module = importlib.util.module_from_spec(spec)
     sys.modules.setdefault("_agft_torch_low_precision", module)
+    spec.loader.exec_module(module)
+    return module
+
+
+def _load_local_torch_attention_backends():
+    module_path = REPO_ROOT / "alphagenome_ft" / "torch_attention_backends.py"
+    spec = importlib.util.spec_from_file_location("_agft_torch_attention_backends", module_path)
+    if spec is None or spec.loader is None:
+        raise ImportError(f"Could not load local attention helpers from {module_path}")
+    module = importlib.util.module_from_spec(spec)
+    sys.modules.setdefault("_agft_torch_attention_backends", module)
     spec.loader.exec_module(module)
     return module
 
@@ -260,6 +283,13 @@ def apply_torch_quant_policy(model: Any, strategy: str, *, nf4_block_size: int =
         import torch
 
         model.to(dtype=torch.bfloat16)
+    attention_stats = {}
+    if config.get("attention_backend"):
+        attention_backends = _load_local_torch_attention_backends()
+        attention_stats = attention_backends.apply_attention_backend(
+            model,
+            str(config["attention_backend"]),
+        )
     pointwise_conv_stats = {}
     if config.get("pointwise_conv"):
         low_precision = _load_local_torch_low_precision()
@@ -349,6 +379,7 @@ def apply_torch_quant_policy(model: Any, strategy: str, *, nf4_block_size: int =
         )
         return {
             **stats,
+            **attention_stats,
             "strategy": strategy,
             "converted": stats["converted_triton_int8_conv1ds"],
             "bf16_params": bool(config.get("bf16_params", False)),
