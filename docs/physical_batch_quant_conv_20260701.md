@@ -73,9 +73,23 @@ Run root: `outputs/quant_ablation/20260701_115524_aggressive_all_1x1conv_batch20
 
 With the faster input path, the aggressive true-quant options are now measurably faster than `bf16_params` at the same physical batch size while staying under the `<=48 GiB` actual-device-memory target. In this checkpoint, the `all_linear` skip policy did not increase the converted module count beyond the existing linears plus eligible pointwise convs; the remaining skipped linears fail shape constraints, and the remaining skipped convs are not plain eligible `Conv1d(kernel_size=1)` modules.
 
+## Batch 20 Retest With Standardized Conv Materialization
+
+Run root: `outputs/quant_ablation/20260701_121806_stdconv_effective_batch20_test`
+
+The `_stdconv_effective` variants precompute the runtime-standardized weights for the 23 remaining `StandardizedConv1d` modules, then replace those modules with direct `EffectiveConv1d` modules for inference. This removes per-forward mean/variance/scale work without changing the conv math.
+
+| strategy | materialized std convs | converted linears/convs | examples/s | torch alloc MiB | nvidia-smi max MiB | diff Pearson |
+|---|---:|---:|---:|---:|---:|---:|
+| bf16_params_stdconv_effective | 23 | -1 | 13.47 | 31600 | 36507 | 0.8102 |
+| torchao_nvfp4_weight_only_all_linear_1x1conv_stdconv_effective | 23 | 119 | 13.29 | 31318 | 36597 | 0.8093 |
+| bnb_nf4_weight_only_all_linear_1x1conv_stdconv_effective | 23 | 119 | 13.22 | 31304 | 36521 | 0.8092 |
+
+Materializing standardized convs helped the bf16 baseline enough that it is now the fastest tested batch-20 path. The quantized variants still save a few hundred MiB of torch allocation, but they do not beat `bf16_params_stdconv_effective` on throughput in this run.
+
 ## Takeaways
 
 - Do not use forward microbatching for this goal; physical batch 20 gives strong throughput and stays below 48 GiB actual device memory for quantized/bf16 runs.
 - Pointwise Conv1d(k=1) quantization converts 10 additional modules. Wider Conv1d kernels still need a real quantized Conv1d backend or model rewrite; unfolding them into Linear would likely trade weight memory for much larger activations.
-- For the best speed/memory tradeoff from the retest, use `bnb_nf4_weight_only_all_linear_1x1conv` or `torchao_nvfp4_weight_only_all_linear_1x1conv` at physical batch 20.
-- If metric fidelity is prioritized over the small throughput edge, `torchao_float8_linear` at batch 20 is close in speed and has slightly better differential Pearson.
+- For the best measured throughput under the `<=48 GiB` target, use `bf16_params_stdconv_effective` at physical batch 20.
+- Use the NVFP4/NF4 `_stdconv_effective` variants only if the small torch-allocation reduction is worth the lower throughput and slightly lower differential Pearson.

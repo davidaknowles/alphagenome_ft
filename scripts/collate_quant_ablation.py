@@ -72,6 +72,7 @@ def main() -> None:
                         "examples": values.get("examples"),
                         "examples_per_sec": payload.get("examples_per_sec"),
                         "converted": quant.get("converted"),
+                        "stdconv_effective": quant.get("standardized_convs_materialized"),
                         "elapsed": payload.get("elapsed_sec"),
                         "avg_gpu": gpu.get("avg_util_pct"),
                         "max_mem": gpu.get("max_mem_mib"),
@@ -95,12 +96,12 @@ def main() -> None:
         "",
         f"Root: `{root}`",
         "",
-        "| backend | strategy | batch | split | loss | diff Pearson | r2_global | r2_loci | examples/s | examples | converted | sec | avg GPU % | nvidia-smi max MiB | torch max alloc MiB | torch max reserved MiB |",
-        "|---|---|---:|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
+        "| backend | strategy | batch | split | loss | diff Pearson | r2_global | r2_loci | examples/s | examples | converted | stdconv eff | sec | avg GPU % | nvidia-smi max MiB | torch max alloc MiB | torch max reserved MiB |",
+        "|---|---|---:|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
     ]
     for row in rows:
         lines.append(
-            "| {backend} | {strategy} | {batch_size} | {split} | {loss} | {diff} | {r2_global} | {r2_loci} | {examples_per_sec} | {examples} | {converted} | {elapsed} | {avg_gpu} | {max_mem} | {torch_max_alloc} | {torch_max_reserved} |".format(
+            "| {backend} | {strategy} | {batch_size} | {split} | {loss} | {diff} | {r2_global} | {r2_loci} | {examples_per_sec} | {examples} | {converted} | {stdconv_effective} | {elapsed} | {avg_gpu} | {max_mem} | {torch_max_alloc} | {torch_max_reserved} |".format(
                 backend=row["backend"],
                 strategy=row["strategy"],
                 batch_size=row["batch_size"],
@@ -112,6 +113,7 @@ def main() -> None:
                 examples_per_sec=_fmt(row["examples_per_sec"], 2),
                 examples=row["examples"],
                 converted=row["converted"],
+                stdconv_effective=row["stdconv_effective"],
                 elapsed=_fmt(row["elapsed"], 1),
                 avg_gpu=_fmt(row["avg_gpu"], 1),
                 max_mem=_fmt(row["max_mem"], 0),

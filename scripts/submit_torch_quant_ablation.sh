@@ -19,6 +19,7 @@ STRATEGY_FILE="$OUTPUT_ROOT/torch_strategies.txt"
 cat > "$STRATEGY_FILE" <<'STRATEGIES'
 default
 bf16_params
+bf16_params_stdconv_effective
 torchao_float8_tower_linear
 torchao_float8_linear
 torchao_float8_all_linear
@@ -29,11 +30,13 @@ torchao_nvfp4_weight_only_linear
 torchao_nvfp4_weight_only_all_linear
 torchao_nvfp4_weight_only_linear_1x1conv
 torchao_nvfp4_weight_only_all_linear_1x1conv
+torchao_nvfp4_weight_only_all_linear_1x1conv_stdconv_effective
 bnb_nf4_weight_only_tower_linear
 bnb_nf4_weight_only_linear
 bnb_nf4_weight_only_all_linear
 bnb_nf4_weight_only_linear_1x1conv
 bnb_nf4_weight_only_all_linear_1x1conv
+bnb_nf4_weight_only_all_linear_1x1conv_stdconv_effective
 STRATEGIES
 
 N_STRATEGIES=$(grep -cve '^[[:space:]]*$' "$STRATEGY_FILE")

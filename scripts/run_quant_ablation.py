@@ -80,6 +80,8 @@ TORCH_TRUE_QUANT_STRATEGIES: dict[str, dict[str, Any]] = {
     },
 }
 
+TORCH_STDCONV_EFFECTIVE_SUFFIX = "_stdconv_effective"
+
 
 def _json_dump(path: Path, payload: Mapping[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -106,6 +108,12 @@ def _load_local_torch_low_precision():
     sys.modules.setdefault("_agft_torch_low_precision", module)
     spec.loader.exec_module(module)
     return module
+
+
+def _split_torch_strategy(strategy: str) -> tuple[str, bool]:
+    if strategy.endswith(TORCH_STDCONV_EFFECTIVE_SUFFIX):
+        return strategy[: -len(TORCH_STDCONV_EFFECTIVE_SUFFIX)], True
+    return strategy, False
 
 
 def _path_is_sensitive(path: str) -> bool:
@@ -653,7 +661,11 @@ def evaluate_torch(args: argparse.Namespace) -> dict[str, Any]:
     from alphagenome_pytorch.model import AlphaGenome
     from alphagenome_pytorch.extensions.finetuning.heads import create_finetuning_head
     from alphagenome_pytorch.extensions.finetuning.transfer import add_head, remove_all_heads
-    from torch_effective_conv import jax_effective_paths_to_torch, materialize_effective_convs
+    from torch_effective_conv import (
+        jax_effective_paths_to_torch,
+        materialize_effective_convs,
+        materialize_standardized_convs,
+    )
 
     data_module = CachedTorchDataModule(
         target_cache_dir=args.target_cache_dir,
@@ -667,8 +679,9 @@ def evaluate_torch(args: argparse.Namespace) -> dict[str, Any]:
         raise ValueError(f"Torch eval currently expects one head, got {head_names}")
     head_name = head_names[0]
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    base_strategy, precompute_standardized_convs = _split_torch_strategy(args.strategy)
     dtype_policy = DtypePolicy.full_float32()
-    if args.strategy == "bf16_params" or args.strategy in TORCH_TRUE_QUANT_STRATEGIES:
+    if base_strategy == "bf16_params" or base_strategy in TORCH_TRUE_QUANT_STRATEGIES:
         dtype_policy = DtypePolicy.aggressive_bfloat16()
     weights_path = args.torch_weights.expanduser().resolve()
     if weights_path.suffix in {".pt", ".pth"}:
@@ -704,7 +717,22 @@ def evaluate_torch(args: argparse.Namespace) -> dict[str, Any]:
             device=device,
         )
     model.eval()
-    quant_stats = apply_torch_quant_policy(model, args.strategy, nf4_block_size=args.nf4_block_size)
+    standardized_conv_stats: dict[str, Any] = {
+        "standardized_convs_materialized": 0,
+        "standardized_conv_paths": [],
+    }
+    if precompute_standardized_convs:
+        materialized = materialize_standardized_convs(model)
+        standardized_conv_stats = {
+            "standardized_convs_materialized": len(materialized),
+            "standardized_conv_paths": list(materialized[:200]),
+            "standardized_conv_paths_truncated": len(materialized) > 200,
+        }
+    quant_stats = apply_torch_quant_policy(model, base_strategy, nf4_block_size=args.nf4_block_size)
+    quant_stats.update(standardized_conv_stats)
+    quant_stats["strategy"] = args.strategy
+    quant_stats["base_strategy"] = base_strategy
+    quant_stats["precompute_standardized_convs"] = precompute_standardized_convs
     if device.type == "cuda":
         torch.cuda.synchronize(device)
         torch.cuda.reset_peak_memory_stats(device)

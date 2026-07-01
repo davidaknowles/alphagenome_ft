@@ -95,3 +95,44 @@ def materialize_effective_convs(model: nn.Module, module_names: Sequence[str]) -
         _set_submodule(model, name, replacement)
         converted.append(name)
     return tuple(converted)
+
+
+def _standardized_weight(module: nn.Conv1d) -> torch.Tensor:
+    weight = module.weight
+    mean = weight.mean(dim=(1, 2), keepdim=True)
+    var = weight.var(dim=(1, 2), keepdim=True, unbiased=False)
+    fan_in = module.in_channels * module.kernel_size[0]
+    floor = torch.tensor(1e-4, device=weight.device, dtype=weight.dtype)
+    scale = torch.rsqrt(torch.maximum(var * fan_in, floor))
+    learned_scale = getattr(module, "scale", None)
+    if learned_scale is not None:
+        scale = scale * learned_scale
+    return (weight - mean) * scale
+
+
+def materialize_standardized_convs(model: nn.Module) -> tuple[str, ...]:
+    """Precompute StandardizedConv1d weights and replace them with direct convs."""
+    converted: list[str] = []
+    for name, module in list(model.named_modules()):
+        if name == "" or module.__class__.__name__ != "StandardizedConv1d":
+            continue
+        if not isinstance(module, nn.Conv1d):
+            continue
+        replacement = EffectiveConv1d(
+            module.in_channels,
+            module.out_channels,
+            module.kernel_size,
+            stride=module.stride,
+            padding=getattr(module, "pad_mode", "same"),
+            dilation=module.dilation,
+            groups=module.groups,
+            bias=module.bias is not None,
+        )
+        replacement.to(device=module.weight.device, dtype=module.weight.dtype)
+        with torch.no_grad():
+            replacement.weight.copy_(_standardized_weight(module))
+            if module.bias is not None and replacement.bias is not None:
+                replacement.bias.copy_(module.bias)
+        _set_submodule(model, name, replacement)
+        converted.append(name)
+    return tuple(converted)
