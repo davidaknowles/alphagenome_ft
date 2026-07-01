@@ -131,6 +131,24 @@ TORCH_TRUE_QUANT_STRATEGIES: dict[str, dict[str, Any]] = {
         "bf16_params": True,
         "attention_backend": "triton_mha",
     },
+    "bf16_triton_conv_flexattn_lowresbias": {
+        "kind": "triton_int8_conv1d",
+        "include": (),
+        "bf16_params": True,
+        "attention_backend": "flex_mha_lowres_bias",
+    },
+    "bf16_triton_conv_tritonattn_lowresbias": {
+        "kind": "triton_int8_conv1d",
+        "include": (),
+        "bf16_params": True,
+        "attention_backend": "triton_mha_lowres_bias",
+    },
+    "bf16_triton_conv_tritonattn_fusedbias": {
+        "kind": "triton_int8_conv1d",
+        "include": (),
+        "bf16_params": True,
+        "attention_backend": "triton_mha_fused_bias",
+    },
     "nvfp4_linear1x1_triton_conv": {
         "kind": "nvfp4_triton_int8_conv1d",
         "include": (),
