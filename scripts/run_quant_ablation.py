@@ -114,12 +114,34 @@ TORCH_TRUE_QUANT_STRATEGIES: dict[str, dict[str, Any]] = {
         "kind": "triton_int8_dynamic_conv1d",
         "include": ("encoder.down_blocks.4", "encoder.down_blocks.5"),
     },
+    "bf16_triton_conv": {
+        "kind": "triton_int8_conv1d",
+        "include": (),
+        "bf16_params": True,
+    },
+    "nvfp4_linear1x1_triton_conv": {
+        "kind": "nvfp4_triton_int8_conv1d",
+        "include": (),
+        "skip": (),
+        "pointwise_conv": True,
+        "conv_include": (),
+        "bf16_params": True,
+    },
+    "nf4_linear1x1_triton_conv": {
+        "kind": "bnb_nf4_triton_int8_conv1d",
+        "include": (),
+        "skip": (),
+        "pointwise_conv": True,
+        "conv_include": (),
+        "bf16_params": True,
+    },
     "torchao_nvfp4_weight_only_all_linear_1x1conv_triton_int8_weight_only_conv1d": {
         "kind": "nvfp4_triton_int8_conv1d",
         "include": (),
         "skip": (),
         "pointwise_conv": True,
         "conv_include": (),
+        "bf16_params": True,
     },
     "bnb_nf4_weight_only_all_linear_1x1conv_triton_int8_weight_only_conv1d": {
         "kind": "bnb_nf4_triton_int8_conv1d",
@@ -127,6 +149,7 @@ TORCH_TRUE_QUANT_STRATEGIES: dict[str, dict[str, Any]] = {
         "skip": (),
         "pointwise_conv": True,
         "conv_include": (),
+        "bf16_params": True,
     },
 }
 
@@ -233,6 +256,10 @@ def apply_torch_quant_policy(model: Any, strategy: str, *, nf4_block_size: int =
     include_patterns = tuple(config["include"])
     skip_patterns = config.get("skip")
     kwargs = {"skip_name_patterns": tuple(skip_patterns)} if skip_patterns is not None else {}
+    if config.get("bf16_params"):
+        import torch
+
+        model.to(dtype=torch.bfloat16)
     pointwise_conv_stats = {}
     if config.get("pointwise_conv"):
         low_precision = _load_local_torch_low_precision()
@@ -324,6 +351,7 @@ def apply_torch_quant_policy(model: Any, strategy: str, *, nf4_block_size: int =
             **stats,
             "strategy": strategy,
             "converted": stats["converted_triton_int8_conv1ds"],
+            "bf16_params": bool(config.get("bf16_params", False)),
             "simulated_storage": False,
         }
     if kind == "triton_int8_dynamic_conv1d":
@@ -359,6 +387,7 @@ def apply_torch_quant_policy(model: Any, strategy: str, *, nf4_block_size: int =
             "strategy": strategy,
             "converted": linear_stats.converted_linears
             + conv_stats["converted_triton_int8_conv1ds"],
+            "bf16_params": bool(config.get("bf16_params", False)),
             "simulated_storage": False,
         }
     if kind == "bnb_nf4_triton_int8_conv1d":
@@ -385,6 +414,7 @@ def apply_torch_quant_policy(model: Any, strategy: str, *, nf4_block_size: int =
             "strategy": strategy,
             "converted": linear_stats.converted_linears
             + conv_stats["converted_triton_int8_conv1ds"],
+            "bf16_params": bool(config.get("bf16_params", False)),
             "simulated_storage": False,
         }
     raise AssertionError(f"Unhandled strategy config: {strategy}")
