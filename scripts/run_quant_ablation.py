@@ -119,6 +119,19 @@ TORCH_TRUE_QUANT_STRATEGIES: dict[str, dict[str, Any]] = {
         "include": (),
         "bf16_params": True,
     },
+    "bf16_triton_conv_no_intermediates": {
+        "kind": "triton_int8_conv1d",
+        "include": (),
+        "bf16_params": True,
+        "encoder_no_intermediates": True,
+    },
+    "bf16_triton_conv_no_intermediates_tritonpool": {
+        "kind": "triton_int8_conv1d",
+        "include": (),
+        "bf16_params": True,
+        "encoder_no_intermediates": True,
+        "encoder_triton_pool": True,
+    },
     "bf16_triton_conv_flexattn": {
         "kind": "triton_int8_conv1d",
         "include": (),
@@ -224,6 +237,28 @@ def _load_local_torch_attention_backends():
     return module
 
 
+def _drop_encoder_intermediates_for_128bp_eval(model: Any) -> dict[str, Any]:
+    """Patch the Torch encoder to skip U-Net skip tensors for 128bp-only eval."""
+    import types
+
+    encoder = model.encoder
+    if getattr(encoder, "_alphagenome_fp4_no_intermediates", False):
+        return {"encoder_no_intermediates": True}
+
+    def forward_no_intermediates(self: Any, x: Any):
+        x = x.transpose(1, 2)
+        x = self.dna_embedder(x)
+        x = self.pool(x)
+        for block in self.down_blocks:
+            x = block(x)
+            x = self.pool(x)
+        return x, {}
+
+    encoder.forward = types.MethodType(forward_no_intermediates, encoder)
+    encoder._alphagenome_fp4_no_intermediates = True
+    return {"encoder_no_intermediates": True}
+
+
 def _split_torch_strategy(strategy: str) -> tuple[str, bool]:
     if strategy.endswith(TORCH_STDCONV_EFFECTIVE_SUFFIX):
         return strategy[: -len(TORCH_STDCONV_EFFECTIVE_SUFFIX)], True
@@ -301,6 +336,13 @@ def apply_torch_quant_policy(model: Any, strategy: str, *, nf4_block_size: int =
         import torch
 
         model.to(dtype=torch.bfloat16)
+    encoder_stats = {}
+    if config.get("encoder_no_intermediates"):
+        encoder_stats = _drop_encoder_intermediates_for_128bp_eval(model)
+    pool_stats = {}
+    if config.get("encoder_triton_pool"):
+        low_precision = _load_local_torch_low_precision()
+        pool_stats = low_precision.replace_encoder_pool_with_triton_no_indices(model)
     attention_stats = {}
     if config.get("attention_backend"):
         attention_backends = _load_local_torch_attention_backends()
@@ -397,6 +439,8 @@ def apply_torch_quant_policy(model: Any, strategy: str, *, nf4_block_size: int =
         )
         return {
             **stats,
+            **encoder_stats,
+            **pool_stats,
             **attention_stats,
             "strategy": strategy,
             "converted": stats["converted_triton_int8_conv1ds"],

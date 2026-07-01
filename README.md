@@ -44,6 +44,32 @@ A lightweight Python package for finetuning [Google DeepMind's AlphaGenome](http
 - **Attribution Analysis**: Utilities to calculate attributions based on gradients or _in silico_ mutagenesis (ISM)
 - **JAX/Haiku Native**: Built on the same framework as AlphaGenome
 
+## Fast Torch Inference Experiments
+
+This branch includes experimental Torch inference paths for large-batch, low-VRAM
+AlphaGenome evaluation. The most useful pieces so far are:
+
+- **bf16 model policy**: stores non-quantized Torch parameters and persistent
+  activations in `bfloat16` for inference.
+- **Triton int8 weight-only Conv1d**: replaces eligible wide `Conv1d` layers
+  with a custom Triton kernel that stores weights as int8 with fp32 scales while
+  preserving bf16 outputs and parity-level metrics.
+- **Precomputed standardized convs**: materializes `StandardizedConv1d` weights
+  once for inference, making them eligible for the Triton Conv1d path.
+- **128bp no-intermediates encoder path**: skips retaining U-Net skip tensors
+  when evaluating only `resolutions=(128,)`.
+- **Triton no-indices max-pool**: replaces the encoder `Pool1d(k=2, stride=2)`
+  max-pool with a custom Triton kernel that avoids PyTorch's large hidden
+  max-pool index/workspace allocation.
+
+For the human brain development ATAC benchmark at batch size 32,
+`bf16_triton_conv_no_intermediates_tritonpool_stdconv_effective` reduced
+observed GPU memory from about `43.6 GiB` to `34.9 GiB` while keeping throughput
+and differential Pearson effectively unchanged versus
+`bf16_triton_conv_stdconv_effective`. See
+[`docs/encoder_vram_20260701.md`](docs/encoder_vram_20260701.md) for the
+benchmark table and attribution summary.
+
 ## Installation
 
 This package depends on the AlphaGenome stack (`alphagenome` and `alphagenome_research`), which are not on PyPI and must be installed from GitHub. Use the following order.

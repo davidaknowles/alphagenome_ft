@@ -18,6 +18,34 @@ except ImportError:  # pragma: no cover - optional CUDA path
     tl = None
 
 
+if triton is not None:
+
+    @triton.jit
+    def _maxpool1d_k2s2_no_indices_kernel(
+        x_ptr,
+        out_ptr,
+        total_outputs: tl.constexpr,
+        channels: tl.constexpr,
+        length: tl.constexpr,
+        out_length: tl.constexpr,
+        BLOCK: tl.constexpr,
+    ):
+        offsets = tl.program_id(0) * BLOCK + tl.arange(0, BLOCK)
+        pos = offsets % out_length
+        channel_idx = (offsets // out_length) % channels
+        batch_idx = offsets // (channels * out_length)
+        input0 = (
+            batch_idx.to(tl.int64) * channels * length
+            + channel_idx.to(tl.int64) * length
+            + (pos * 2).to(tl.int64)
+        )
+        input1 = input0 + 1
+        mask = offsets < total_outputs
+        x0 = tl.load(x_ptr + input0, mask=mask, other=-float("inf")).to(tl.float32)
+        x1 = tl.load(x_ptr + input1, mask=mask & ((pos * 2 + 1) < length), other=-float("inf")).to(tl.float32)
+        tl.store(out_ptr + offsets, tl.maximum(x0, x1), mask=mask)
+
+
 @dataclass(frozen=True)
 class Float8ConversionStats:
     """Summary of a torchao float8 conversion pass."""
@@ -97,6 +125,44 @@ class PointwiseConv1dAsLinear(nn.Module):
         y = x.transpose(1, 2).contiguous().view(-1, leading_shape[1])
         y = self.linear(y)
         return y.view(leading_shape[0], leading_shape[2], -1).transpose(1, 2).contiguous()
+
+
+class TritonMaxPool1dK2S2NoIndices(nn.Module):
+    """Triton max-pool for encoder k=2/s=2 without materializing indices."""
+
+    def __init__(self, pool: nn.Module):
+        super().__init__()
+        if triton is None:
+            raise RuntimeError("triton is required for TritonMaxPool1dK2S2NoIndices.")
+        if getattr(pool, "kernel_size", None) != 2 or getattr(pool, "stride", None) != 2:
+            raise ValueError("TritonMaxPool1dK2S2NoIndices only supports kernel_size=stride=2.")
+        if getattr(pool, "method", "max") != "max":
+            raise ValueError("TritonMaxPool1dK2S2NoIndices only supports max pooling.")
+        self.kernel_size = 2
+        self.stride = 2
+        self.method = "max"
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        if x.dim() != 3:
+            raise ValueError(f"Expected NCL input, got shape {tuple(x.shape)}")
+        if not x.is_cuda:
+            return F.max_pool1d(x, kernel_size=2, stride=2)
+        x = x.contiguous()
+        batch, channels, length = x.shape
+        out_length = (length + 1) // 2
+        out = torch.empty((batch, channels, out_length), device=x.device, dtype=x.dtype)
+        total_outputs = batch * channels * out_length
+        grid = (triton.cdiv(total_outputs, 256),)
+        _maxpool1d_k2s2_no_indices_kernel[grid](
+            x,
+            out,
+            total_outputs,
+            channels,
+            length,
+            out_length,
+            BLOCK=256,
+        )
+        return out
 
 
 class Conv1dAsConv2d(nn.Module):
@@ -550,6 +616,17 @@ def quantize_conv2ds_to_intx_weight_only(
         "skipped_conv2ds": skipped,
         "conv2d_quant_include_name_patterns": include_patterns,
     }
+
+
+def replace_encoder_pool_with_triton_no_indices(model: nn.Module) -> dict[str, object]:
+    """Replace the shared encoder max-pool with a Triton no-indices k=2/s=2 pool."""
+    if triton is None:
+        raise RuntimeError("triton is required for Triton encoder pool replacement.")
+    pool = model.encoder.pool
+    if isinstance(pool, TritonMaxPool1dK2S2NoIndices):
+        return {"encoder_triton_pool_no_indices": True, "converted_triton_maxpool1d": 1}
+    model.encoder.pool = TritonMaxPool1dK2S2NoIndices(pool)
+    return {"encoder_triton_pool_no_indices": True, "converted_triton_maxpool1d": 1}
 
 
 def convert_conv1d_to_triton_int8_weight_only(
