@@ -78,6 +78,42 @@ TORCH_TRUE_QUANT_STRATEGIES: dict[str, dict[str, Any]] = {
         "skip": (),
         "pointwise_conv": True,
     },
+    "torchao_int8_weight_only_conv2d": {
+        "kind": "intx_conv2d",
+        "weight_dtype": "int8",
+        "include": (),
+    },
+    "torchao_int4_weight_only_conv2d": {
+        "kind": "intx_conv2d",
+        "weight_dtype": "int4",
+        "include": (),
+    },
+    "torchao_int8_weight_only_effective_conv2d": {
+        "kind": "intx_conv2d",
+        "weight_dtype": "int8",
+        "include": ("encoder.down_blocks.4", "encoder.down_blocks.5"),
+    },
+    "torchao_int4_weight_only_effective_conv2d": {
+        "kind": "intx_conv2d",
+        "weight_dtype": "int4",
+        "include": ("encoder.down_blocks.4", "encoder.down_blocks.5"),
+    },
+    "triton_int8_weight_only_conv1d": {
+        "kind": "triton_int8_conv1d",
+        "include": (),
+    },
+    "triton_int8_weight_only_effective_conv1d": {
+        "kind": "triton_int8_conv1d",
+        "include": ("encoder.down_blocks.4", "encoder.down_blocks.5"),
+    },
+    "triton_int8_dynamic_conv1d": {
+        "kind": "triton_int8_dynamic_conv1d",
+        "include": (),
+    },
+    "triton_int8_dynamic_effective_conv1d": {
+        "kind": "triton_int8_dynamic_conv1d",
+        "include": ("encoder.down_blocks.4", "encoder.down_blocks.5"),
+    },
 }
 
 TORCH_STDCONV_EFFECTIVE_SUFFIX = "_stdconv_effective"
@@ -240,6 +276,52 @@ def apply_torch_quant_policy(model: Any, strategy: str, *, nf4_block_size: int =
             **pointwise_conv_stats,
             "strategy": strategy,
             "converted": stats.converted_linears,
+            "simulated_storage": False,
+        }
+    if kind == "intx_conv2d":
+        import torch
+
+        low_precision = _load_local_torch_low_precision()
+        weight_dtype_name = str(config["weight_dtype"])
+        weight_dtype = getattr(torch, weight_dtype_name)
+        conv_stats = low_precision.convert_conv1d_to_conv2d(
+            model,
+            include_name_patterns=include_patterns,
+        )
+        quant_stats = low_precision.quantize_conv2ds_to_intx_weight_only(
+            model,
+            weight_dtype=weight_dtype,
+            include_name_patterns=include_patterns,
+        )
+        return {
+            **conv_stats,
+            **quant_stats,
+            "strategy": strategy,
+            "converted": quant_stats["converted_conv2ds"],
+            "simulated_storage": False,
+        }
+    if kind == "triton_int8_conv1d":
+        low_precision = _load_local_torch_low_precision()
+        stats = low_precision.convert_conv1d_to_triton_int8_weight_only(
+            model,
+            include_name_patterns=include_patterns,
+        )
+        return {
+            **stats,
+            "strategy": strategy,
+            "converted": stats["converted_triton_int8_conv1ds"],
+            "simulated_storage": False,
+        }
+    if kind == "triton_int8_dynamic_conv1d":
+        low_precision = _load_local_torch_low_precision()
+        stats = low_precision.convert_conv1d_to_triton_int8_dynamic_activation_int8_weight(
+            model,
+            include_name_patterns=include_patterns,
+        )
+        return {
+            **stats,
+            "strategy": strategy,
+            "converted": stats["converted_triton_int8_dynamic_conv1ds"],
             "simulated_storage": False,
         }
     raise AssertionError(f"Unhandled strategy config: {strategy}")

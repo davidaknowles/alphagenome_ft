@@ -87,9 +87,33 @@ The `_stdconv_effective` variants precompute the runtime-standardized weights fo
 
 Materializing standardized convs helped the bf16 baseline enough that it is now the fastest tested batch-20 path. The quantized variants still save a few hundred MiB of torch allocation, but they do not beat `bf16_params_stdconv_effective` on throughput in this run.
 
+## Conv Quantization Follow-Up
+
+Two wider-conv quantization paths were added after checking available package support:
+
+- TorchAO intx Conv2d weight-only, by wrapping eligible Conv1d modules as Conv2d over a singleton height dimension.
+- Custom Triton Conv1d kernels for int8 weight-only and dynamic-int8 activation plus int8 weight.
+
+Short batch-20 smoke runs showed:
+
+| strategy | convs converted | examples/s | nvidia-smi max MiB | diff Pearson | note |
+|---|---:|---:|---:|---:|---|
+| bf16_params_stdconv_effective | 0 | 13.33 | 36507 | 0.7918 | 10-batch smoke baseline |
+| torchao_int8_weight_only_effective_conv2d | 4 | 13.31 | 36267 | 0.7656 | package path, metric drop |
+| torchao_int4_weight_only_effective_conv2d | 4 | 13.26 | 36267 | 0.7575 | package path, larger metric drop |
+| torchao_int8_weight_only_conv2d_stdconv_effective | 27 | 13.38 | 36579 | 0.7668 | package path, metric drop |
+| torchao_int4_weight_only_conv2d_stdconv_effective | 27 | 13.38 | 36579 | 0.7435 | package path, larger metric drop |
+| triton_int8_weight_only_effective_conv1d | 4 | 12.37 | 36605 | 0.7914 | custom kernel, metric preserved, slower |
+| triton_int8_weight_only_conv1d_stdconv_effective | 27 | 9.00 | 25685 | 0.7913 | custom kernel, much lower memory, slower |
+| triton_int8_dynamic_effective_conv1d | 4 | 12.15 | 36605 | 0.7914 | custom dynamic activation, slower |
+| triton_int8_dynamic_conv1d_stdconv_effective | 27 | 8.07 | 25685 | 0.7913 | custom dynamic activation, much lower memory, slower |
+
+The package-backed TorchAO Conv2d intx path is fast but not numerically acceptable for these convs. The custom Triton kernels preserve the smoke metric and substantially reduce memory when applied to all wider convs, but they do not meet the throughput goal.
+
 ## Takeaways
 
 - Do not use forward microbatching for this goal; physical batch 20 gives strong throughput and stays below 48 GiB actual device memory for quantized/bf16 runs.
 - Pointwise Conv1d(k=1) quantization converts 10 additional modules. Wider Conv1d kernels still need a real quantized Conv1d backend or model rewrite; unfolding them into Linear would likely trade weight memory for much larger activations.
 - For the best measured throughput under the `<=48 GiB` target, use `bf16_params_stdconv_effective` at physical batch 20.
 - Use the NVFP4/NF4 `_stdconv_effective` variants only if the small torch-allocation reduction is worth the lower throughput and slightly lower differential Pearson.
+- Use `triton_int8_weight_only_conv1d_stdconv_effective` only when actual device memory is more important than throughput; it is the best wider-conv memory reducer tested here, not the fastest path.
