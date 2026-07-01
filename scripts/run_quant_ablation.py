@@ -114,6 +114,20 @@ TORCH_TRUE_QUANT_STRATEGIES: dict[str, dict[str, Any]] = {
         "kind": "triton_int8_dynamic_conv1d",
         "include": ("encoder.down_blocks.4", "encoder.down_blocks.5"),
     },
+    "torchao_nvfp4_weight_only_all_linear_1x1conv_triton_int8_weight_only_conv1d": {
+        "kind": "nvfp4_triton_int8_conv1d",
+        "include": (),
+        "skip": (),
+        "pointwise_conv": True,
+        "conv_include": (),
+    },
+    "bnb_nf4_weight_only_all_linear_1x1conv_triton_int8_weight_only_conv1d": {
+        "kind": "bnb_nf4_triton_int8_conv1d",
+        "include": (),
+        "skip": (),
+        "pointwise_conv": True,
+        "conv_include": (),
+    },
 }
 
 TORCH_STDCONV_EFFECTIVE_SUFFIX = "_stdconv_effective"
@@ -322,6 +336,55 @@ def apply_torch_quant_policy(model: Any, strategy: str, *, nf4_block_size: int =
             **stats,
             "strategy": strategy,
             "converted": stats["converted_triton_int8_dynamic_conv1ds"],
+            "simulated_storage": False,
+        }
+    if kind == "nvfp4_triton_int8_conv1d":
+        low_precision = _load_local_torch_low_precision()
+
+        for param in model.parameters():
+            param.requires_grad_(False)
+        linear_stats = low_precision.convert_linears_to_nvfp4_weight_only(
+            model,
+            include_name_patterns=include_patterns,
+            **kwargs,
+        )
+        conv_stats = low_precision.convert_conv1d_to_triton_int8_weight_only(
+            model,
+            include_name_patterns=tuple(config["conv_include"]),
+        )
+        return {
+            **linear_stats.__dict__,
+            **pointwise_conv_stats,
+            **conv_stats,
+            "strategy": strategy,
+            "converted": linear_stats.converted_linears
+            + conv_stats["converted_triton_int8_conv1ds"],
+            "simulated_storage": False,
+        }
+    if kind == "bnb_nf4_triton_int8_conv1d":
+        import torch
+
+        low_precision = _load_local_torch_low_precision()
+
+        for param in model.parameters():
+            param.requires_grad_(False)
+        linear_stats = low_precision.convert_linears_to_bnb_nf4_weight_only(
+            model,
+            compute_dtype=torch.bfloat16,
+            include_name_patterns=include_patterns,
+            **kwargs,
+        )
+        conv_stats = low_precision.convert_conv1d_to_triton_int8_weight_only(
+            model,
+            include_name_patterns=tuple(config["conv_include"]),
+        )
+        return {
+            **linear_stats.__dict__,
+            **pointwise_conv_stats,
+            **conv_stats,
+            "strategy": strategy,
+            "converted": linear_stats.converted_linears
+            + conv_stats["converted_triton_int8_conv1ds"],
             "simulated_storage": False,
         }
     raise AssertionError(f"Unhandled strategy config: {strategy}")
