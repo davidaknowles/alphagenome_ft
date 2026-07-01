@@ -38,6 +38,12 @@ TORCH_TRUE_QUANT_STRATEGIES: dict[str, dict[str, Any]] = {
         "skip": None,
         "pointwise_conv": True,
     },
+    "torchao_float8_all_linear_1x1conv": {
+        "kind": "float8",
+        "include": (),
+        "skip": (),
+        "pointwise_conv": True,
+    },
     "torchao_nvfp4_weight_only_linear": {"kind": "nvfp4", "include": (), "skip": None},
     "torchao_nvfp4_weight_only_tower_linear": {
         "kind": "nvfp4",
@@ -51,6 +57,12 @@ TORCH_TRUE_QUANT_STRATEGIES: dict[str, dict[str, Any]] = {
         "skip": None,
         "pointwise_conv": True,
     },
+    "torchao_nvfp4_weight_only_all_linear_1x1conv": {
+        "kind": "nvfp4",
+        "include": (),
+        "skip": (),
+        "pointwise_conv": True,
+    },
     "bnb_nf4_weight_only_linear": {"kind": "bnb_nf4", "include": (), "skip": None},
     "bnb_nf4_weight_only_tower_linear": {"kind": "bnb_nf4", "include": ("tower",), "skip": None},
     "bnb_nf4_weight_only_all_linear": {"kind": "bnb_nf4", "include": (), "skip": ()},
@@ -58,6 +70,12 @@ TORCH_TRUE_QUANT_STRATEGIES: dict[str, dict[str, Any]] = {
         "kind": "bnb_nf4",
         "include": (),
         "skip": None,
+        "pointwise_conv": True,
+    },
+    "bnb_nf4_weight_only_all_linear_1x1conv": {
+        "kind": "bnb_nf4",
+        "include": (),
+        "skip": (),
         "pointwise_conv": True,
     },
 }
@@ -354,14 +372,25 @@ def r2_metrics_np(prediction: Any, targets: Any) -> dict[str, float]:
     }
 
 
+_DNA_ONE_HOT_LOOKUP = np.zeros((256, 4), dtype=np.float32)
+for _base, _col in (
+    (b"A", 0),
+    (b"C", 1),
+    (b"G", 2),
+    (b"T", 3),
+    (b"a", 0),
+    (b"c", 1),
+    (b"g", 2),
+    (b"t", 3),
+):
+    _DNA_ONE_HOT_LOOKUP[_base[0], _col] = 1.0
+
+
 def _one_hot_dna(sequence: str) -> np.ndarray:
-    encoded = np.zeros((len(sequence), 4), dtype=np.float32)
-    base_to_col = {"A": 0, "C": 1, "G": 2, "T": 3}
-    for idx, base in enumerate(sequence.upper()):
-        col = base_to_col.get(base)
-        if col is not None:
-            encoded[idx, col] = 1.0
-    return encoded
+    ascii_sequence = np.frombuffer(sequence.encode("ascii", errors="ignore"), dtype=np.uint8)
+    if ascii_sequence.shape[0] != len(sequence):
+        raise ValueError("Expected ASCII DNA sequence from FASTA.")
+    return _DNA_ONE_HOT_LOOKUP[ascii_sequence].copy()
 
 
 class CachedTorchDataModule:
