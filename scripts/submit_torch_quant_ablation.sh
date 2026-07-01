@@ -21,16 +21,22 @@ default
 bf16_params
 torchao_float8_tower_linear
 torchao_float8_linear
+torchao_float8_all_linear
+torchao_float8_linear_1x1conv
 torchao_nvfp4_weight_only_tower_linear
 torchao_nvfp4_weight_only_linear
+torchao_nvfp4_weight_only_all_linear
+torchao_nvfp4_weight_only_linear_1x1conv
 bnb_nf4_weight_only_tower_linear
 bnb_nf4_weight_only_linear
+bnb_nf4_weight_only_all_linear
+bnb_nf4_weight_only_linear_1x1conv
 STRATEGIES
 
 N_STRATEGIES=$(grep -cve '^[[:space:]]*$' "$STRATEGY_FILE")
 
 BATCH_SIZE_FILE="$OUTPUT_ROOT/batch_sizes.txt"
-printf '%s\n' "${BATCH_SIZES:-1,2,4,8,12}" | tr ',' '\n' | sed '/^[[:space:]]*$/d' > "$BATCH_SIZE_FILE"
+printf '%s\n' "${BATCH_SIZES:-32}" | tr ',' '\n' | sed '/^[[:space:]]*$/d' > "$BATCH_SIZE_FILE"
 N_BATCH_SIZES=$(grep -cve '^[[:space:]]*$' "$BATCH_SIZE_FILE")
 if [[ "$N_BATCH_SIZES" -lt 1 ]]; then
   echo "No batch sizes found in $BATCH_SIZE_FILE" >&2

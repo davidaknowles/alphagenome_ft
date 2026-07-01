@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import importlib.util
 import json
 import os
 from pathlib import Path
@@ -18,31 +19,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-import jax
-import jax.numpy as jnp
 import numpy as np
-import orbax.checkpoint as ocp
-from alphagenome.models import dna_model as ag_dna_model
-from alphagenome_research.model import dna_model as research_dna_model
-
-from alphagenome_ft import create_model_with_heads
-from alphagenome_ft.finetune import (
-    BigWigDataModule,
-    WindowedTargetCache,
-    load_targets_config,
-    prepare_head_specs,
-    register_predefined_heads,
-    validate_head_specs,
-)
-from alphagenome_ft.finetune.data import prepare_batch
-from alphagenome_ft.finetune.metrics import r2_metrics
-from alphagenome_ft.finetune.train import _add_stats, _finalize_r2_stats, _r2_stats
-from scripts.run_humanbraindev_finetune import (
-    build_targets_config,
-    discover_bigwigs,
-    make_chromosome_split_intervals,
-    parse_chrom_set,
-)
 
 
 DEFAULT_BIGWIG_DIR = Path(
@@ -52,12 +29,37 @@ DEFAULT_FASTA = Path("/gpfs/commons/home/daknowles/knowles_lab/index/hg38/hg38.f
 DEFAULT_MERGED = Path("outputs/quant_ablation/merged_jax_default_lora_locon")
 
 TORCH_TRUE_QUANT_STRATEGIES: dict[str, dict[str, Any]] = {
-    "torchao_float8_linear": {"kind": "float8", "include": ()},
-    "torchao_float8_tower_linear": {"kind": "float8", "include": ("tower",)},
-    "torchao_nvfp4_weight_only_linear": {"kind": "nvfp4", "include": ()},
-    "torchao_nvfp4_weight_only_tower_linear": {"kind": "nvfp4", "include": ("tower",)},
-    "bnb_nf4_weight_only_linear": {"kind": "bnb_nf4", "include": ()},
-    "bnb_nf4_weight_only_tower_linear": {"kind": "bnb_nf4", "include": ("tower",)},
+    "torchao_float8_linear": {"kind": "float8", "include": (), "skip": None},
+    "torchao_float8_tower_linear": {"kind": "float8", "include": ("tower",), "skip": None},
+    "torchao_float8_all_linear": {"kind": "float8", "include": (), "skip": ()},
+    "torchao_float8_linear_1x1conv": {
+        "kind": "float8",
+        "include": (),
+        "skip": None,
+        "pointwise_conv": True,
+    },
+    "torchao_nvfp4_weight_only_linear": {"kind": "nvfp4", "include": (), "skip": None},
+    "torchao_nvfp4_weight_only_tower_linear": {
+        "kind": "nvfp4",
+        "include": ("tower",),
+        "skip": None,
+    },
+    "torchao_nvfp4_weight_only_all_linear": {"kind": "nvfp4", "include": (), "skip": ()},
+    "torchao_nvfp4_weight_only_linear_1x1conv": {
+        "kind": "nvfp4",
+        "include": (),
+        "skip": None,
+        "pointwise_conv": True,
+    },
+    "bnb_nf4_weight_only_linear": {"kind": "bnb_nf4", "include": (), "skip": None},
+    "bnb_nf4_weight_only_tower_linear": {"kind": "bnb_nf4", "include": ("tower",), "skip": None},
+    "bnb_nf4_weight_only_all_linear": {"kind": "bnb_nf4", "include": (), "skip": ()},
+    "bnb_nf4_weight_only_linear_1x1conv": {
+        "kind": "bnb_nf4",
+        "include": (),
+        "skip": None,
+        "pointwise_conv": True,
+    },
 }
 
 
@@ -72,7 +74,20 @@ def _keypath_to_str(path: tuple) -> str:
 
 
 def _is_float_array(value: Any) -> bool:
+    import jax.numpy as jnp
+
     return hasattr(value, "dtype") and jnp.issubdtype(value.dtype, jnp.floating)
+
+
+def _load_local_torch_low_precision():
+    module_path = REPO_ROOT / "alphagenome_ft" / "torch_low_precision.py"
+    spec = importlib.util.spec_from_file_location("_agft_torch_low_precision", module_path)
+    if spec is None or spec.loader is None:
+        raise ImportError(f"Could not load local low precision helpers from {module_path}")
+    module = importlib.util.module_from_spec(spec)
+    sys.modules.setdefault("_agft_torch_low_precision", module)
+    spec.loader.exec_module(module)
+    return module
 
 
 def _path_is_sensitive(path: str) -> bool:
@@ -94,6 +109,8 @@ def _path_is_sensitive(path: str) -> bool:
 
 
 def apply_jax_quant_policy(params, strategy: str, *, nf4_block_size: int = 64):
+    import jax
+
     if strategy == "default":
         return params, {"strategy": strategy, "converted": 0, "simulated_storage": False}
     if strategy not in {"bf16_params"}:
@@ -138,49 +155,63 @@ def apply_torch_quant_policy(model: Any, strategy: str, *, nf4_block_size: int =
 
     config = TORCH_TRUE_QUANT_STRATEGIES[strategy]
     include_patterns = tuple(config["include"])
+    skip_patterns = config.get("skip")
+    kwargs = {"skip_name_patterns": tuple(skip_patterns)} if skip_patterns is not None else {}
+    pointwise_conv_stats = {}
+    if config.get("pointwise_conv"):
+        low_precision = _load_local_torch_low_precision()
+        pointwise_conv_stats = low_precision.convert_pointwise_conv1d_to_linear(
+            model,
+            include_name_patterns=include_patterns,
+            **kwargs,
+        )
     kind = str(config["kind"])
     if kind == "float8":
-        from alphagenome_pytorch.low_precision import convert_linears_to_float8_training
+        low_precision = _load_local_torch_low_precision()
 
-        stats = convert_linears_to_float8_training(
-            model,
-            recipe="tensorwise",
-            include_name_patterns=include_patterns,
+        stats = low_precision.convert_linears_to_float8_training(
+            model, recipe="tensorwise", include_name_patterns=include_patterns, **kwargs
         )
         return {
             **stats.__dict__,
+            **pointwise_conv_stats,
             "strategy": strategy,
             "converted": stats.converted_linears,
             "simulated_storage": False,
         }
     if kind == "nvfp4":
-        from alphagenome_pytorch.low_precision import convert_linears_to_nvfp4_weight_only
+        low_precision = _load_local_torch_low_precision()
 
         for param in model.parameters():
             param.requires_grad_(False)
-        stats = convert_linears_to_nvfp4_weight_only(
+        stats = low_precision.convert_linears_to_nvfp4_weight_only(
             model,
             include_name_patterns=include_patterns,
+            **kwargs,
         )
         return {
             **stats.__dict__,
+            **pointwise_conv_stats,
             "strategy": strategy,
             "converted": stats.converted_linears,
             "simulated_storage": False,
         }
     if kind == "bnb_nf4":
         import torch
-        from alphagenome_pytorch.low_precision import convert_linears_to_bnb_nf4_weight_only
+
+        low_precision = _load_local_torch_low_precision()
 
         for param in model.parameters():
             param.requires_grad_(False)
-        stats = convert_linears_to_bnb_nf4_weight_only(
+        stats = low_precision.convert_linears_to_bnb_nf4_weight_only(
             model,
             compute_dtype=torch.bfloat16,
             include_name_patterns=include_patterns,
+            **kwargs,
         )
         return {
             **stats.__dict__,
+            **pointwise_conv_stats,
             "strategy": strategy,
             "converted": stats.converted_linears,
             "simulated_storage": False,
@@ -257,7 +288,153 @@ def _maybe_bin_128bp_np(values: np.ndarray) -> np.ndarray:
     return values
 
 
+def _double_center_pearson_np(prediction: np.ndarray, targets: np.ndarray) -> float:
+    prediction = _maybe_bin_128bp_np(prediction)
+    targets = _maybe_bin_128bp_np(targets)
+    pred_matrix = prediction.reshape(-1, prediction.shape[-1]).astype(np.float32)
+    true_matrix = targets.reshape(-1, targets.shape[-1]).astype(np.float32)
+    pred_centered = (
+        pred_matrix
+        - pred_matrix.mean(axis=0, keepdims=True)
+        - pred_matrix.mean(axis=1, keepdims=True)
+        + pred_matrix.mean()
+    )
+    true_centered = (
+        true_matrix
+        - true_matrix.mean(axis=0, keepdims=True)
+        - true_matrix.mean(axis=1, keepdims=True)
+        + true_matrix.mean()
+    )
+    pred_flat = pred_centered.reshape(-1)
+    true_flat = true_centered.reshape(-1)
+    pred_std = float(np.sqrt(np.sum(np.square(pred_flat))))
+    true_std = float(np.sqrt(np.sum(np.square(true_flat))))
+    if pred_std <= 0 or true_std <= 0:
+        return float("nan")
+    return float(np.sum(pred_flat * true_flat) / (pred_std * true_std))
+
+
+def r2_metrics_np(prediction: Any, targets: Any) -> dict[str, float]:
+    y = np.asarray(targets, dtype=np.float32)
+    yhat = np.asarray(prediction, dtype=np.float32)
+    residual = yhat - y
+
+    sse = float(np.sum(np.square(residual)))
+    centered = y - float(np.mean(y))
+    sst = float(np.sum(np.square(centered)))
+    r2_global = float(1.0 - sse / sst) if sst > 0 else float("nan")
+
+    target_mean_by_locus = np.mean(y, axis=-1, keepdims=True)
+    differential_pearson_r = _double_center_pearson_np(yhat, y)
+
+    sst_by_locus = np.sum(np.square(y - target_mean_by_locus), axis=-1)
+    sse_by_locus = np.sum(np.square(residual), axis=-1)
+    valid_loci = sst_by_locus > 0
+    r2_over_loci = (
+        float(np.mean(1.0 - sse_by_locus[valid_loci] / sst_by_locus[valid_loci]))
+        if np.any(valid_loci)
+        else float("nan")
+    )
+
+    target_mean_by_track = np.mean(y, axis=(0, 1), keepdims=False)
+    sst_by_track = np.sum(np.square(y - target_mean_by_track.reshape((1, 1, -1))), axis=(0, 1))
+    sse_by_track = np.sum(np.square(residual), axis=(0, 1))
+    valid_tracks = sst_by_track > 0
+    r2_over_cell_types = (
+        float(np.mean(1.0 - sse_by_track[valid_tracks] / sst_by_track[valid_tracks]))
+        if np.any(valid_tracks)
+        else float("nan")
+    )
+
+    return {
+        "r2_global": r2_global,
+        "r2_over_loci": r2_over_loci,
+        "r2_over_cell_types": r2_over_cell_types,
+        "differential_pearson_r": differential_pearson_r,
+    }
+
+
+def _one_hot_dna(sequence: str) -> np.ndarray:
+    encoded = np.zeros((len(sequence), 4), dtype=np.float32)
+    base_to_col = {"A": 0, "C": 1, "G": 2, "T": 3}
+    for idx, base in enumerate(sequence.upper()):
+        col = base_to_col.get(base)
+        if col is not None:
+            encoded[idx, col] = 1.0
+    return encoded
+
+
+class CachedTorchDataModule:
+    """Minimal cached-target data module for Torch inference ablations."""
+
+    def __init__(
+        self,
+        *,
+        target_cache_dir: Path,
+        fasta_path: Path,
+        head_id: str,
+        batch_size: int,
+    ) -> None:
+        if target_cache_dir is None:
+            raise ValueError("CachedTorchDataModule requires --target-cache-dir.")
+        try:
+            from pyfaidx import Fasta
+        except ImportError as exc:
+            raise RuntimeError("pyfaidx is required for Torch cached ablations.") from exc
+
+        self.cache_dir = target_cache_dir.expanduser().resolve()
+        with (self.cache_dir / "manifest.json").open() as handle:
+            self.manifest = json.load(handle)
+        self.fasta = Fasta(str(fasta_path.expanduser().resolve()), as_raw=True, sequence_always_upper=True)
+        self.head_id = head_id
+        self.batch_size = batch_size
+        tracks = self.manifest["heads"][head_id]["tracks"]
+        self.head_specs = [type("TorchHeadSpec", (), {"head_id": head_id, "tracks": tracks})()]
+        self._arrays: dict[str, np.memmap] = {}
+
+    def iter_batches(self, split: str, *, shuffle: bool = False) -> Sequence[dict[str, np.ndarray]]:
+        if shuffle:
+            raise ValueError("Cached Torch ablation iterator does not support shuffle.")
+        intervals = self.manifest["splits"].get(split, [])
+        if not intervals:
+            return
+        array = self._arrays.get(split)
+        if array is None:
+            array = np.load(self.cache_dir / split / f"{self.head_id}.npy", mmap_mode="r")
+            self._arrays[split] = array
+
+        for start_idx in range(0, len(intervals), self.batch_size):
+            batch_intervals = intervals[start_idx : start_idx + self.batch_size]
+            sequences = []
+            for interval in batch_intervals:
+                chrom = interval["chromosome"]
+                start = int(interval["start"])
+                end = int(interval["end"])
+                sequences.append(_one_hot_dna(self.fasta[chrom][start:end]))
+            batch_indices = slice(start_idx, start_idx + len(batch_intervals))
+            yield {
+                "sequences": np.stack(sequences, axis=0),
+                f"targets_{self.head_id}": np.asarray(array[batch_indices]),
+                "negative_strand_mask": np.zeros((len(batch_intervals),), dtype=bool),
+            }
+
+
 def build_data_module(args: argparse.Namespace):
+    from alphagenome_ft.finetune import (
+        BigWigDataModule,
+        WindowedTargetCache,
+        load_targets_config,
+        prepare_head_specs,
+        register_predefined_heads,
+        validate_head_specs,
+    )
+    from scripts.run_humanbraindev_finetune import (
+        build_targets_config,
+        discover_bigwigs,
+        make_chromosome_split_intervals,
+        parse_chrom_set,
+    )
+
     bigwigs = discover_bigwigs(args.bigwig_dir.expanduser().resolve())
     targets_config = load_targets_config(build_targets_config(bigwigs, args.head_id))
     head_specs = prepare_head_specs(targets_config, organism="HOMO_SAPIENS")
@@ -301,6 +478,9 @@ def build_data_module(args: argparse.Namespace):
 
 def load_merged_jax_model(args: argparse.Namespace, head_names: Sequence[str]):
     """Load a full merged checkpoint into a custom-head model template."""
+    import orbax.checkpoint as ocp
+    from alphagenome_ft import create_model_with_heads
+
     checkpoint_root = args.checkpoint.expanduser().resolve()
     checkpoint_path = checkpoint_root / "checkpoint"
     config_path = checkpoint_root / "config.json"
@@ -336,6 +516,13 @@ def load_merged_jax_model(args: argparse.Namespace, head_names: Sequence[str]):
 
 
 def evaluate_jax(args: argparse.Namespace) -> dict[str, Any]:
+    import jax
+    import numpy as np
+    from alphagenome.models import dna_model as ag_dna_model
+    from alphagenome_research.model import dna_model as research_dna_model
+    from alphagenome_ft.finetune.data import prepare_batch
+    from alphagenome_ft.finetune.train import _add_stats, _finalize_r2_stats, _r2_stats
+
     data_module, head_specs = build_data_module(args)
     head_names = tuple(spec.head_id for spec in head_specs)
     model = load_merged_jax_model(args, head_names)
@@ -439,7 +626,13 @@ def evaluate_torch(args: argparse.Namespace) -> dict[str, Any]:
     from alphagenome_pytorch.extensions.finetuning.transfer import add_head, remove_all_heads
     from torch_effective_conv import jax_effective_paths_to_torch, materialize_effective_convs
 
-    data_module, head_specs = build_data_module(args)
+    data_module = CachedTorchDataModule(
+        target_cache_dir=args.target_cache_dir,
+        fasta_path=args.fasta_path,
+        head_id=args.head_id,
+        batch_size=args.batch_size,
+    )
+    head_specs = data_module.head_specs
     head_names = tuple(spec.head_id for spec in head_specs)
     if len(head_names) != 1:
         raise ValueError(f"Torch eval currently expects one head, got {head_names}")
@@ -491,7 +684,7 @@ def evaluate_torch(args: argparse.Namespace) -> dict[str, Any]:
     total_batches = 0
     total_examples = 0
     start_time = time.perf_counter()
-    with torch.no_grad():
+    with torch.inference_mode():
         for split in args.splits.split(","):
             split = split.strip()
             if not split:
@@ -528,7 +721,7 @@ def evaluate_torch(args: argparse.Namespace) -> dict[str, Any]:
             if preds:
                 pred_all = np.concatenate(preds, axis=0)
                 target_all = np.concatenate(targets, axis=0)
-                metrics = r2_metrics(pred_all, target_all)
+                metrics = r2_metrics_np(pred_all, target_all)
                 metrics["loss"] = float(np.mean(losses))
                 metrics["batches"] = batches
                 metrics["examples"] = examples

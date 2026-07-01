@@ -80,7 +80,14 @@ def main() -> None:
                     }
                 )
 
-    rows.sort(key=lambda row: (row["backend"], row["strategy"], _sort_batch(row["batch_size"]), row["split"]))
+    rows.sort(
+        key=lambda row: (
+            row["backend"],
+            row["strategy"],
+            _sort_batch(row["batch_size"]),
+            row["split"],
+        )
+    )
 
     output = args.output.expanduser().resolve() if args.output else root / "quant_ablation_results.md"
     lines = [
