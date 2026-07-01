@@ -114,6 +114,14 @@ TORCH_TRUE_QUANT_STRATEGIES: dict[str, dict[str, Any]] = {
         "kind": "triton_int8_dynamic_conv1d",
         "include": ("encoder.down_blocks.4", "encoder.down_blocks.5"),
     },
+    "cudnn_int8_dynamic_conv1d": {
+        "kind": "cudnn_int8_dynamic_conv1d",
+        "include": (),
+    },
+    "cudnn_int8_dynamic_effective_conv1d": {
+        "kind": "cudnn_int8_dynamic_conv1d",
+        "include": ("encoder.down_blocks.4", "encoder.down_blocks.5"),
+    },
 }
 
 TORCH_STDCONV_EFFECTIVE_SUFFIX = "_stdconv_effective"
@@ -322,6 +330,18 @@ def apply_torch_quant_policy(model: Any, strategy: str, *, nf4_block_size: int =
             **stats,
             "strategy": strategy,
             "converted": stats["converted_triton_int8_dynamic_conv1ds"],
+            "simulated_storage": False,
+        }
+    if kind == "cudnn_int8_dynamic_conv1d":
+        low_precision = _load_local_torch_low_precision()
+        stats = low_precision.convert_conv1d_to_cudnn_int8_dynamic_activation_int8_weight(
+            model,
+            include_name_patterns=include_patterns,
+        )
+        return {
+            **stats,
+            "strategy": strategy,
+            "converted": stats["converted_cudnn_int8_dynamic_conv1ds"],
             "simulated_storage": False,
         }
     raise AssertionError(f"Unhandled strategy config: {strategy}")

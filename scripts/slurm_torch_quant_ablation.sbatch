@@ -13,6 +13,10 @@ set -euo pipefail
 ROOT="${ROOT:-/gpfs/commons/home/daknowles/projects/alphagenome_fp4}"
 cd "$ROOT"
 
+if command -v module >/dev/null 2>&1; then
+  module load Ninja/1.12.1-GCCcore-14.2.0 || true
+fi
+
 PYTHON="${PYTHON:-$HOME/venv/torchfix/bin/python}"
 STRATEGY_FILE="${STRATEGY_FILE:?Set STRATEGY_FILE.}"
 BATCH_SIZE_FILE="${BATCH_SIZE_FILE:-}"

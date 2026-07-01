@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from functools import lru_cache
+from pathlib import Path
 from typing import Iterable
 
 import torch
@@ -16,6 +18,89 @@ try:
 except ImportError:  # pragma: no cover - optional CUDA path
     triton = None
     tl = None
+
+
+_CUDNN_INT8_CONV1D_SOURCE = r"""
+#include <torch/extension.h>
+#include <ATen/cuda/CUDAContext.h>
+#include <c10/cuda/CUDAStream.h>
+#include <cudnn.h>
+#include <sstream>
+
+#define CHECK_CUDNN(expr) do { \
+    cudnnStatus_t status = (expr); \
+    if (status != CUDNN_STATUS_SUCCESS) { \
+        std::ostringstream oss; \
+        oss << #expr << " failed: " << cudnnGetErrorString(status); \
+        throw std::runtime_error(oss.str()); \
+    } \
+} while (0)
+
+torch::Tensor cudnn_int8_conv1d_nhwc(torch::Tensor x, torch::Tensor w, int64_t pad_left) {
+    TORCH_CHECK(x.is_cuda() && w.is_cuda(), "x and w must be CUDA tensors");
+    TORCH_CHECK(x.scalar_type() == torch::kInt8 && w.scalar_type() == torch::kInt8, "x/w must be int8");
+    TORCH_CHECK(x.dim() == 4 && w.dim() == 4, "expected x NHWC and w OHWI tensors");
+    x = x.contiguous();
+    w = w.contiguous();
+    int n = x.size(0);
+    int h = x.size(1);
+    int l = x.size(2);
+    int c = x.size(3);
+    int oc = w.size(0);
+    int wh = w.size(1);
+    int k = w.size(2);
+    int wc = w.size(3);
+    TORCH_CHECK(h == 1 && wh == 1 && wc == c, "cuDNN Conv1d NHWC/OHWI shape mismatch");
+
+    auto y = torch::empty({n, 1, l, oc}, x.options().dtype(torch::kInt32));
+    cudnnHandle_t handle;
+    CHECK_CUDNN(cudnnCreate(&handle));
+    CHECK_CUDNN(cudnnSetStream(handle, at::cuda::getCurrentCUDAStream().stream()));
+
+    cudnnTensorDescriptor_t xd, yd;
+    cudnnFilterDescriptor_t wd;
+    cudnnConvolutionDescriptor_t cd;
+    CHECK_CUDNN(cudnnCreateTensorDescriptor(&xd));
+    CHECK_CUDNN(cudnnCreateTensorDescriptor(&yd));
+    CHECK_CUDNN(cudnnCreateFilterDescriptor(&wd));
+    CHECK_CUDNN(cudnnCreateConvolutionDescriptor(&cd));
+
+    CHECK_CUDNN(cudnnSetTensor4dDescriptorEx(xd, CUDNN_DATA_INT8, n, c, 1, l, l * c, 1, l * c, c));
+    CHECK_CUDNN(cudnnSetTensor4dDescriptorEx(yd, CUDNN_DATA_INT32, n, oc, 1, l, l * oc, 1, l * oc, oc));
+    CHECK_CUDNN(cudnnSetFilter4dDescriptor(wd, CUDNN_DATA_INT8, CUDNN_TENSOR_NHWC, oc, c, 1, k));
+    CHECK_CUDNN(cudnnSetConvolution2dDescriptor(
+        cd, 0, static_cast<int>(pad_left), 1, 1, 1, 1, CUDNN_CROSS_CORRELATION, CUDNN_DATA_INT32));
+    CHECK_CUDNN(cudnnSetConvolutionMathType(cd, CUDNN_TENSOR_OP_MATH));
+
+    int alpha = 1;
+    int beta = 0;
+    CHECK_CUDNN(cudnnConvolutionForward(
+        handle,
+        &alpha,
+        xd,
+        x.data_ptr(),
+        wd,
+        w.data_ptr(),
+        cd,
+        CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_PRECOMP_GEMM,
+        nullptr,
+        0,
+        &beta,
+        yd,
+        y.data_ptr()));
+
+    CHECK_CUDNN(cudnnDestroyConvolutionDescriptor(cd));
+    CHECK_CUDNN(cudnnDestroyFilterDescriptor(wd));
+    CHECK_CUDNN(cudnnDestroyTensorDescriptor(yd));
+    CHECK_CUDNN(cudnnDestroyTensorDescriptor(xd));
+    CHECK_CUDNN(cudnnDestroy(handle));
+    return y;
+}
+
+PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
+    m.def("cudnn_int8_conv1d_nhwc", &cudnn_int8_conv1d_nhwc);
+}
+"""
 
 
 @dataclass(frozen=True)
@@ -134,6 +219,57 @@ class Conv1dAsConv2d(nn.Module):
         elif self.pad_mode not in {(0,), 0, "valid"}:
             raise ValueError(f"Unsupported Conv1dAsConv2d padding mode: {self.pad_mode!r}")
         return self.conv2d(x.unsqueeze(2)).squeeze(2)
+
+
+def _nvidia_site_package_root() -> Path:
+    return Path(torch.__file__).resolve().parents[1] / "nvidia"
+
+
+@lru_cache(maxsize=1)
+def _load_cudnn_int8_conv1d_extension():
+    try:
+        from torch.utils.cpp_extension import load_inline
+    except ImportError as exc:  # pragma: no cover - optional build path
+        raise RuntimeError("torch C++ extension support is required for cuDNN Conv1d.") from exc
+
+    nvidia_root = _nvidia_site_package_root()
+    torch_lib = Path(torch.__file__).resolve().parent / "lib"
+    include_dirs = [
+        nvidia_root / "cudnn" / "include",
+        nvidia_root / "cuda_nvcc" / "include",
+        nvidia_root / "cuda_cccl" / "include",
+        nvidia_root / "cu13" / "include",
+        nvidia_root / "cuda_runtime" / "include",
+    ]
+    library_dirs = [
+        nvidia_root / "cudnn" / "lib",
+        nvidia_root / "cu13" / "lib",
+        nvidia_root / "cuda_runtime" / "lib",
+        torch_lib,
+    ]
+    missing = [path for path in include_dirs + library_dirs if not path.exists()]
+    cudnn_lib = nvidia_root / "cudnn" / "lib" / "libcudnn.so.9"
+    if not cudnn_lib.exists():
+        missing.append(cudnn_lib)
+    if missing:
+        raise RuntimeError(
+            "Could not find the NVIDIA wheel headers/libs needed for cuDNN Conv1d: "
+            + ", ".join(str(path) for path in missing)
+        )
+
+    return load_inline(
+        name="ag_cudnn_int8_conv1d",
+        cpp_sources=[_CUDNN_INT8_CONV1D_SOURCE],
+        extra_include_paths=[str(path) for path in include_dirs],
+        extra_ldflags=[
+            *(f"-L{path}" for path in library_dirs),
+            str(cudnn_lib),
+            "-lc10_cuda",
+            "-ltorch_cuda",
+            *(f"-Wl,-rpath,{path}" for path in library_dirs),
+        ],
+        verbose=False,
+    )
 
 
 if triton is not None:
@@ -378,6 +514,71 @@ class Int8DynamicActivationInt8WeightConv1d(Int8WeightOnlyConv1d):
             BLOCK_K=64,
         )
         return out
+
+
+class CudnnInt8DynamicActivationInt8WeightConv1d(nn.Module):
+    """cuDNN int8 activation/int8 weight Conv1d for NCL inference tensors."""
+
+    def __init__(self, conv: nn.Conv1d):
+        super().__init__()
+        if conv.stride != (1,) or conv.dilation != (1,) or conv.groups != 1:
+            raise ValueError(
+                "CudnnInt8DynamicActivationInt8WeightConv1d only supports "
+                "stride=1, dilation=1, groups=1."
+            )
+        self.in_channels = conv.in_channels
+        self.out_channels = conv.out_channels
+        self.kernel_size = conv.kernel_size
+        self.pad_mode = getattr(conv, "pad_mode", conv.padding)
+        if self.pad_mode == "same":
+            self.pad_left = (self.kernel_size[0] - 1) // 2
+        elif self.pad_mode in {(0,), 0, "valid"}:
+            self.pad_left = 0
+        else:
+            raise ValueError(f"Unsupported cuDNN Conv1d padding mode: {self.pad_mode!r}")
+
+        weight = conv.weight.detach().float()
+        flat = weight.reshape(weight.shape[0], -1)
+        scale = flat.abs().amax(dim=1).clamp_min(1e-8) / 127.0
+        qweight = torch.round(flat / scale[:, None]).clamp(-127, 127).to(torch.int8)
+        self.register_buffer("qweight", qweight.contiguous())
+        self.register_buffer("qweight_ohwi", qweight.reshape(*weight.shape).permute(0, 2, 1).unsqueeze(1).contiguous())
+        self.register_buffer("scale", scale.to(device=conv.weight.device, dtype=torch.float32))
+        if conv.bias is None:
+            self.register_buffer("bias", torch.empty(0, device=conv.weight.device, dtype=torch.float32))
+            self.has_bias = False
+        else:
+            self.register_buffer("bias", conv.bias.detach().float().contiguous())
+            self.has_bias = True
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        if x.dim() != 3:
+            raise ValueError(f"Expected NCL input, got shape {tuple(x.shape)}")
+        if not x.is_cuda:
+            weight = (self.qweight.float() * self.scale[:, None]).reshape(
+                self.out_channels, self.in_channels, self.kernel_size[0]
+            )
+            bias = self.bias.to(x.device, dtype=x.dtype) if self.has_bias else None
+            if self.pad_mode == "same":
+                pad_total = self.kernel_size[0] - 1
+                x = F.pad(x, (pad_total // 2, pad_total - pad_total // 2))
+            return F.conv1d(x, weight.to(x.device, dtype=x.dtype), bias)
+        batch, in_channels, length = x.shape
+        if in_channels != self.in_channels:
+            raise ValueError(f"Expected {self.in_channels} input channels, got {in_channels}.")
+
+        x_float = x.float()
+        x_absmax = x_float.abs().amax().clamp_min(1.0e-8)
+        x_scale = x_absmax / 127.0
+        x_quant = torch.round(x_float / x_scale).clamp(-127, 127).to(torch.int8)
+        x_nhwc = x_quant.transpose(1, 2).unsqueeze(1).contiguous()
+
+        ext = _load_cudnn_int8_conv1d_extension()
+        y_int = ext.cudnn_int8_conv1d_nhwc(x_nhwc, self.qweight_ohwi, self.pad_left)
+        y = y_int.float() * (x_scale * self.scale).view(1, 1, 1, -1)
+        if self.has_bias:
+            y = y + self.bias.view(1, 1, 1, -1)
+        return y.squeeze(1).transpose(1, 2).contiguous().to(dtype=x.dtype)
 
 
 def _wrap_linears_by_weight_class_name(model: nn.Module, class_name: str) -> int:
@@ -649,6 +850,56 @@ def convert_conv1d_to_triton_int8_dynamic_activation_int8_weight(
         "skipped_triton_int8_dynamic_conv1ds": skipped,
         "triton_int8_dynamic_conv1d_skip_name_patterns": patterns,
         "triton_int8_dynamic_conv1d_include_name_patterns": include_patterns,
+    }
+
+
+def convert_conv1d_to_cudnn_int8_dynamic_activation_int8_weight(
+    model: nn.Module,
+    *,
+    min_kernel_size: int = 2,
+    min_feature_multiple: int = 16,
+    skip_name_patterns: Iterable[str] = ("heads", "lora_", "locon_", "ia3", "adapter"),
+    include_name_patterns: Iterable[str] = (),
+) -> dict[str, object]:
+    """Replace eligible Conv1d modules with the experimental cuDNN int8 path."""
+    patterns = tuple(skip_name_patterns)
+    include_patterns = tuple(include_name_patterns)
+    decisions: dict[str, bool] = {}
+    replacements: list[tuple[nn.Module, str, nn.Module]] = []
+
+    for fqn, module, parent, child_name in _iter_named_child_modules(model):
+        if not isinstance(module, nn.Conv1d):
+            continue
+        eligible = (
+            module.__class__.__name__ != "StandardizedConv1d"
+            and module.kernel_size[0] >= min_kernel_size
+            and module.stride == (1,)
+            and module.dilation == (1,)
+            and module.groups == 1
+            and module.in_channels % min_feature_multiple == 0
+            and module.out_channels % min_feature_multiple == 0
+            and _matches_include_patterns(fqn, include_patterns)
+            and not _matches_any_pattern(fqn, patterns)
+        )
+        decisions[fqn] = eligible
+        if eligible:
+            replacements.append((parent, child_name, CudnnInt8DynamicActivationInt8WeightConv1d(module)))
+
+    for parent, child_name, replacement in replacements:
+        setattr(parent, child_name, replacement)
+
+    converted = sum(1 for selected in decisions.values() if selected)
+    skipped = sum(1 for selected in decisions.values() if not selected)
+    return {
+        "backend": "cudnn",
+        "mode": "dynamic_activation_weight",
+        "quant_type": "int8",
+        "activation_scale": "tensorwise_dynamic",
+        "weight_scale": "per_output_channel",
+        "converted_cudnn_int8_dynamic_conv1ds": converted,
+        "skipped_cudnn_int8_dynamic_conv1ds": skipped,
+        "cudnn_int8_dynamic_conv1d_skip_name_patterns": patterns,
+        "cudnn_int8_dynamic_conv1d_include_name_patterns": include_patterns,
     }
 
 
