@@ -61,6 +61,9 @@ AlphaGenome evaluation. The most useful pieces so far are:
 - **Triton no-indices max-pool**: replaces the encoder `Pool1d(k=2, stride=2)`
   max-pool with a custom Triton kernel that avoids PyTorch's large hidden
   max-pool index/workspace allocation.
+- **Fused DNA embedder block**: optionally fuses the first full-resolution
+  encoder block (`RMSBatchNorm -> GELU -> Conv1d`) into one Triton kernel. This
+  lowers memory further, but is slower than the no-intermediates + max-pool path.
 
 For the human brain development ATAC benchmark at batch size 32,
 `bf16_triton_conv_no_intermediates_tritonpool_stdconv_effective` reduced
@@ -68,7 +71,8 @@ observed GPU memory from about `43.6 GiB` to `34.9 GiB` while keeping throughput
 and differential Pearson effectively unchanged versus
 `bf16_triton_conv_stdconv_effective`. See
 [`docs/encoder_vram_20260701.md`](docs/encoder_vram_20260701.md) for the
-benchmark table and attribution summary.
+benchmark table and attribution summary. The fused embedder variant reduces
+observed memory further to about `32.3 GiB`, with a throughput tradeoff.
 
 ## Installation
 

@@ -78,26 +78,6 @@ TORCH_TRUE_QUANT_STRATEGIES: dict[str, dict[str, Any]] = {
         "skip": (),
         "pointwise_conv": True,
     },
-    "torchao_int8_weight_only_conv2d": {
-        "kind": "intx_conv2d",
-        "weight_dtype": "int8",
-        "include": (),
-    },
-    "torchao_int4_weight_only_conv2d": {
-        "kind": "intx_conv2d",
-        "weight_dtype": "int4",
-        "include": (),
-    },
-    "torchao_int8_weight_only_effective_conv2d": {
-        "kind": "intx_conv2d",
-        "weight_dtype": "int8",
-        "include": ("encoder.down_blocks.4", "encoder.down_blocks.5"),
-    },
-    "torchao_int4_weight_only_effective_conv2d": {
-        "kind": "intx_conv2d",
-        "weight_dtype": "int4",
-        "include": ("encoder.down_blocks.4", "encoder.down_blocks.5"),
-    },
     "triton_int8_weight_only_conv1d": {
         "kind": "triton_int8_conv1d",
         "include": (),
@@ -131,6 +111,14 @@ TORCH_TRUE_QUANT_STRATEGIES: dict[str, dict[str, Any]] = {
         "bf16_params": True,
         "encoder_no_intermediates": True,
         "encoder_triton_pool": True,
+    },
+    "bf16_triton_conv_no_intermediates_tritonpool_fusedembed": {
+        "kind": "triton_int8_conv1d",
+        "include": (),
+        "bf16_params": True,
+        "encoder_no_intermediates": True,
+        "encoder_triton_pool": True,
+        "encoder_fused_dna_embedder_block": True,
     },
     "bf16_triton_conv_flexattn": {
         "kind": "triton_int8_conv1d",
@@ -343,6 +331,10 @@ def apply_torch_quant_policy(model: Any, strategy: str, *, nf4_block_size: int =
     if config.get("encoder_triton_pool"):
         low_precision = _load_local_torch_low_precision()
         pool_stats = low_precision.replace_encoder_pool_with_triton_no_indices(model)
+    fused_block_stats = {}
+    if config.get("encoder_fused_dna_embedder_block"):
+        low_precision = _load_local_torch_low_precision()
+        fused_block_stats = low_precision.replace_dna_embedder_block_with_fused_triton(model)
     attention_stats = {}
     if config.get("attention_backend"):
         attention_backends = _load_local_torch_attention_backends()
@@ -409,28 +401,6 @@ def apply_torch_quant_policy(model: Any, strategy: str, *, nf4_block_size: int =
             "converted": stats.converted_linears,
             "simulated_storage": False,
         }
-    if kind == "intx_conv2d":
-        import torch
-
-        low_precision = _load_local_torch_low_precision()
-        weight_dtype_name = str(config["weight_dtype"])
-        weight_dtype = getattr(torch, weight_dtype_name)
-        conv_stats = low_precision.convert_conv1d_to_conv2d(
-            model,
-            include_name_patterns=include_patterns,
-        )
-        quant_stats = low_precision.quantize_conv2ds_to_intx_weight_only(
-            model,
-            weight_dtype=weight_dtype,
-            include_name_patterns=include_patterns,
-        )
-        return {
-            **conv_stats,
-            **quant_stats,
-            "strategy": strategy,
-            "converted": quant_stats["converted_conv2ds"],
-            "simulated_storage": False,
-        }
     if kind == "triton_int8_conv1d":
         low_precision = _load_local_torch_low_precision()
         stats = low_precision.convert_conv1d_to_triton_int8_weight_only(
@@ -441,6 +411,7 @@ def apply_torch_quant_policy(model: Any, strategy: str, *, nf4_block_size: int =
             **stats,
             **encoder_stats,
             **pool_stats,
+            **fused_block_stats,
             **attention_stats,
             "strategy": strategy,
             "converted": stats["converted_triton_int8_conv1ds"],

@@ -46,6 +46,75 @@ if triton is not None:
         tl.store(out_ptr + offsets, tl.maximum(x0, x1), mask=mask)
 
 
+    @triton.jit
+    def _norm_gelu_int8_weight_only_conv1d_kernel(
+        x_ptr,
+        inv_ptr,
+        norm_bias_ptr,
+        qweight_ptr,
+        scale_ptr,
+        bias_ptr,
+        out_ptr,
+        total_positions: tl.constexpr,
+        in_channels: tl.constexpr,
+        out_channels: tl.constexpr,
+        length: tl.constexpr,
+        kernel_width: tl.constexpr,
+        pad_left: tl.constexpr,
+        has_bias: tl.constexpr,
+        BLOCK_M: tl.constexpr,
+        BLOCK_N: tl.constexpr,
+        BLOCK_K: tl.constexpr,
+    ):
+        pid_m = tl.program_id(0)
+        pid_n = tl.program_id(1)
+        offs_m = pid_m * BLOCK_M + tl.arange(0, BLOCK_M)
+        offs_n = pid_n * BLOCK_N + tl.arange(0, BLOCK_N)
+        batch_idx = offs_m // length
+        pos_idx = offs_m - batch_idx * length
+
+        acc = tl.zeros((BLOCK_M, BLOCK_N), tl.float32)
+        for k_start in range(0, in_channels * kernel_width, BLOCK_K):
+            offs_k = k_start + tl.arange(0, BLOCK_K)
+            chan_idx = offs_k // kernel_width
+            kernel_idx = offs_k - chan_idx * kernel_width
+            input_pos = pos_idx[:, None] + kernel_idx[None, :] - pad_left
+            x_offsets = (
+                batch_idx[:, None].to(tl.int64) * in_channels * length
+                + chan_idx[None, :].to(tl.int64) * length
+                + input_pos.to(tl.int64)
+            )
+            x_mask = (
+                (offs_m[:, None] < total_positions)
+                & (offs_k[None, :] < in_channels * kernel_width)
+                & (input_pos >= 0)
+                & (input_pos < length)
+            )
+            x_vals = tl.load(x_ptr + x_offsets, mask=x_mask, other=0.0).to(tl.float32)
+            inv = tl.load(inv_ptr + chan_idx, mask=offs_k < in_channels * kernel_width, other=0.0).to(tl.float32)
+            nbias = tl.load(norm_bias_ptr + chan_idx, mask=offs_k < in_channels * kernel_width, other=0.0).to(tl.float32)
+            h = x_vals * inv[None, :] + nbias[None, :]
+            h = h * tl.sigmoid(1.702 * h)
+            h = tl.where(x_mask, h, 0.0)
+            w_offsets = offs_n[None, :] * in_channels * kernel_width + offs_k[:, None]
+            w_mask = (offs_n[None, :] < out_channels) & (offs_k[:, None] < in_channels * kernel_width)
+            w_vals = tl.load(qweight_ptr + w_offsets, mask=w_mask, other=0).to(tl.float32)
+            acc += tl.dot(h, w_vals, input_precision="tf32")
+
+        scales = tl.load(scale_ptr + offs_n, mask=offs_n < out_channels, other=0.0).to(tl.float32)
+        acc = acc * scales[None, :]
+        if has_bias:
+            bias = tl.load(bias_ptr + offs_n, mask=offs_n < out_channels, other=0.0).to(tl.float32)
+            acc += bias[None, :]
+        out_offsets = (
+            batch_idx[:, None].to(tl.int64) * out_channels * length
+            + offs_n[None, :].to(tl.int64) * length
+            + pos_idx[:, None].to(tl.int64)
+        )
+        out_mask = (offs_m[:, None] < total_positions) & (offs_n[None, :] < out_channels)
+        tl.store(out_ptr + out_offsets, acc, mask=out_mask)
+
+
 @dataclass(frozen=True)
 class Float8ConversionStats:
     """Summary of a torchao float8 conversion pass."""
@@ -165,41 +234,90 @@ class TritonMaxPool1dK2S2NoIndices(nn.Module):
         return out
 
 
-class Conv1dAsConv2d(nn.Module):
-    """Run a Conv1d as a Conv2d over a singleton height dimension."""
+class FusedNormGeluInt8WeightOnlyConv1d(nn.Module):
+    """Fuse RMSBatchNorm, gelu, and int8 weight-only Conv1d for one ConvBlock."""
 
-    def __init__(self, conv: nn.Conv1d):
+    def __init__(self, block: nn.Module):
         super().__init__()
+        if triton is None:
+            raise RuntimeError("triton is required for FusedNormGeluInt8WeightOnlyConv1d.")
+        norm = block.norm
+        conv = block.conv
+        if not isinstance(conv, nn.Conv1d):
+            raise ValueError("FusedNormGeluInt8WeightOnlyConv1d expects a ConvBlock with Conv1d.")
         if conv.stride != (1,) or conv.dilation != (1,) or conv.groups != 1:
-            raise ValueError("Conv1dAsConv2d only supports stride=1, dilation=1, groups=1.")
-        self.pad_mode = getattr(conv, "pad_mode", conv.padding)
+            raise ValueError("FusedNormGeluInt8WeightOnlyConv1d only supports stride=1, dilation=1, groups=1.")
+        self.in_channels = conv.in_channels
+        self.out_channels = conv.out_channels
         self.kernel_size = conv.kernel_size
-        self.conv2d = nn.Conv2d(
-            conv.in_channels,
-            conv.out_channels,
-            kernel_size=(1, conv.kernel_size[0]),
-            stride=(1, conv.stride[0]),
-            padding=(0, 0),
-            dilation=(1, conv.dilation[0]),
-            groups=conv.groups,
-            bias=conv.bias is not None,
-            device=conv.weight.device,
-            dtype=conv.weight.dtype,
-        )
-        with torch.no_grad():
-            self.conv2d.weight.copy_(conv.weight.unsqueeze(2))
-            if conv.bias is not None:
-                self.conv2d.bias.copy_(conv.bias)
+        self.pad_mode = getattr(conv, "pad_mode", conv.padding)
+        if self.pad_mode == "same":
+            self.pad_left = (self.kernel_size[0] - 1) // 2
+        elif self.pad_mode in {(0,), 0, "valid"}:
+            self.pad_left = 0
+        else:
+            raise ValueError(f"Unsupported fused ConvBlock padding mode: {self.pad_mode!r}")
+
+        inv = norm.weight.detach().float() * torch.rsqrt(norm.running_var.detach().float() + norm.eps)
+        self.register_buffer("norm_inv", inv.to(device=conv.weight.device, dtype=torch.float32).contiguous())
+        self.register_buffer("norm_bias", norm.bias.detach().float().to(device=conv.weight.device).contiguous())
+
+        weight = conv.weight.detach().float()
+        flat = weight.reshape(weight.shape[0], -1)
+        scale = flat.abs().amax(dim=1).clamp_min(1e-8) / 127.0
+        qweight = torch.round(flat / scale[:, None]).clamp(-127, 127).to(torch.int8)
+        self.register_buffer("qweight", qweight.contiguous())
+        self.register_buffer("scale", scale.to(device=conv.weight.device, dtype=torch.float32))
+        if conv.bias is None:
+            self.register_buffer("bias", torch.empty(0, device=conv.weight.device, dtype=torch.float32))
+            self.has_bias = False
+        else:
+            self.register_buffer("bias", conv.bias.detach().float().contiguous())
+            self.has_bias = True
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        if self.pad_mode == "same":
-            pad_total = self.kernel_size[0] - 1
-            pad_left = pad_total // 2
-            pad_right = pad_total - pad_left
-            x = F.pad(x, (pad_left, pad_right))
-        elif self.pad_mode not in {(0,), 0, "valid"}:
-            raise ValueError(f"Unsupported Conv1dAsConv2d padding mode: {self.pad_mode!r}")
-        return self.conv2d(x.unsqueeze(2)).squeeze(2)
+        if x.dim() != 3:
+            raise ValueError(f"Expected NCL input, got shape {tuple(x.shape)}")
+        if not x.is_cuda:
+            h = (
+                x * self.norm_inv.to(x.device, dtype=x.dtype).view(1, -1, 1)
+                + self.norm_bias.to(x.device, dtype=x.dtype).view(1, -1, 1)
+            )
+            h = h * torch.sigmoid(torch.tensor(1.702, dtype=h.dtype, device=h.device) * h)
+            weight = (self.qweight.float() * self.scale[:, None]).reshape(
+                self.out_channels, self.in_channels, self.kernel_size[0]
+            )
+            bias = self.bias.to(x.device, dtype=x.dtype) if self.has_bias else None
+            if self.pad_mode == "same":
+                pad_total = self.kernel_size[0] - 1
+                h = F.pad(h, (pad_total // 2, pad_total - pad_total // 2))
+            return F.conv1d(h, weight.to(x.device, dtype=x.dtype), bias)
+        x = x.contiguous()
+        batch, in_channels, length = x.shape
+        if in_channels != self.in_channels:
+            raise ValueError(f"Expected {self.in_channels} input channels, got {in_channels}.")
+        out = torch.empty((batch, self.out_channels, length), device=x.device, dtype=x.dtype)
+        grid = (triton.cdiv(batch * length, 32), triton.cdiv(self.out_channels, 32))
+        _norm_gelu_int8_weight_only_conv1d_kernel[grid](
+            x,
+            self.norm_inv,
+            self.norm_bias,
+            self.qweight,
+            self.scale,
+            self.bias,
+            out,
+            batch * length,
+            self.in_channels,
+            self.out_channels,
+            length,
+            self.kernel_size[0],
+            self.pad_left,
+            self.has_bias,
+            BLOCK_M=32,
+            BLOCK_N=32,
+            BLOCK_K=64,
+        )
+        return out
 
 
 if triton is not None:
@@ -529,95 +647,6 @@ def convert_pointwise_conv1d_to_linear(
     }
 
 
-def convert_conv1d_to_conv2d(
-    model: nn.Module,
-    *,
-    min_kernel_size: int = 2,
-    min_feature_multiple: int = 16,
-    skip_name_patterns: Iterable[str] = ("heads", "lora_", "locon_", "ia3", "adapter"),
-    include_name_patterns: Iterable[str] = (),
-) -> dict[str, object]:
-    """Replace eligible Conv1d modules with Conv2d wrappers.
-
-    StandardizedConv1d modules are intentionally skipped. Materialize them into
-    EffectiveConv1d first if their already-standardized inference weights should
-    be eligible for Conv2d quantization.
-    """
-    if min_kernel_size < 1:
-        raise ValueError("min_kernel_size must be >= 1")
-    if min_feature_multiple < 1:
-        raise ValueError("min_feature_multiple must be >= 1")
-
-    patterns = tuple(skip_name_patterns)
-    include_patterns = tuple(include_name_patterns)
-    decisions: dict[str, bool] = {}
-    replacements: list[tuple[nn.Module, str, nn.Module]] = []
-
-    for fqn, module, parent, child_name in _iter_named_child_modules(model):
-        if not isinstance(module, nn.Conv1d):
-            continue
-        eligible = (
-            module.__class__.__name__ != "StandardizedConv1d"
-            and module.kernel_size[0] >= min_kernel_size
-            and module.stride == (1,)
-            and module.dilation == (1,)
-            and module.groups == 1
-            and module.in_channels % min_feature_multiple == 0
-            and module.out_channels % min_feature_multiple == 0
-            and _matches_include_patterns(fqn, include_patterns)
-            and not _matches_any_pattern(fqn, patterns)
-        )
-        decisions[fqn] = eligible
-        if eligible:
-            replacements.append((parent, child_name, Conv1dAsConv2d(module)))
-
-    for parent, child_name, replacement in replacements:
-        setattr(parent, child_name, replacement)
-
-    converted = sum(1 for selected in decisions.values() if selected)
-    skipped = sum(1 for selected in decisions.values() if not selected)
-    return {
-        "converted_conv1d_to_conv2d": converted,
-        "skipped_conv1d_to_conv2d": skipped,
-        "conv2d_skip_name_patterns": patterns,
-        "conv2d_include_name_patterns": include_patterns,
-    }
-
-
-def quantize_conv2ds_to_intx_weight_only(
-    model: nn.Module,
-    *,
-    weight_dtype: torch.dtype,
-    include_name_patterns: Iterable[str] = (),
-) -> dict[str, object]:
-    """Apply TorchAO intx weight-only quantization to eligible Conv2d modules."""
-    try:
-        from torchao.quantization import IntxWeightOnlyConfig, quantize_
-    except ImportError as exc:
-        raise RuntimeError("torchao is required for intx Conv2d quantization.") from exc
-
-    include_patterns = tuple(include_name_patterns)
-    decisions: dict[str, bool] = {}
-
-    def module_filter_fn(mod: nn.Module, fqn: str) -> bool:
-        eligible = isinstance(mod, nn.Conv2d) and _matches_include_patterns(fqn, include_patterns)
-        if isinstance(mod, nn.Conv2d):
-            decisions[fqn] = eligible
-        return eligible
-
-    quantize_(model, IntxWeightOnlyConfig(weight_dtype=weight_dtype), filter_fn=module_filter_fn)
-    converted = sum(1 for selected in decisions.values() if selected)
-    skipped = sum(1 for selected in decisions.values() if not selected)
-    return {
-        "backend": "torchao",
-        "mode": "weight_only",
-        "quant_type": str(weight_dtype).removeprefix("torch."),
-        "converted_conv2ds": converted,
-        "skipped_conv2ds": skipped,
-        "conv2d_quant_include_name_patterns": include_patterns,
-    }
-
-
 def replace_encoder_pool_with_triton_no_indices(model: nn.Module) -> dict[str, object]:
     """Replace the shared encoder max-pool with a Triton no-indices k=2/s=2 pool."""
     if triton is None:
@@ -627,6 +656,17 @@ def replace_encoder_pool_with_triton_no_indices(model: nn.Module) -> dict[str, o
         return {"encoder_triton_pool_no_indices": True, "converted_triton_maxpool1d": 1}
     model.encoder.pool = TritonMaxPool1dK2S2NoIndices(pool)
     return {"encoder_triton_pool_no_indices": True, "converted_triton_maxpool1d": 1}
+
+
+def replace_dna_embedder_block_with_fused_triton(model: nn.Module) -> dict[str, object]:
+    """Replace encoder.dna_embedder.block with fused norm/gelu/int8-conv."""
+    if triton is None:
+        raise RuntimeError("triton is required for fused DNA embedder block replacement.")
+    block = model.encoder.dna_embedder.block
+    if isinstance(block, FusedNormGeluInt8WeightOnlyConv1d):
+        return {"encoder_fused_dna_embedder_block": True, "converted_fused_convblocks": 1}
+    model.encoder.dna_embedder.block = FusedNormGeluInt8WeightOnlyConv1d(block)
+    return {"encoder_fused_dna_embedder_block": True, "converted_fused_convblocks": 1}
 
 
 def convert_conv1d_to_triton_int8_weight_only(
