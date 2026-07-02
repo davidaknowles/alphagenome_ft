@@ -27,11 +27,6 @@ from alphagenome_ft.lora import ADAPTER_LEAF_NAMES
 from scripts.run_humanbraindev_finetune import build_targets_config, discover_bigwigs
 
 
-DEFAULT_SOURCE = Path(
-    "outputs/precision_adapter_compare/"
-    "20260627_232826_full_valdiffpearson_wandb/"
-    "jax_default_lora_locon/best"
-)
 DEFAULT_BIGWIG_DIR = Path(
     "/gpfs/commons/home/daknowles/knowles_lab/data/multiome/humanbraindev/bigwigs"
 )
@@ -136,7 +131,7 @@ def _count_adapter_leaves(params) -> int:
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--source-checkpoint", type=Path, default=DEFAULT_SOURCE)
+    parser.add_argument("--source-checkpoint", type=Path, required=True)
     parser.add_argument(
         "--output-checkpoint",
         type=Path,

@@ -7,9 +7,10 @@ cd "$ROOT"
 PYTHON="${PYTHON:-$HOME/venv/jax/bin/python}"
 STAMP="${STAMP:-$(date +%Y%m%d_%H%M%S)}"
 OUTPUT_ROOT="${OUTPUT_ROOT:-$ROOT/outputs/quant_ablation/$STAMP}"
-SOURCE_CHECKPOINT="${SOURCE_CHECKPOINT:-$ROOT/outputs/precision_adapter_compare/20260627_232826_full_valdiffpearson_wandb/jax_default_lora_locon/best}"
 MERGED_CHECKPOINT="${MERGED_CHECKPOINT:-$OUTPUT_ROOT/merged_jax_default_lora_locon}"
 TARGET_CACHE_DIR="${TARGET_CACHE_DIR:-/gpfs/commons/home/daknowles/knowles_lab/data/multiome/humanbraindev/alphagenome_target_cache/humanbraindev_atac_w131072_float16}"
+
+: "${SOURCE_CHECKPOINT:?Set SOURCE_CHECKPOINT to the finetuned adapter checkpoint to merge}"
 
 mkdir -p "$OUTPUT_ROOT" logs/quant_ablation
 
