@@ -10,6 +10,16 @@ the full valid/test splits. The peak-memory column is observed device memory
 sampled with `nvidia-smi`, reported as GiB. Accuracy is reported as test
 differential Pearson only.
 
+The feature matrix columns are:
+
+- **BF16**: aggressive bfloat16 Torch dtype policy.
+- **Eff.**: precomputed effective standardized convolution weights.
+- **Int8**: Triton int8 weight-only Conv1d.
+- **NoInt**: 128bp-only encoder path that omits unused skip tensors.
+- **Pool**: Triton max-pool without PyTorch's index/workspace allocation.
+- **FEmb**: fused `encoder.dna_embedder.block`.
+- **FD0**: fused `encoder.down_blocks.0`.
+
 ## Implementation Details
 
 The strategies are cumulative in the order below, except for rows that omit one
@@ -66,11 +76,22 @@ erf GELU:
 The fused kernel applies this activation before the int8 weight-only Conv1d and
 does not materialize the normalized or activated full-resolution tensor.
 
+This saves VRAM because the unfused path creates separate full-resolution
+temporary tensors for normalization, activation, and convolution input. At
+131 kb and batch size 32, these temporaries are large enough to drive allocator
+reservation and observed peak memory. The fused kernel streams through the
+operation and only stores the final block output.
+
 **Fused down block 0.** `encoder.down_blocks.0` is wrapped with two fused
 ConvBlocks and lean residual accumulation. In inference, the first block output
 already has the expanded channel count, so the residual input is added in-place
 into the leading input-channel slice instead of creating an explicit padded
 residual tensor. The second residual add is also in-place.
+
+This saves VRAM by avoiding both the ConvBlock temporaries described above and
+the explicit padded residual tensor for the first channel-expanding down block.
+The benefit appears mostly as lower reserved/observed device memory because the
+peak allocator state is sensitive to high-resolution transient tensors.
 
 ## Strategy Names
 
@@ -90,16 +111,16 @@ residual tensor. The second residual add is also in-place.
 Batch size was 32. The full valid/test evaluation used 2162 examples over 68
 batches.
 
-| strategy | bf16 | effective conv | int8 conv | no intermediates | triton pool | fused embed | fused down0 | peak GiB | test r |
-|---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|---:|---:|
-| default |  |  |  |  |  |  |  | 90.46 | 0.80891 |
-| bf16 params | ✓ |  |  |  |  |  |  | 65.37 | 0.80874 |
-| triton conv | ✓ | ✓ | ✓ |  |  |  |  | 42.59 | 0.80877 |
-| no intermediates | ✓ | ✓ | ✓ | ✓ |  |  |  | 42.59 | 0.80877 |
-| triton pool | ✓ | ✓ | ✓ | ✓ | ✓ |  |  | 34.09 | 0.80877 |
-| fused embed | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |  | 31.59 | 0.80872 |
-| fused down0 | ✓ | ✓ | ✓ | ✓ | ✓ |  | ✓ | 30.59 | 0.80860 |
-| fused embed+down0 | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | 24.59 | 0.80860 |
+| strategy | BF16 | Eff. | Int8 | NoInt | Pool | FEmb | FD0 | peak GiB | examples/s | test r |
+|---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|---:|---:|---:|
+| default |  |  |  |  |  |  |  | 90.46 | 9.41 | 0.80891 |
+| bf16 params | ✓ |  |  |  |  |  |  | 65.37 | 12.02 | 0.80874 |
+| triton conv | ✓ | ✓ | ✓ |  |  |  |  | 42.59 | 8.49 | 0.80877 |
+| no intermediates | ✓ | ✓ | ✓ | ✓ |  |  |  | 42.59 | 8.51 | 0.80877 |
+| triton pool | ✓ | ✓ | ✓ | ✓ | ✓ |  |  | 34.09 | 8.78 | 0.80877 |
+| fused embed | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |  | 31.59 | 8.03 | 0.80872 |
+| fused down0 | ✓ | ✓ | ✓ | ✓ | ✓ |  | ✓ | 30.59 | 8.11 | 0.80860 |
+| fused embed+down0 | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | 24.59 | 7.45 | 0.80860 |
 
 At 131 kb, the lowest-memory successful configuration was
 `fused embed+down0`, reducing observed peak memory from 90.46 GiB to 24.59 GiB
@@ -114,16 +135,16 @@ batches. The 1 Mb cache contains valid/test only:
 
 `/gpfs/commons/home/daknowles/knowles_lab/data/multiome/humanbraindev/alphagenome_target_cache/humanbraindev_atac_w1048576_s1048576_validtest_float16`
 
-| strategy | bf16 | effective conv | int8 conv | no intermediates | triton pool | fused embed | fused down0 | peak GiB | test r |
-|---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|---:|---:|
-| default |  |  |  |  |  |  |  | 51.36 | 0.82707 |
-| bf16 params | ✓ |  |  |  |  |  |  | 46.48 | 0.82640 |
-| triton conv | ✓ | ✓ | ✓ |  |  |  |  | 32.58 | 0.82662 |
-| no intermediates | ✓ | ✓ | ✓ | ✓ |  |  |  | 28.58 | 0.82662 |
-| triton pool | ✓ | ✓ | ✓ | ✓ | ✓ |  |  | 30.08 | 0.82662 |
-| fused embed | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |  | 28.83 | 0.82658 |
-| fused down0 | ✓ | ✓ | ✓ | ✓ | ✓ |  | ✓ | 26.58 | 0.82643 |
-| fused embed+down0 | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | 23.58 | 0.82634 |
+| strategy | BF16 | Eff. | Int8 | NoInt | Pool | FEmb | FD0 | peak GiB | examples/s | test r |
+|---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|---:|---:|---:|
+| default |  |  |  |  |  |  |  | 51.36 | 0.721 | 0.82707 |
+| bf16 params | ✓ |  |  |  |  |  |  | 46.48 | 0.937 | 0.82640 |
+| triton conv | ✓ | ✓ | ✓ |  |  |  |  | 32.58 | 0.736 | 0.82662 |
+| no intermediates | ✓ | ✓ | ✓ | ✓ |  |  |  | 28.58 | 0.749 | 0.82662 |
+| triton pool | ✓ | ✓ | ✓ | ✓ | ✓ |  |  | 30.08 | 0.753 | 0.82662 |
+| fused embed | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |  | 28.83 | 0.701 | 0.82658 |
+| fused down0 | ✓ | ✓ | ✓ | ✓ | ✓ |  | ✓ | 26.58 | 0.697 | 0.82643 |
+| fused embed+down0 | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | 23.58 | 0.650 | 0.82634 |
 
 At 1 Mb, default inference exceeded 48 GiB. Plain bf16 params fit just under
 48 GiB, while the Triton/no-intermediates family reduced memory substantially
@@ -141,4 +162,3 @@ throughput.
   `outputs/quant_ablation/20260702_recreated_encoder_vram_1mb_batch2_full`
 - 1 Mb default/bf16 baselines:
   `outputs/quant_ablation/20260702_recreated_baselines_1mb_batch2_full`
-

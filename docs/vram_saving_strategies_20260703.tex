@@ -32,7 +32,8 @@ batch size was 32 and the evaluation contained 2162 examples. For 1 Mb input
 windows, a valid/test-only target cache was built, batch size was 2, and the
 evaluation contained 269 examples. Peak device memory was sampled with
 \texttt{nvidia-smi} and is reported as GiB. Accuracy is reported as test
-differential Pearson.
+differential Pearson. Throughput is reported as examples per second over the
+full valid/test evaluation.
 
 \section{Implementation details}
 
@@ -99,12 +100,22 @@ The fused kernel applies normalization and activation immediately before the
 int8 weight-only convolution, without materializing the full-resolution
 normalized or activated tensors.
 
+This saves VRAM because the unfused path creates separate full-resolution
+temporary tensors for normalization, activation, and convolution input. At
+131 kb and batch size 32, these temporaries are large enough to drive allocator
+reservation and observed peak memory. The fused kernel streams through the
+operation and only stores the final block output.
+
 \paragraph{Fused first downsampling block.}
 The \texttt{encoder.down\_blocks.0} module is replaced by a wrapper containing
 two fused ConvBlocks and lean residual accumulation. In inference, the first
 block output already has the expanded channel dimension, so the residual input
 is added in-place into the leading input-channel slice instead of constructing
 an explicitly padded residual tensor. The second residual add is also in-place.
+This saves VRAM by avoiding both the ConvBlock temporaries described above and
+the explicit padded residual tensor for the first channel-expanding down block.
+The benefit appears mostly as lower reserved/observed device memory because the
+peak allocator state is sensitive to high-resolution transient tensors.
 
 \section{Results}
 
@@ -117,19 +128,20 @@ block (FEmb), and fused first downsampling block (FD0).
 \centering
 \caption{Full valid/test evaluation for 131 kb windows at batch size 32.}
 \label{tab:vram-131kb}
-\scriptsize
-\begin{tabular}{lccccccc rr}
+\tiny
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{lccccccc rrr}
 \toprule
-Strategy & BF16 & Eff. & Int8 & NoInt & Pool & FEmb & FD0 & Peak GiB & Test \(r\) \\
+Strategy & BF16 & Eff. & Int8 & NoInt & Pool & FEmb & FD0 & Peak GiB & Ex./s & Test \(r\) \\
 \midrule
-Default &  &  &  &  &  &  &  & 90.46 & 0.80891 \\
-Bfloat16 & \cmark &  &  &  &  &  &  & 65.37 & 0.80874 \\
-Triton Conv1d & \cmark & \cmark & \cmark &  &  &  &  & 42.59 & 0.80877 \\
-No intermediates & \cmark & \cmark & \cmark & \cmark &  &  &  & 42.59 & 0.80877 \\
-Triton pool & \cmark & \cmark & \cmark & \cmark & \cmark &  &  & 34.09 & 0.80877 \\
-Fused embedder & \cmark & \cmark & \cmark & \cmark & \cmark & \cmark &  & 31.59 & 0.80872 \\
-Fused down0 & \cmark & \cmark & \cmark & \cmark & \cmark &  & \cmark & 30.59 & 0.80860 \\
-Fused embedder+down0 & \cmark & \cmark & \cmark & \cmark & \cmark & \cmark & \cmark & 24.59 & 0.80860 \\
+Default &  &  &  &  &  &  &  & 90.46 & 9.41 & 0.80891 \\
+Bfloat16 & \cmark &  &  &  &  &  &  & 65.37 & 12.02 & 0.80874 \\
+Triton Conv1d & \cmark & \cmark & \cmark &  &  &  &  & 42.59 & 8.49 & 0.80877 \\
+No intermediates & \cmark & \cmark & \cmark & \cmark &  &  &  & 42.59 & 8.51 & 0.80877 \\
+Triton pool & \cmark & \cmark & \cmark & \cmark & \cmark &  &  & 34.09 & 8.78 & 0.80877 \\
+Fused embedder & \cmark & \cmark & \cmark & \cmark & \cmark & \cmark &  & 31.59 & 8.03 & 0.80872 \\
+Fused down0 & \cmark & \cmark & \cmark & \cmark & \cmark &  & \cmark & 30.59 & 8.11 & 0.80860 \\
+Fused embedder+down0 & \cmark & \cmark & \cmark & \cmark & \cmark & \cmark & \cmark & 24.59 & 7.45 & 0.80860 \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -144,19 +156,20 @@ relative to the Triton Conv1d baseline.
 \centering
 \caption{Full valid/test evaluation for 1 Mb windows at batch size 2.}
 \label{tab:vram-1mb}
-\scriptsize
-\begin{tabular}{lccccccc rr}
+\tiny
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{lccccccc rrr}
 \toprule
-Strategy & BF16 & Eff. & Int8 & NoInt & Pool & FEmb & FD0 & Peak GiB & Test \(r\) \\
+Strategy & BF16 & Eff. & Int8 & NoInt & Pool & FEmb & FD0 & Peak GiB & Ex./s & Test \(r\) \\
 \midrule
-Default &  &  &  &  &  &  &  & 51.36 & 0.82707 \\
-Bfloat16 & \cmark &  &  &  &  &  &  & 46.48 & 0.82640 \\
-Triton Conv1d & \cmark & \cmark & \cmark &  &  &  &  & 32.58 & 0.82662 \\
-No intermediates & \cmark & \cmark & \cmark & \cmark &  &  &  & 28.58 & 0.82662 \\
-Triton pool & \cmark & \cmark & \cmark & \cmark & \cmark &  &  & 30.08 & 0.82662 \\
-Fused embedder & \cmark & \cmark & \cmark & \cmark & \cmark & \cmark &  & 28.83 & 0.82658 \\
-Fused down0 & \cmark & \cmark & \cmark & \cmark & \cmark &  & \cmark & 26.58 & 0.82643 \\
-Fused embedder+down0 & \cmark & \cmark & \cmark & \cmark & \cmark & \cmark & \cmark & 23.58 & 0.82634 \\
+Default &  &  &  &  &  &  &  & 51.36 & 0.721 & 0.82707 \\
+Bfloat16 & \cmark &  &  &  &  &  &  & 46.48 & 0.937 & 0.82640 \\
+Triton Conv1d & \cmark & \cmark & \cmark &  &  &  &  & 32.58 & 0.736 & 0.82662 \\
+No intermediates & \cmark & \cmark & \cmark & \cmark &  &  &  & 28.58 & 0.749 & 0.82662 \\
+Triton pool & \cmark & \cmark & \cmark & \cmark & \cmark &  &  & 30.08 & 0.753 & 0.82662 \\
+Fused embedder & \cmark & \cmark & \cmark & \cmark & \cmark & \cmark &  & 28.83 & 0.701 & 0.82658 \\
+Fused down0 & \cmark & \cmark & \cmark & \cmark & \cmark &  & \cmark & 26.58 & 0.697 & 0.82643 \\
+Fused embedder+down0 & \cmark & \cmark & \cmark & \cmark & \cmark & \cmark & \cmark & 23.58 & 0.650 & 0.82634 \\
 \bottomrule
 \end{tabular}
 \end{table}
