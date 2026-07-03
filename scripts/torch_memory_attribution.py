@@ -21,6 +21,7 @@ from scripts.run_quant_ablation import (
     CachedTorchDataModule,
     TORCH_TRUE_QUANT_STRATEGIES,
     apply_torch_quant_policy,
+    _load_torch_checkpoint_payload,
     _split_torch_strategy,
 )
 from scripts.torch_effective_conv import (
@@ -88,7 +89,7 @@ def _load_model(args: argparse.Namespace, device: torch.device):
         dtype_policy = DtypePolicy.aggressive_bfloat16()
 
     weights_path = args.torch_weights.expanduser().resolve()
-    payload = torch.load(weights_path, map_location="cpu", weights_only=False)
+    payload = _load_torch_checkpoint_payload(weights_path, map_location="cpu")
     if not isinstance(payload, dict) or "model_state_dict" not in payload:
         raise ValueError(f"Torch checkpoint lacks model_state_dict: {weights_path}")
 

@@ -120,6 +120,23 @@ TORCH_TRUE_QUANT_STRATEGIES: dict[str, dict[str, Any]] = {
         "encoder_triton_pool": True,
         "encoder_fused_dna_embedder_block": True,
     },
+    "bf16_triton_conv_no_intermediates_tritonpool_fuseddown0": {
+        "kind": "triton_int8_conv1d",
+        "include": (),
+        "bf16_params": True,
+        "encoder_no_intermediates": True,
+        "encoder_triton_pool": True,
+        "encoder_fused_down_block0": True,
+    },
+    "bf16_triton_conv_no_intermediates_tritonpool_fusedembed_fuseddown0": {
+        "kind": "triton_int8_conv1d",
+        "include": (),
+        "bf16_params": True,
+        "encoder_no_intermediates": True,
+        "encoder_triton_pool": True,
+        "encoder_fused_dna_embedder_block": True,
+        "encoder_fused_down_block0": True,
+    },
     "bf16_triton_conv_flexattn": {
         "kind": "triton_int8_conv1d",
         "include": (),
@@ -223,6 +240,31 @@ def _load_local_torch_attention_backends():
     sys.modules.setdefault("_agft_torch_attention_backends", module)
     spec.loader.exec_module(module)
     return module
+
+
+def _load_torch_checkpoint_payload(weights_path, *, map_location="cpu"):
+    import torch
+
+    if weights_path.suffix == ".safetensors":
+        from safetensors import safe_open
+        from safetensors.torch import load_file
+
+        metadata = {}
+        with safe_open(str(weights_path), framework="pt", device="cpu") as handle:
+            raw_metadata = handle.metadata() or {}
+        if "alphagenome_fp4_metadata" in raw_metadata:
+            metadata = json.loads(raw_metadata["alphagenome_fp4_metadata"])
+        else:
+            sidecar = weights_path.with_suffix(weights_path.suffix + ".json")
+            if sidecar.exists():
+                with sidecar.open() as handle:
+                    metadata = json.load(handle)
+        return {
+            **metadata,
+            "model_state_dict": load_file(str(weights_path), device=str(map_location)),
+        }
+
+    return torch.load(weights_path, map_location=map_location, weights_only=False)
 
 
 def _drop_encoder_intermediates_for_128bp_eval(model: Any) -> dict[str, Any]:
@@ -335,6 +377,10 @@ def apply_torch_quant_policy(model: Any, strategy: str, *, nf4_block_size: int =
     if config.get("encoder_fused_dna_embedder_block"):
         low_precision = _load_local_torch_low_precision()
         fused_block_stats = low_precision.replace_dna_embedder_block_with_fused_triton(model)
+    fused_down_stats = {}
+    if config.get("encoder_fused_down_block0"):
+        low_precision = _load_local_torch_low_precision()
+        fused_down_stats = low_precision.replace_encoder_down_block0_with_fused_triton(model)
     attention_stats = {}
     if config.get("attention_backend"):
         attention_backends = _load_local_torch_attention_backends()
@@ -412,6 +458,7 @@ def apply_torch_quant_policy(model: Any, strategy: str, *, nf4_block_size: int =
             **encoder_stats,
             **pool_stats,
             **fused_block_stats,
+            **fused_down_stats,
             **attention_stats,
             "strategy": strategy,
             "converted": stats["converted_triton_int8_conv1ds"],
@@ -923,8 +970,8 @@ def evaluate_torch(args: argparse.Namespace) -> dict[str, Any]:
     if base_strategy == "bf16_params" or base_strategy in TORCH_TRUE_QUANT_STRATEGIES:
         dtype_policy = DtypePolicy.aggressive_bfloat16()
     weights_path = args.torch_weights.expanduser().resolve()
-    if weights_path.suffix in {".pt", ".pth"}:
-        payload = torch.load(weights_path, map_location="cpu", weights_only=False)
+    if weights_path.suffix in {".pt", ".pth", ".safetensors"}:
+        payload = _load_torch_checkpoint_payload(weights_path, map_location="cpu")
         if not isinstance(payload, dict) or "model_state_dict" not in payload:
             raise ValueError(f"Torch checkpoint lacks model_state_dict: {weights_path}")
         assay_type = payload.get("assay_type", "atac")

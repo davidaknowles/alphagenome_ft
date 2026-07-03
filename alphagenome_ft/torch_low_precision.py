@@ -320,6 +320,44 @@ class FusedNormGeluInt8WeightOnlyConv1d(nn.Module):
         return out
 
 
+class FusedDownResBlock0(nn.Module):
+    """Memory-lean down block wrapper for inference at the first encoder scale."""
+
+    def __init__(self, block: nn.Module):
+        super().__init__()
+        if triton is None:
+            raise RuntimeError("triton is required for FusedDownResBlock0.")
+        if not hasattr(block, "block1") or not hasattr(block, "block2"):
+            raise ValueError("FusedDownResBlock0 expects a DownResBlock-like module.")
+        block1 = block.block1
+        block2 = block.block2
+        in_channels = int(getattr(block1, "in_channels", 0))
+        out_channels = int(getattr(block1, "out_channels", 0))
+        if in_channels <= 0 or out_channels <= in_channels:
+            raise ValueError("FusedDownResBlock0 expects block1 to increase channels.")
+        if int(getattr(block2, "in_channels", 0)) != out_channels:
+            raise ValueError("FusedDownResBlock0 expects block2 input channels to match block1 output.")
+        if int(getattr(block2, "out_channels", 0)) != out_channels:
+            raise ValueError("FusedDownResBlock0 expects block2 to preserve channels.")
+        self.in_channels = in_channels
+        self.out_channels = out_channels
+        self.block1 = FusedNormGeluInt8WeightOnlyConv1d(block1)
+        self.block2 = FusedNormGeluInt8WeightOnlyConv1d(block2)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        out = self.block1(x)
+        if torch.is_grad_enabled() and x.requires_grad:
+            x_padded = F.pad(x, (0, 0, 0, self.out_channels - self.in_channels))
+            out = out + x_padded
+            return out + self.block2(out)
+
+        out[:, : self.in_channels, :].add_(x)
+        residual = out
+        out = self.block2(residual)
+        out.add_(residual)
+        return out
+
+
 if triton is not None:
 
     @triton.jit
@@ -667,6 +705,21 @@ def replace_dna_embedder_block_with_fused_triton(model: nn.Module) -> dict[str, 
         return {"encoder_fused_dna_embedder_block": True, "converted_fused_convblocks": 1}
     model.encoder.dna_embedder.block = FusedNormGeluInt8WeightOnlyConv1d(block)
     return {"encoder_fused_dna_embedder_block": True, "converted_fused_convblocks": 1}
+
+
+def replace_encoder_down_block0_with_fused_triton(model: nn.Module) -> dict[str, object]:
+    """Replace encoder.down_blocks.0 with fused conv blocks and lean residual adds."""
+    if triton is None:
+        raise RuntimeError("triton is required for fused encoder down block replacement.")
+    block = model.encoder.down_blocks[0]
+    if isinstance(block, FusedDownResBlock0):
+        return {"encoder_fused_down_block0": True, "converted_fused_down_blocks": 1}
+    model.encoder.down_blocks[0] = FusedDownResBlock0(block)
+    return {
+        "encoder_fused_down_block0": True,
+        "converted_fused_down_blocks": 1,
+        "converted_fused_convblocks_in_down_blocks": 2,
+    }
 
 
 def convert_conv1d_to_triton_int8_weight_only(

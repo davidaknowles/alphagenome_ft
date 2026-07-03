@@ -63,6 +63,29 @@ def _load_checkpoint_config(checkpoint: Path) -> dict[str, Any]:
         return json.load(handle)
 
 
+def _save_torch_checkpoint(
+    path: Path,
+    *,
+    state_dict: dict[str, torch.Tensor],
+    metadata: dict[str, Any],
+) -> None:
+    path = path.expanduser().resolve()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    if path.suffix == ".safetensors":
+        from safetensors.torch import save_file
+
+        tensor_payload = {key: value.detach().cpu() for key, value in state_dict.items()}
+        save_file(
+            tensor_payload,
+            str(path),
+            metadata={"alphagenome_fp4_metadata": json.dumps(metadata, sort_keys=True)},
+        )
+        with path.with_suffix(path.suffix + ".json").open("w") as handle:
+            json.dump(metadata, handle, indent=2, sort_keys=True)
+        return
+    torch.save({"model_state_dict": state_dict, **metadata}, path)
+
+
 def _discover_custom_head(
     flat_jax: dict[str, Any], head_id: str
 ) -> tuple[list[int], int, int]:
@@ -186,24 +209,20 @@ def main() -> None:
     if len(track_names) != n_tracks:
         raise ValueError(f"Expected {n_tracks} track names, found {len(track_names)}")
 
-    args.output.expanduser().resolve().parent.mkdir(parents=True, exist_ok=True)
-    torch.save(
-        {
-            "model_state_dict": model.state_dict(),
-            "head_id": args.head_id,
-            "assay_type": args.assay_type,
-            "modality": args.head_id,
-            "resolutions": tuple(resolutions),
-            "num_organisms": n_org,
-            "track_names": track_names,
-            "source_jax_checkpoint": str(jax_checkpoint),
-            "source_base_torch_weights": str(args.base_torch_weights.expanduser().resolve()),
-            "backbone_effective_conv_paths": effective_jax_paths,
-            "torch_effective_conv_modules": effective_torch_modules,
-            "converted_backbone_leaves": converted_backbone,
-        },
-        args.output.expanduser().resolve(),
-    )
+    metadata = {
+        "head_id": args.head_id,
+        "assay_type": args.assay_type,
+        "modality": args.head_id,
+        "resolutions": list(resolutions),
+        "num_organisms": n_org,
+        "track_names": track_names,
+        "source_jax_checkpoint": str(jax_checkpoint),
+        "source_base_torch_weights": str(args.base_torch_weights.expanduser().resolve()),
+        "backbone_effective_conv_paths": list(effective_jax_paths),
+        "torch_effective_conv_modules": list(effective_torch_modules),
+        "converted_backbone_leaves": converted_backbone,
+    }
+    _save_torch_checkpoint(args.output, state_dict=model.state_dict(), metadata=metadata)
     print(
         f"Saved Torch full checkpoint to {args.output} "
         f"(head={args.head_id}, tracks={n_tracks}, resolutions={resolutions}, organisms={n_org}, "
