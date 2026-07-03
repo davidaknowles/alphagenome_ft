@@ -2,11 +2,10 @@
 \usepackage[margin=1in]{geometry}
 \usepackage{booktabs}
 \usepackage{array}
-\usepackage{tabularx}
-\usepackage{siunitx}
+\usepackage{amssymb}
 \usepackage{hyperref}
 
-\sisetup{round-mode=places,round-precision=2}
+\newcommand{\cmark}{\checkmark}
 
 \title{Memory-Efficient Torch Inference for AlphaGenome}
 \author{}
@@ -16,125 +15,166 @@
 \maketitle
 
 \begin{abstract}
-We evaluated a sequence of memory-saving inference strategies for a Torch
-implementation of AlphaGenome using a recreated merged human brain development
-ATAC checkpoint. The strategies combine bfloat16 execution, precomputed
-standardized convolutions, Triton int8 weight-only one-dimensional convolutions,
-an encoder path that omits unneeded intermediate tensors, a custom no-indices
-Triton max-pooling kernel, and fused high-resolution encoder blocks. On
-131 kb input windows at batch size 32, the most memory-efficient successful
-configuration reduced observed peak device memory from 92.6 GiB to 25.2 GiB
-relative to default Torch inference, while preserving differential Pearson to
-within 0.001. On 1 Mb input windows at batch size 2, the default path exceeded
-48 GiB, whereas the memory-efficient configurations were between 24.1 GiB and
-33.4 GiB observed peak memory.
+We evaluated low-VRAM Torch inference strategies for AlphaGenome on a recreated
+human brain development ATAC checkpoint. At 131 kb and batch size 32, the
+lowest-memory configuration reduced observed peak memory from 90.46 GiB to
+24.59 GiB, with test \(r\) changing from 0.80891 to 0.80860. At 1 Mb and batch
+size 2, default inference exceeded 48 GiB, whereas the complete fused
+configuration used 23.58 GiB.
 \end{abstract}
 
 \section{Experimental setup}
 
 All experiments used the recreated merged Torch checkpoint from the best
-LoRA+LoCon finetuning run. We evaluated the human brain development ATAC head at
-resolution 128 on full valid and test splits. For 131 kb input windows, batch
-size was 32 and the evaluation contained 2162 examples. For 1 Mb input windows,
-a valid/test-only target cache was built, batch size was 2, and the evaluation
-contained 269 examples. Peak device memory was sampled with \texttt{nvidia-smi};
-PyTorch allocated and reserved memory were recorded from CUDA allocator
-statistics.
+LoRA+LoCon finetuning run. We evaluated the human brain development ATAC head
+at resolution 128 on full valid and test splits. For 131 kb input windows,
+batch size was 32 and the evaluation contained 2162 examples. For 1 Mb input
+windows, a valid/test-only target cache was built, batch size was 2, and the
+evaluation contained 269 examples. Peak device memory was sampled with
+\texttt{nvidia-smi} and is reported as GiB. Accuracy is reported as test
+differential Pearson.
 
-\section{Memory-saving strategies}
+\section{Implementation details}
 
-The evaluated strategies are cumulative unless otherwise indicated.
-\begin{enumerate}
-    \item \textbf{Bfloat16 parameters and activations.} The
-    \texttt{bf16\_params} baseline applies the aggressive bfloat16 Torch dtype
-    policy for inference.
-    \item \textbf{Precomputed standardized convolutions and Triton int8
-    weight-only Conv1d.} Standardized convolution weights are materialized once
-    for inference and replaced by direct effective convolutions. Eligible wide
-    convolutions are then replaced by Triton int8 weight-only Conv1d kernels with
-    floating-point output activations.
-    \item \textbf{No-intermediates encoder path.} When only 128 bp predictions
-    are requested, U-Net skip tensors that are not consumed are not retained.
-    \item \textbf{Triton no-indices max-pooling.} The encoder max-pooling layer
-    is replaced by a Triton implementation for kernel size 2 and stride 2 that
-    does not materialize PyTorch max-pool indices.
-    \item \textbf{Fused DNA embedder block.} The full-resolution
-    \texttt{encoder.dna\_embedder.block} is fused into one Triton operation
-    implementing RMSBatchNorm, the JAX GELU approximation, and int8 weight-only
-    Conv1d.
-    \item \textbf{Fused first downsampling block.} The
-    \texttt{encoder.down\_blocks.0} module is replaced by a wrapper using fused
-    ConvBlocks and in-place residual accumulation in inference.
-\end{enumerate}
+\paragraph{Bfloat16 policy.}
+The \texttt{bf16\_params} path uses the Torch model's aggressive bfloat16 dtype
+policy for inference. Floating-point model state and persistent activations are
+stored or cast to bfloat16 where supported by the Torch implementation, while
+integer inputs and indexing tensors are unchanged.
+
+\paragraph{Effective standardized convolutions.}
+AlphaGenome standardizes convolution weights at every forward pass. For an
+output channel, the effective inference weight is
+\[
+  W_{\mathrm{eff}} =
+  (W - \mathrm{mean}(W))\,
+  \mathrm{rsqrt}\left(\max(\mathrm{var}(W)\,\mathrm{fan\_in}, 10^{-4})\right)\,
+  s,
+\]
+where \(s\) is the learned scale. The \texttt{\_stdconv\_effective} path
+materializes \(W_{\mathrm{eff}}\) once and replaces the module with a direct
+convolution that preserves AlphaGenome SAME padding. This avoids runtime weight
+standardization and makes the layer eligible for the Triton Conv1d path.
+
+\paragraph{Triton int8 weight-only Conv1d.}
+Eligible wide Conv1d layers are replaced by a custom Triton kernel. Weights are
+stored as symmetric int8 values with one scale per output channel:
+\[
+  \alpha_c = \frac{\max |W_c|}{127}, \qquad
+  Q_c = \mathrm{round}(W_c / \alpha_c).
+\]
+The kernel dequantizes inside the matrix multiply, accumulates in fp32 using
+\texttt{tl.dot}, and stores outputs in the input activation dtype. Heads,
+adapters, LoRA/LoCon modules, and other sensitive paths are excluded.
+
+\paragraph{No-intermediates encoder path.}
+When only 128 bp predictions are requested, the decoder does not consume the
+encoder U-Net skip tensors. The patched encoder therefore does not retain these
+intermediate tensors during evaluation.
+
+\paragraph{Triton no-indices max-pooling.}
+The encoder pool has kernel size 2 and stride 2. The custom Triton kernel loads
+the two candidate positions and stores only their maximum, matching the local
+ceil-length SAME pooling behavior while avoiding PyTorch's hidden max-pool
+index/workspace allocation.
+
+\paragraph{Fused DNA embedder block.}
+The \texttt{encoder.dna\_embedder.block} module is fused into one Triton kernel
+implementing
+\[
+  \mathrm{RMSBatchNorm} \rightarrow \mathrm{GELU}_{\mathrm{JAX}}
+  \rightarrow \mathrm{Conv1d}_{\mathrm{int8~weight-only}}.
+\]
+The RMSBatchNorm step uses stored running variance and affine parameters,
+\[
+  x_{\mathrm{norm}} =
+  x \cdot \gamma \cdot \mathrm{rsqrt}(\mathrm{running\_var} + \epsilon) + \beta.
+\]
+The activation is AlphaGenome/JAX's sigmoid approximation rather than the
+standard erf GELU:
+\[
+  \mathrm{GELU}_{\mathrm{JAX}}(x) = x \cdot \sigma(1.702x).
+\]
+The fused kernel applies normalization and activation immediately before the
+int8 weight-only convolution, without materializing the full-resolution
+normalized or activated tensors.
+
+\paragraph{Fused first downsampling block.}
+The \texttt{encoder.down\_blocks.0} module is replaced by a wrapper containing
+two fused ConvBlocks and lean residual accumulation. In inference, the first
+block output already has the expanded channel dimension, so the residual input
+is added in-place into the leading input-channel slice instead of constructing
+an explicitly padded residual tensor. The second residual add is also in-place.
 
 \section{Results}
 
-\subsection{131 kb input windows}
+Tables use feature indicators for bfloat16 policy (BF16), effective
+standardized convolutions (Eff.), Triton int8 Conv1d (Int8), no-intermediates
+encoder path (NoInt), Triton no-indices max-pool (Pool), fused DNA embedder
+block (FEmb), and fused first downsampling block (FD0).
 
 \begin{table}[h]
 \centering
 \caption{Full valid/test evaluation for 131 kb windows at batch size 32.}
 \label{tab:vram-131kb}
-\begin{tabular}{lrrrrrr}
+\scriptsize
+\begin{tabular}{lccccccc rr}
 \toprule
-Strategy & Ex./s & Peak MiB & Alloc MiB & Reserved MiB & Valid $r$ & Test $r$ \\
+Strategy & BF16 & Eff. & Int8 & NoInt & Pool & FEmb & FD0 & Peak GiB & Test \(r\) \\
 \midrule
-Default & 9.41 & 92631 & 63140 & 91928 & 0.79893 & 0.80891 \\
-Bfloat16 & 12.02 & 66935 & 42415 & 66248 & 0.79839 & 0.80874 \\
-Triton Conv1d & 8.49 & 43611 & 27879 & 42924 & 0.79842 & 0.80877 \\
-No intermediates & 8.51 & 43611 & 25319 & 42924 & 0.79842 & 0.80877 \\
-Triton pool & 8.78 & 34907 & 25319 & 34220 & 0.79842 & 0.80877 \\
-Fused embedder & 8.03 & 32347 & 21735 & 31660 & 0.79845 & 0.80872 \\
-Fused down0 & 8.11 & 31323 & 25319 & 30636 & 0.79829 & 0.80860 \\
-Fused embedder+down0 & 7.45 & 25179 & 19174 & 24492 & 0.79834 & 0.80860 \\
+Default &  &  &  &  &  &  &  & 90.46 & 0.80891 \\
+Bfloat16 & \cmark &  &  &  &  &  &  & 65.37 & 0.80874 \\
+Triton Conv1d & \cmark & \cmark & \cmark &  &  &  &  & 42.59 & 0.80877 \\
+No intermediates & \cmark & \cmark & \cmark & \cmark &  &  &  & 42.59 & 0.80877 \\
+Triton pool & \cmark & \cmark & \cmark & \cmark & \cmark &  &  & 34.09 & 0.80877 \\
+Fused embedder & \cmark & \cmark & \cmark & \cmark & \cmark & \cmark &  & 31.59 & 0.80872 \\
+Fused down0 & \cmark & \cmark & \cmark & \cmark & \cmark &  & \cmark & 30.59 & 0.80860 \\
+Fused embedder+down0 & \cmark & \cmark & \cmark & \cmark & \cmark & \cmark & \cmark & 24.59 & 0.80860 \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-At 131 kb, the most memory-efficient configuration reduced observed peak memory
-from 92.6 GiB to 25.2 GiB relative to default inference and from 66.9 GiB to
-25.2 GiB relative to bfloat16 inference. The best throughput among configurations
-below 48 GiB was the Triton-pool strategy, at 8.78 examples/s and 34.9 GiB.
-
-\subsection{1 Mb input windows}
+At 131 kb, the lowest-memory successful configuration was the fused
+embedder+down0 strategy, reducing observed peak memory from 90.46 GiB to
+24.59 GiB relative to default. The best non-fused memory-efficient option was
+the Triton-pool strategy, at 34.09 GiB with no visible test metric change
+relative to the Triton Conv1d baseline.
 
 \begin{table}[h]
 \centering
 \caption{Full valid/test evaluation for 1 Mb windows at batch size 2.}
 \label{tab:vram-1mb}
-\begin{tabular}{lrrrrrr}
+\scriptsize
+\begin{tabular}{lccccccc rr}
 \toprule
-Strategy & Ex./s & Peak MiB & Alloc MiB & Reserved MiB & Valid $r$ & Test $r$ \\
+Strategy & BF16 & Eff. & Int8 & NoInt & Pool & FEmb & FD0 & Peak GiB & Test \(r\) \\
 \midrule
-Default & 0.721 & 52595 & 38507 & 51908 & 0.81825 & 0.82707 \\
-Bfloat16 & 0.937 & 47597 & 25445 & 46910 & 0.81522 & 0.82640 \\
-Triton Conv1d & 0.736 & 33359 & 22508 & 32672 & 0.81558 & 0.82662 \\
-No intermediates & 0.749 & 29263 & 15452 & 28576 & 0.81558 & 0.82662 \\
-Triton pool & 0.753 & 30799 & 15452 & 30112 & 0.81558 & 0.82662 \\
-Fused embedder & 0.701 & 29519 & 15453 & 28832 & 0.81554 & 0.82658 \\
-Fused down0 & 0.697 & 27215 & 15452 & 26528 & 0.81541 & 0.82643 \\
-Fused embedder+down0 & 0.650 & 24143 & 15452 & 23456 & 0.81534 & 0.82634 \\
+Default &  &  &  &  &  &  &  & 51.36 & 0.82707 \\
+Bfloat16 & \cmark &  &  &  &  &  &  & 46.48 & 0.82640 \\
+Triton Conv1d & \cmark & \cmark & \cmark &  &  &  &  & 32.58 & 0.82662 \\
+No intermediates & \cmark & \cmark & \cmark & \cmark &  &  &  & 28.58 & 0.82662 \\
+Triton pool & \cmark & \cmark & \cmark & \cmark & \cmark &  &  & 30.08 & 0.82662 \\
+Fused embedder & \cmark & \cmark & \cmark & \cmark & \cmark & \cmark &  & 28.83 & 0.82658 \\
+Fused down0 & \cmark & \cmark & \cmark & \cmark & \cmark &  & \cmark & 26.58 & 0.82643 \\
+Fused embedder+down0 & \cmark & \cmark & \cmark & \cmark & \cmark & \cmark & \cmark & 23.58 & 0.82634 \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-At 1 Mb, default inference exceeded 48 GiB observed peak memory. Bfloat16
-inference fit just under 48 GiB and was the fastest measured option. The
-Triton/no-intermediates configurations reduced live allocated memory further,
-to approximately 15.5 GiB, while remaining well below 48 GiB observed memory.
-The fused kernels primarily reduced allocator-reserved and observed memory at
-this longer context length, but also reduced throughput.
+At 1 Mb, default inference exceeded 48 GiB. Plain bfloat16 inference fit just
+under 48 GiB, while the Triton/no-intermediates family reduced memory
+substantially further. The fused blocks primarily reduced observed memory at
+this longer context length; they are useful for minimum VRAM but not for maximum
+throughput.
 
 \section{Discussion}
 
 The most robust practical configuration is the combination of bfloat16,
 precomputed standardized convolutions, Triton int8 weight-only Conv1d, the
 128 bp no-intermediates encoder path, and Triton no-indices max-pooling. This
-configuration preserved differential Pearson relative to the bfloat16/Triton
-Conv1d baseline and kept peak memory below 48 GiB for both tested input lengths.
-The fused high-resolution blocks are useful when minimizing observed memory is
-more important than maximizing throughput. For 1 Mb inputs, the tower and
-attention computations dominate a larger share of runtime, so convolution
-fusions provide less throughput benefit than at shorter context length.
+configuration kept peak memory below 48 GiB for both tested input lengths while
+preserving test differential Pearson relative to the Triton Conv1d baseline. The
+fused high-resolution blocks are useful when minimizing observed memory is more
+important than maximizing throughput.
 
 \end{document}
