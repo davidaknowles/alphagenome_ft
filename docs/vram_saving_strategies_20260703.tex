@@ -190,4 +190,32 @@ preserving test differential Pearson relative to the Triton Conv1d baseline. The
 fused high-resolution blocks are useful when minimizing observed memory is more
 important than maximizing throughput.
 
+\paragraph{Linear-only quantization.}
+The \texttt{torchao\_float8\_linear} and
+\texttt{bnb\_nf4\_weight\_only\_linear} strategies are implemented in
+\texttt{scripts/run\_quant\_ablation.py} and were benchmarked, but they are not
+included in the recommended stack. Linear-only float8 did not reduce actual
+device memory relative to \texttt{bf16\_params} in the physical-batch runs, and
+was slower at batch 20: 11.50 examples/s versus 12.55 examples/s for
+\texttt{bf16\_params}, both at about 36.2 GiB observed memory. NF4/NVFP4 linear
+and 1x1-convolution quantization helped in smaller weight-focused sweeps, but
+once wide convolutions are handled by the Triton int8 Conv1d path, the peak is
+dominated by activations, high-resolution convolution temporaries, pooling
+workspace, and allocator reservation. In the matched batch-32 combo run, adding
+NF4 linears and 1x1 convolutions to the Triton-conv stack used essentially the
+same observed memory as the bfloat16 Triton-conv stack, 43.62 GiB versus
+43.61 GiB, with about a 0.001 drop in test differential Pearson.
+
+\paragraph{FlexAttention.}
+A parity-preserving FlexAttention replacement for \texttt{MHABlock} was
+implemented as \texttt{flex\_mha}. It preserves the AlphaGenome score transform:
+additive attention bias, then tanh soft-cap, then softmax. Standalone parity
+was close, and full-model test differential Pearson was unchanged at displayed
+precision. It did not reduce peak memory at 131 kb, because the existing path
+still materializes the attention-bias tensor and the measured peak is dominated
+elsewhere after Triton convs are enabled. At batch 32, FlexAttention was slower
+than eager attention in the recorded full run, 8.44 versus 9.10 examples/s,
+with the same torch allocation, so it is not part of the current recommended
+stack.
+
 \end{document}

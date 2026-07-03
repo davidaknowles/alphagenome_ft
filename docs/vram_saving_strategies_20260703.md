@@ -152,6 +152,32 @@ further. The fused blocks primarily reduced observed/reserved memory at this
 longer context length; they were useful for minimum VRAM but not for maximum
 throughput.
 
+## Considered But Excluded
+
+**Float8 and NF4 linear quantization.** `torchao_float8_linear` and
+`bnb_nf4_weight_only_linear` are implemented in `scripts/run_quant_ablation.py`
+and were benchmarked earlier, but they are not included in the recommended
+stack. Linear-only float8 did not reduce actual device memory relative to
+`bf16_params` in the physical-batch runs, and was slower at batch 20
+(`11.50` examples/s vs `12.55` for `bf16_params`, both about `36.2` GiB).
+NF4/NVFP4 linear and 1x1-conv quantization helped in small weight-focused
+sweeps, but once the wide convolutions are handled by the Triton int8 Conv1d
+path, the peak is dominated by activations, high-resolution convolution
+temporaries, pooling workspace, and allocator reservation. In the matched
+batch-32 combo run, adding NF4 linears/1x1 convs to the Triton-conv stack used
+essentially the same observed memory (`43.62` GiB vs `43.61` GiB) with about a
+`0.001` drop in test differential Pearson.
+
+**FlexAttention.** A parity-preserving FlexAttention `MHABlock` replacement was
+implemented as `flex_mha`, including the AlphaGenome score transform: additive
+attention bias followed by tanh soft-cap before softmax. Standalone parity was
+close, and full-model test differential Pearson was unchanged at displayed
+precision. It did not reduce peak memory at 131 kb, because the existing path
+still materializes the attention-bias tensor and the measured peak is dominated
+elsewhere after Triton convs are enabled. At batch 32, FlexAttention was slower
+than eager attention in the recorded full run (`8.44` vs `9.10` examples/s) with
+the same torch allocation, so it is not part of the current recommended stack.
+
 ## Run Roots
 
 - 131 kb optimized strategies:
