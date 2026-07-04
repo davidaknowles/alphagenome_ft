@@ -21,7 +21,7 @@ human brain development ATAC checkpoint. At 131 kb and batch size 32, the
 lowest-memory configuration reduced observed peak memory from 90.46 GiB to
 24.59 GiB, with test \(r\) changing from 0.80891 to 0.80860. At 1 Mb and batch
 size 2, default inference exceeded 48 GiB, whereas the low-resolution-bias
-FlexAttention configuration used 20.58 GiB.
+all-features configuration used 11.58 GiB.
 \end{abstract}
 
 \section{Experimental setup}
@@ -118,6 +118,22 @@ the explicit padded residual tensor for the first channel-expanding down block.
 The benefit appears mostly as lower reserved/observed device memory because the
 peak allocator state is sensitive to high-resolution transient tensors.
 
+\paragraph{FlexAttention and low-resolution attention bias.}
+The FlexAttention path replaces AlphaGenome's Torch MHA block forward method
+while preserving the model's score transform,
+\[
+  \mathrm{score} =
+  \tanh\left(\frac{qk / \sqrt{128} + \mathrm{bias}}{5}\right) \cdot 5,
+\]
+before softmax. Queries and keys still use AlphaGenome RoPE, grouped-query
+attention is enabled, and \texttt{RowAttentionBlock} remains eager. The LRB
+variant patches \texttt{AttentionBiasBlock} so it returns the natural
+pairwise-resolution bias tensor instead of the full repeated
+attention-resolution tensor. FlexAttention then indexes this low-resolution bias
+inside \texttt{score\_mod} with \texttt{q\_idx // 16} and
+\texttt{kv\_idx // 16}, preserving the repeated-bias semantics while avoiding
+the large materialized \(B \times 8 \times S \times S\) bias tensor.
+
 \section{Results}
 
 Tables use feature indicators for bfloat16 policy (BF16), effective
@@ -148,6 +164,7 @@ Triton pool & \cmark & \cmark & \cmark & \cmark & \cmark &  &  &  &  & 34.09 & 8
 Fused embedder & \cmark & \cmark & \cmark & \cmark & \cmark & \cmark &  &  &  & 31.59 & 8.03 & 0.80872 \\
 Fused down0 & \cmark & \cmark & \cmark & \cmark & \cmark &  & \cmark &  &  & 30.59 & 8.11 & 0.80860 \\
 Fused embedder+down0 & \cmark & \cmark & \cmark & \cmark & \cmark & \cmark & \cmark &  &  & 24.59 & 7.45 & 0.80860 \\
+All features & \cmark & \cmark & \cmark & \cmark & \cmark & \cmark & \cmark & \cmark & \cmark & 24.59 & 6.54 & 0.80860 \\
 \bottomrule
 \end{tabular}
 }
@@ -158,7 +175,8 @@ embedder+down0 strategy, reducing observed peak memory from 90.46 GiB to
 24.59 GiB relative to default. The best non-fused memory-efficient option was
 the Triton-pool strategy, at 34.09 GiB with no visible test metric change
 relative to the Triton Conv1d baseline. FlexAttention did not reduce memory at
-this context length and was slower than eager attention.
+this context length and was slower than eager attention. Turning on all features
+tied the lowest observed memory but further reduced throughput.
 
 \begin{table}[h]
 \centering
@@ -181,6 +199,7 @@ Triton pool & \cmark & \cmark & \cmark & \cmark & \cmark &  &  &  &  & 30.08 & 0
 Fused embedder & \cmark & \cmark & \cmark & \cmark & \cmark & \cmark &  &  &  & 28.83 & 0.701 & 0.82658 \\
 Fused down0 & \cmark & \cmark & \cmark & \cmark & \cmark &  & \cmark &  &  & 26.58 & 0.697 & 0.82643 \\
 Fused embedder+down0 & \cmark & \cmark & \cmark & \cmark & \cmark & \cmark & \cmark &  &  & 23.58 & 0.650 & 0.82634 \\
+All features & \cmark & \cmark & \cmark & \cmark & \cmark & \cmark & \cmark & \cmark & \cmark & 11.58 & 0.772 & 0.82637 \\
 \bottomrule
 \end{tabular}
 }
@@ -194,7 +213,9 @@ throughput. The low-res-bias FlexAttention path became useful at 1 Mb: it
 avoided expanding the attention bias to the full repeated tensor, reduced
 observed peak memory by about 12 GiB relative to the Triton Conv1d baseline, and
 improved throughput by about 12\%, with unchanged test differential Pearson at
-displayed precision.
+displayed precision. The all-features row produced the lowest observed memory
+at 11.58 GiB, with lower throughput than FlexAttention low-res bias alone but
+still higher throughput than the fused embedder+down0 row.
 
 \section{Discussion}
 

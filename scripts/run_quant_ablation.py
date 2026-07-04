@@ -137,6 +137,16 @@ TORCH_TRUE_QUANT_STRATEGIES: dict[str, dict[str, Any]] = {
         "encoder_fused_dna_embedder_block": True,
         "encoder_fused_down_block0": True,
     },
+    "bf16_triton_conv_no_intermediates_tritonpool_fusedembed_fuseddown0_flexattn_lowresbias": {
+        "kind": "triton_int8_conv1d",
+        "include": (),
+        "bf16_params": True,
+        "encoder_no_intermediates": True,
+        "encoder_triton_pool": True,
+        "encoder_fused_dna_embedder_block": True,
+        "encoder_fused_down_block0": True,
+        "attention_backend": "flex_mha_lowres_bias",
+    },
     "bf16_triton_conv_flexattn": {
         "kind": "triton_int8_conv1d",
         "include": (),

@@ -97,6 +97,20 @@ the explicit padded residual tensor for the first channel-expanding down block.
 The benefit appears mostly as lower reserved/observed device memory because the
 peak allocator state is sensitive to high-resolution transient tensors.
 
+**FlexAttention and low-res attention bias.** The `flex_mha` path replaces
+AlphaGenome's Torch `MHABlock` forward method with PyTorch FlexAttention while
+preserving the model's score transform:
+
+`score = tanh((qk / sqrt(128) + bias) / 5) * 5`
+
+before softmax. Queries and keys still use AlphaGenome RoPE, grouped-query
+attention is enabled, and `RowAttentionBlock` remains eager. The `LRB` variant
+patches `AttentionBiasBlock` so it returns the natural pairwise-resolution bias
+tensor instead of the full repeated attention-resolution tensor. FlexAttention
+then indexes this low-resolution bias inside `score_mod` with `q_idx // 16` and
+`kv_idx // 16`, preserving the repeated-bias semantics while avoiding the large
+materialized `B x 8 x S x S` bias tensor.
+
 ## Strategy Names
 
 | short name | exact strategy |
@@ -111,6 +125,7 @@ peak allocator state is sensitive to high-resolution transient tensors.
 | fused embed+down0 | `bf16_triton_conv_no_intermediates_tritonpool_fusedembed_fuseddown0_stdconv_effective` |
 | flex attention | `bf16_triton_conv_flexattn_stdconv_effective` |
 | flex low-res bias | `bf16_triton_conv_flexattn_lowresbias_stdconv_effective` |
+| all features | `bf16_triton_conv_no_intermediates_tritonpool_fusedembed_fuseddown0_flexattn_lowresbias_stdconv_effective` |
 
 ## 131 kb Windows
 
@@ -129,13 +144,15 @@ batches.
 | fused embed | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |  |  |  | 31.59 | 8.03 | 0.80872 |
 | fused down0 | ✓ | ✓ | ✓ | ✓ | ✓ |  | ✓ |  |  | 30.59 | 8.11 | 0.80860 |
 | fused embed+down0 | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |  |  | 24.59 | 7.45 | 0.80860 |
+| all features | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | 24.59 | 6.54 | 0.80860 |
 
 At 131 kb, the lowest-memory successful configuration was
 `fused embed+down0`, reducing observed peak memory from 90.46 GiB to 24.59 GiB
 relative to default. The best non-fused memory-efficient option was
 `triton pool`, at 34.09 GiB with no visible test metric change versus the
 Triton Conv1d baseline. FlexAttention did not reduce memory at this context
-length and was slower than eager attention.
+length and was slower than eager attention. Turning on all features tied the
+lowest observed memory but further reduced throughput.
 
 ## 1 Mb Windows
 
@@ -156,6 +173,7 @@ batches. The 1 Mb cache contains valid/test only:
 | fused embed | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |  |  |  | 28.83 | 0.701 | 0.82658 |
 | fused down0 | ✓ | ✓ | ✓ | ✓ | ✓ |  | ✓ |  |  | 26.58 | 0.697 | 0.82643 |
 | fused embed+down0 | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |  |  | 23.58 | 0.650 | 0.82634 |
+| all features | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | 11.58 | 0.772 | 0.82637 |
 
 At 1 Mb, default inference exceeded 48 GiB. Plain bf16 params fit just under
 48 GiB, while the Triton/no-intermediates family reduced memory substantially
@@ -165,7 +183,9 @@ throughput. The low-res-bias FlexAttention path became useful at 1 Mb: it
 avoided expanding the attention bias to the full repeated tensor, reduced
 observed peak memory by about 12 GiB relative to the Triton Conv1d baseline, and
 improved throughput by about 12%, with unchanged test differential Pearson at
-displayed precision.
+displayed precision. The all-features row produced the lowest observed memory
+at 11.58 GiB, with lower throughput than FlexAttention low-res bias alone but
+still higher throughput than the fused embed+down0 row.
 
 ## Considered But Excluded
 
@@ -207,3 +227,6 @@ useful at 1 Mb.
   `outputs/quant_ablation/20260703_1mb_flexattn_batch2`
 - 131 kb FlexAttention follow-up:
   `outputs/quant_ablation/20260704_131kb_flexattn_batch32`
+- all-features follow-up:
+  `outputs/quant_ablation/20260704_all_features_flex_lrb_131kb_batch32`
+  and `outputs/quant_ablation/20260704_all_features_flex_lrb_1mb_batch2`
