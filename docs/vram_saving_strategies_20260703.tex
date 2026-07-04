@@ -180,6 +180,34 @@ substantially further. The fused blocks primarily reduced observed memory at
 this longer context length; they are useful for minimum VRAM but not for maximum
 throughput.
 
+\subsection{1 Mb FlexAttention follow-up}
+
+FlexAttention was re-tested at 1 Mb because attention and attention-bias tensors
+become more important at longer context. These runs used the same batch size 2,
+checkpoint, target cache, and \texttt{bf16\_triton\_conv\_stdconv\_effective}
+baseline.
+
+\begin{table}[h]
+\centering
+\caption{1 Mb attention-backend follow-up on top of the Triton Conv1d baseline.}
+\label{tab:flex-1mb}
+\scriptsize
+\begin{tabular}{llrrrrr}
+\toprule
+Attention path & Bias & Peak GiB & Alloc GiB & Reserved GiB & Ex./s & Test \(r\) \\
+\midrule
+Eager baseline & full repeated & 32.58 & 21.98 & 31.91 & 0.736 & 0.82662 \\
+FlexAttention & full repeated & 28.58 & 18.01 & 27.91 & 0.746 & 0.82663 \\
+FlexAttention & low-res & 20.58 & 13.91 & 19.91 & 0.827 & 0.82663 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+At 1 Mb, the low-res-bias FlexAttention path is useful: it avoids expanding the
+attention bias to the full repeated tensor, reduces observed peak memory by
+about 12 GiB relative to eager attention, and improves throughput by about 12\%,
+with unchanged test differential Pearson at displayed precision.
+
 \section{Discussion}
 
 The most robust practical configuration is the combination of bfloat16,
@@ -206,16 +234,16 @@ NF4 linears and 1x1 convolutions to the Triton-conv stack used essentially the
 same observed memory as the bfloat16 Triton-conv stack, 43.62 GiB versus
 43.61 GiB, with about a 0.001 drop in test differential Pearson.
 
-\paragraph{FlexAttention.}
+\paragraph{FlexAttention at 131 kb.}
 A parity-preserving FlexAttention replacement for \texttt{MHABlock} was
 implemented as \texttt{flex\_mha}. It preserves the AlphaGenome score transform:
 additive attention bias, then tanh soft-cap, then softmax. Standalone parity
 was close, and full-model test differential Pearson was unchanged at displayed
-precision. It did not reduce peak memory at 131 kb, because the existing path
-still materializes the attention-bias tensor and the measured peak is dominated
-elsewhere after Triton convs are enabled. At batch 32, FlexAttention was slower
-than eager attention in the recorded full run, 8.44 versus 9.10 examples/s,
-with the same torch allocation, so it is not part of the current recommended
-stack.
+precision. At 131 kb it did not reduce peak memory, because the measured peak is
+dominated elsewhere after Triton convs are enabled. At batch 32, plain
+FlexAttention was slower than eager attention in the recorded full run, 8.44
+versus 9.10 examples/s, with the same torch allocation. This makes FlexAttention
+context-dependent rather than a default 131 kb recommendation; the 1 Mb
+low-res-bias variant is the useful case.
 
 \end{document}

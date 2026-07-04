@@ -152,6 +152,23 @@ further. The fused blocks primarily reduced observed/reserved memory at this
 longer context length; they were useful for minimum VRAM but not for maximum
 throughput.
 
+### 1 Mb FlexAttention Follow-Up
+
+FlexAttention was re-tested at 1 Mb because attention and attention-bias tensors
+become more important at longer context. These runs used the same batch size 2,
+checkpoint, target cache, and `bf16_triton_conv_stdconv_effective` baseline.
+
+| attention path | bias representation | peak GiB | torch alloc GiB | torch reserved GiB | examples/s | test r |
+|---|---|---:|---:|---:|---:|---:|
+| eager baseline | full repeated bias | 32.58 | 21.98 | 31.91 | 0.736 | 0.82662 |
+| FlexAttention | full repeated bias | 28.58 | 18.01 | 27.91 | 0.746 | 0.82663 |
+| FlexAttention | low-res bias | 20.58 | 13.91 | 19.91 | 0.827 | 0.82663 |
+
+At 1 Mb, the low-res-bias FlexAttention path is useful: it avoids expanding the
+attention bias to the full repeated tensor, reduces observed peak memory by
+about 12 GiB relative to eager attention, and improves throughput by about 12%,
+with unchanged test differential Pearson at displayed precision.
+
 ## Considered But Excluded
 
 **Float8 and NF4 linear quantization.** `torchao_float8_linear` and
@@ -168,15 +185,16 @@ batch-32 combo run, adding NF4 linears/1x1 convs to the Triton-conv stack used
 essentially the same observed memory (`43.62` GiB vs `43.61` GiB) with about a
 `0.001` drop in test differential Pearson.
 
-**FlexAttention.** A parity-preserving FlexAttention `MHABlock` replacement was
-implemented as `flex_mha`, including the AlphaGenome score transform: additive
-attention bias followed by tanh soft-cap before softmax. Standalone parity was
-close, and full-model test differential Pearson was unchanged at displayed
-precision. It did not reduce peak memory at 131 kb, because the existing path
-still materializes the attention-bias tensor and the measured peak is dominated
-elsewhere after Triton convs are enabled. At batch 32, FlexAttention was slower
-than eager attention in the recorded full run (`8.44` vs `9.10` examples/s) with
-the same torch allocation, so it is not part of the current recommended stack.
+**FlexAttention at 131 kb.** A parity-preserving FlexAttention `MHABlock`
+replacement was implemented as `flex_mha`, including the AlphaGenome score
+transform: additive attention bias followed by tanh soft-cap before softmax.
+Standalone parity was close, and full-model test differential Pearson was
+unchanged at displayed precision. At 131 kb it did not reduce peak memory,
+because the measured peak is dominated elsewhere after Triton convs are
+enabled. At batch 32, plain FlexAttention was slower than eager attention in the
+recorded full run (`8.44` vs `9.10` examples/s) with the same torch allocation.
+This makes FlexAttention context-dependent rather than a default 131 kb
+recommendation; the 1 Mb low-res-bias variant is the useful case.
 
 ## Run Roots
 
@@ -188,3 +206,5 @@ the same torch allocation, so it is not part of the current recommended stack.
   `outputs/quant_ablation/20260702_recreated_encoder_vram_1mb_batch2_full`
 - 1 Mb default/bf16 baselines:
   `outputs/quant_ablation/20260702_recreated_baselines_1mb_batch2_full`
+- 1 Mb FlexAttention follow-up:
+  `outputs/quant_ablation/20260703_1mb_flexattn_batch2`
