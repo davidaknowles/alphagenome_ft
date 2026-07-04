@@ -19,11 +19,15 @@ The feature matrix columns are:
 - **Pool**: Triton max-pool without PyTorch's index/workspace allocation.
 - **FEmb**: fused `encoder.dna_embedder.block`.
 - **FD0**: fused `encoder.down_blocks.0`.
+- **Flex**: FlexAttention replacement for `MHABlock`.
+- **LRB**: low-resolution attention bias used by the FlexAttention path.
 
 ## Implementation Details
 
-The strategies are cumulative in the order below, except for rows that omit one
-of the optional fused blocks.
+The main encoder-memory strategies are cumulative in the order below, except for
+rows that omit one of the optional fused blocks. FlexAttention rows are side
+branches on top of the Triton Conv1d baseline, because they change the
+transformer attention path rather than the encoder/decoder memory path.
 
 **Bfloat16 policy.** The `bf16_params` path uses the Torch model's aggressive
 bfloat16 dtype policy for inference. This stores/casts floating-point model
@@ -105,28 +109,33 @@ peak allocator state is sensitive to high-resolution transient tensors.
 | fused embed | `bf16_triton_conv_no_intermediates_tritonpool_fusedembed_stdconv_effective` |
 | fused down0 | `bf16_triton_conv_no_intermediates_tritonpool_fuseddown0_stdconv_effective` |
 | fused embed+down0 | `bf16_triton_conv_no_intermediates_tritonpool_fusedembed_fuseddown0_stdconv_effective` |
+| flex attention | `bf16_triton_conv_flexattn_stdconv_effective` |
+| flex low-res bias | `bf16_triton_conv_flexattn_lowresbias_stdconv_effective` |
 
 ## 131 kb Windows
 
 Batch size was 32. The full valid/test evaluation used 2162 examples over 68
 batches.
 
-| strategy | BF16 | Eff. | Int8 | NoInt | Pool | FEmb | FD0 | peak GiB | examples/s | test r |
-|---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|---:|---:|---:|
-| default |  |  |  |  |  |  |  | 90.46 | 9.41 | 0.80891 |
-| bf16 params | ✓ |  |  |  |  |  |  | 65.37 | 12.02 | 0.80874 |
-| triton conv | ✓ | ✓ | ✓ |  |  |  |  | 42.59 | 8.49 | 0.80877 |
-| no intermediates | ✓ | ✓ | ✓ | ✓ |  |  |  | 42.59 | 8.51 | 0.80877 |
-| triton pool | ✓ | ✓ | ✓ | ✓ | ✓ |  |  | 34.09 | 8.78 | 0.80877 |
-| fused embed | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |  | 31.59 | 8.03 | 0.80872 |
-| fused down0 | ✓ | ✓ | ✓ | ✓ | ✓ |  | ✓ | 30.59 | 8.11 | 0.80860 |
-| fused embed+down0 | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | 24.59 | 7.45 | 0.80860 |
+| strategy | BF16 | Eff. | Int8 | NoInt | Pool | FEmb | FD0 | Flex | LRB | peak GiB | examples/s | test r |
+|---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|---:|---:|---:|
+| default |  |  |  |  |  |  |  |  |  | 90.46 | 9.41 | 0.80891 |
+| bf16 params | ✓ |  |  |  |  |  |  |  |  | 65.37 | 12.02 | 0.80874 |
+| triton conv | ✓ | ✓ | ✓ |  |  |  |  |  |  | 42.59 | 8.49 | 0.80877 |
+| flex attention | ✓ | ✓ | ✓ |  |  |  |  | ✓ |  | 42.59 | 7.27 | 0.80876 |
+| flex low-res bias | ✓ | ✓ | ✓ |  |  |  |  | ✓ | ✓ | 42.59 | 7.27 | 0.80876 |
+| no intermediates | ✓ | ✓ | ✓ | ✓ |  |  |  |  |  | 42.59 | 8.51 | 0.80877 |
+| triton pool | ✓ | ✓ | ✓ | ✓ | ✓ |  |  |  |  | 34.09 | 8.78 | 0.80877 |
+| fused embed | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |  |  |  | 31.59 | 8.03 | 0.80872 |
+| fused down0 | ✓ | ✓ | ✓ | ✓ | ✓ |  | ✓ |  |  | 30.59 | 8.11 | 0.80860 |
+| fused embed+down0 | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |  |  | 24.59 | 7.45 | 0.80860 |
 
 At 131 kb, the lowest-memory successful configuration was
 `fused embed+down0`, reducing observed peak memory from 90.46 GiB to 24.59 GiB
 relative to default. The best non-fused memory-efficient option was
 `triton pool`, at 34.09 GiB with no visible test metric change versus the
-Triton Conv1d baseline.
+Triton Conv1d baseline. FlexAttention did not reduce memory at this context
+length and was slower than eager attention.
 
 ## 1 Mb Windows
 
@@ -135,39 +144,28 @@ batches. The 1 Mb cache contains valid/test only:
 
 `/gpfs/commons/home/daknowles/knowles_lab/data/multiome/humanbraindev/alphagenome_target_cache/humanbraindev_atac_w1048576_s1048576_validtest_float16`
 
-| strategy | BF16 | Eff. | Int8 | NoInt | Pool | FEmb | FD0 | peak GiB | examples/s | test r |
-|---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|---:|---:|---:|
-| default |  |  |  |  |  |  |  | 51.36 | 0.721 | 0.82707 |
-| bf16 params | ✓ |  |  |  |  |  |  | 46.48 | 0.937 | 0.82640 |
-| triton conv | ✓ | ✓ | ✓ |  |  |  |  | 32.58 | 0.736 | 0.82662 |
-| no intermediates | ✓ | ✓ | ✓ | ✓ |  |  |  | 28.58 | 0.749 | 0.82662 |
-| triton pool | ✓ | ✓ | ✓ | ✓ | ✓ |  |  | 30.08 | 0.753 | 0.82662 |
-| fused embed | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |  | 28.83 | 0.701 | 0.82658 |
-| fused down0 | ✓ | ✓ | ✓ | ✓ | ✓ |  | ✓ | 26.58 | 0.697 | 0.82643 |
-| fused embed+down0 | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | 23.58 | 0.650 | 0.82634 |
+| strategy | BF16 | Eff. | Int8 | NoInt | Pool | FEmb | FD0 | Flex | LRB | peak GiB | examples/s | test r |
+|---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|---:|---:|---:|
+| default |  |  |  |  |  |  |  |  |  | 51.36 | 0.721 | 0.82707 |
+| bf16 params | ✓ |  |  |  |  |  |  |  |  | 46.48 | 0.937 | 0.82640 |
+| triton conv | ✓ | ✓ | ✓ |  |  |  |  |  |  | 32.58 | 0.736 | 0.82662 |
+| flex attention | ✓ | ✓ | ✓ |  |  |  |  | ✓ |  | 28.58 | 0.746 | 0.82663 |
+| flex low-res bias | ✓ | ✓ | ✓ |  |  |  |  | ✓ | ✓ | 20.58 | 0.827 | 0.82663 |
+| no intermediates | ✓ | ✓ | ✓ | ✓ |  |  |  |  |  | 28.58 | 0.749 | 0.82662 |
+| triton pool | ✓ | ✓ | ✓ | ✓ | ✓ |  |  |  |  | 30.08 | 0.753 | 0.82662 |
+| fused embed | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |  |  |  | 28.83 | 0.701 | 0.82658 |
+| fused down0 | ✓ | ✓ | ✓ | ✓ | ✓ |  | ✓ |  |  | 26.58 | 0.697 | 0.82643 |
+| fused embed+down0 | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |  |  | 23.58 | 0.650 | 0.82634 |
 
 At 1 Mb, default inference exceeded 48 GiB. Plain bf16 params fit just under
 48 GiB, while the Triton/no-intermediates family reduced memory substantially
 further. The fused blocks primarily reduced observed/reserved memory at this
 longer context length; they were useful for minimum VRAM but not for maximum
-throughput.
-
-### 1 Mb FlexAttention Follow-Up
-
-FlexAttention was re-tested at 1 Mb because attention and attention-bias tensors
-become more important at longer context. These runs used the same batch size 2,
-checkpoint, target cache, and `bf16_triton_conv_stdconv_effective` baseline.
-
-| attention path | bias representation | peak GiB | torch alloc GiB | torch reserved GiB | examples/s | test r |
-|---|---|---:|---:|---:|---:|---:|
-| eager baseline | full repeated bias | 32.58 | 21.98 | 31.91 | 0.736 | 0.82662 |
-| FlexAttention | full repeated bias | 28.58 | 18.01 | 27.91 | 0.746 | 0.82663 |
-| FlexAttention | low-res bias | 20.58 | 13.91 | 19.91 | 0.827 | 0.82663 |
-
-At 1 Mb, the low-res-bias FlexAttention path is useful: it avoids expanding the
-attention bias to the full repeated tensor, reduces observed peak memory by
-about 12 GiB relative to eager attention, and improves throughput by about 12%,
-with unchanged test differential Pearson at displayed precision.
+throughput. The low-res-bias FlexAttention path became useful at 1 Mb: it
+avoided expanding the attention bias to the full repeated tensor, reduced
+observed peak memory by about 12 GiB relative to the Triton Conv1d baseline, and
+improved throughput by about 12%, with unchanged test differential Pearson at
+displayed precision.
 
 ## Considered But Excluded
 
@@ -185,16 +183,15 @@ batch-32 combo run, adding NF4 linears/1x1 convs to the Triton-conv stack used
 essentially the same observed memory (`43.62` GiB vs `43.61` GiB) with about a
 `0.001` drop in test differential Pearson.
 
-**FlexAttention at 131 kb.** A parity-preserving FlexAttention `MHABlock`
-replacement was implemented as `flex_mha`, including the AlphaGenome score
-transform: additive attention bias followed by tanh soft-cap before softmax.
-Standalone parity was close, and full-model test differential Pearson was
-unchanged at displayed precision. At 131 kb it did not reduce peak memory,
-because the measured peak is dominated elsewhere after Triton convs are
-enabled. At batch 32, plain FlexAttention was slower than eager attention in the
-recorded full run (`8.44` vs `9.10` examples/s) with the same torch allocation.
-This makes FlexAttention context-dependent rather than a default 131 kb
-recommendation; the 1 Mb low-res-bias variant is the useful case.
+**FlexAttention.** A parity-preserving FlexAttention `MHABlock` replacement was
+implemented as `flex_mha`, including the AlphaGenome score transform: additive
+attention bias followed by tanh soft-cap before softmax. The low-res-bias
+variant keeps the attention bias at the lower pairwise-resolution grid and
+indexes it inside FlexAttention rather than materializing the full repeated
+attention-bias tensor. Standalone parity was close, and full-model test
+differential Pearson was unchanged at displayed precision. FlexAttention is
+context-dependent: it did not help at 131 kb, but the low-res-bias variant was
+useful at 1 Mb.
 
 ## Run Roots
 
@@ -208,3 +205,5 @@ recommendation; the 1 Mb low-res-bias variant is the useful case.
   `outputs/quant_ablation/20260702_recreated_baselines_1mb_batch2_full`
 - 1 Mb FlexAttention follow-up:
   `outputs/quant_ablation/20260703_1mb_flexattn_batch2`
+- 131 kb FlexAttention follow-up:
+  `outputs/quant_ablation/20260704_131kb_flexattn_batch32`

@@ -3,6 +3,7 @@
 \usepackage{booktabs}
 \usepackage{array}
 \usepackage{amssymb}
+\usepackage{graphicx}
 \usepackage{hyperref}
 
 \newcommand{\cmark}{\checkmark}
@@ -19,8 +20,8 @@ We evaluated low-VRAM Torch inference strategies for AlphaGenome on a recreated
 human brain development ATAC checkpoint. At 131 kb and batch size 32, the
 lowest-memory configuration reduced observed peak memory from 90.46 GiB to
 24.59 GiB, with test \(r\) changing from 0.80891 to 0.80860. At 1 Mb and batch
-size 2, default inference exceeded 48 GiB, whereas the complete fused
-configuration used 23.58 GiB.
+size 2, default inference exceeded 48 GiB, whereas the low-resolution-bias
+FlexAttention configuration used 20.58 GiB.
 \end{abstract}
 
 \section{Experimental setup}
@@ -122,91 +123,78 @@ peak allocator state is sensitive to high-resolution transient tensors.
 Tables use feature indicators for bfloat16 policy (BF16), effective
 standardized convolutions (Eff.), Triton int8 Conv1d (Int8), no-intermediates
 encoder path (NoInt), Triton no-indices max-pool (Pool), fused DNA embedder
-block (FEmb), and fused first downsampling block (FD0).
+block (FEmb), fused first downsampling block (FD0), FlexAttention (Flex), and
+low-resolution attention bias (LRB). FlexAttention rows are side branches on top
+of the Triton Conv1d baseline rather than cumulative encoder-memory rows.
 
 \begin{table}[h]
 \centering
 \caption{Full valid/test evaluation for 131 kb windows at batch size 32.}
 \label{tab:vram-131kb}
 \tiny
-\setlength{\tabcolsep}{3pt}
-\begin{tabular}{lccccccc rrr}
+\setlength{\tabcolsep}{2pt}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{lccccccccc rrr}
 \toprule
-Strategy & BF16 & Eff. & Int8 & NoInt & Pool & FEmb & FD0 & Peak GiB & Ex./s & Test \(r\) \\
+Strategy & BF16 & Eff. & Int8 & NoInt & Pool & FEmb & FD0 & Flex & LRB & Peak GiB & Ex./s & Test \(r\) \\
 \midrule
-Default &  &  &  &  &  &  &  & 90.46 & 9.41 & 0.80891 \\
-Bfloat16 & \cmark &  &  &  &  &  &  & 65.37 & 12.02 & 0.80874 \\
-Triton Conv1d & \cmark & \cmark & \cmark &  &  &  &  & 42.59 & 8.49 & 0.80877 \\
-No intermediates & \cmark & \cmark & \cmark & \cmark &  &  &  & 42.59 & 8.51 & 0.80877 \\
-Triton pool & \cmark & \cmark & \cmark & \cmark & \cmark &  &  & 34.09 & 8.78 & 0.80877 \\
-Fused embedder & \cmark & \cmark & \cmark & \cmark & \cmark & \cmark &  & 31.59 & 8.03 & 0.80872 \\
-Fused down0 & \cmark & \cmark & \cmark & \cmark & \cmark &  & \cmark & 30.59 & 8.11 & 0.80860 \\
-Fused embedder+down0 & \cmark & \cmark & \cmark & \cmark & \cmark & \cmark & \cmark & 24.59 & 7.45 & 0.80860 \\
+Default &  &  &  &  &  &  &  &  &  & 90.46 & 9.41 & 0.80891 \\
+Bfloat16 & \cmark &  &  &  &  &  &  &  &  & 65.37 & 12.02 & 0.80874 \\
+Triton Conv1d & \cmark & \cmark & \cmark &  &  &  &  &  &  & 42.59 & 8.49 & 0.80877 \\
+FlexAttention & \cmark & \cmark & \cmark &  &  &  &  & \cmark &  & 42.59 & 7.27 & 0.80876 \\
+Flex low-res bias & \cmark & \cmark & \cmark &  &  &  &  & \cmark & \cmark & 42.59 & 7.27 & 0.80876 \\
+No intermediates & \cmark & \cmark & \cmark & \cmark &  &  &  &  &  & 42.59 & 8.51 & 0.80877 \\
+Triton pool & \cmark & \cmark & \cmark & \cmark & \cmark &  &  &  &  & 34.09 & 8.78 & 0.80877 \\
+Fused embedder & \cmark & \cmark & \cmark & \cmark & \cmark & \cmark &  &  &  & 31.59 & 8.03 & 0.80872 \\
+Fused down0 & \cmark & \cmark & \cmark & \cmark & \cmark &  & \cmark &  &  & 30.59 & 8.11 & 0.80860 \\
+Fused embedder+down0 & \cmark & \cmark & \cmark & \cmark & \cmark & \cmark & \cmark &  &  & 24.59 & 7.45 & 0.80860 \\
 \bottomrule
 \end{tabular}
+}
 \end{table}
 
 At 131 kb, the lowest-memory successful configuration was the fused
 embedder+down0 strategy, reducing observed peak memory from 90.46 GiB to
 24.59 GiB relative to default. The best non-fused memory-efficient option was
 the Triton-pool strategy, at 34.09 GiB with no visible test metric change
-relative to the Triton Conv1d baseline.
+relative to the Triton Conv1d baseline. FlexAttention did not reduce memory at
+this context length and was slower than eager attention.
 
 \begin{table}[h]
 \centering
 \caption{Full valid/test evaluation for 1 Mb windows at batch size 2.}
 \label{tab:vram-1mb}
 \tiny
-\setlength{\tabcolsep}{3pt}
-\begin{tabular}{lccccccc rrr}
+\setlength{\tabcolsep}{2pt}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{lccccccccc rrr}
 \toprule
-Strategy & BF16 & Eff. & Int8 & NoInt & Pool & FEmb & FD0 & Peak GiB & Ex./s & Test \(r\) \\
+Strategy & BF16 & Eff. & Int8 & NoInt & Pool & FEmb & FD0 & Flex & LRB & Peak GiB & Ex./s & Test \(r\) \\
 \midrule
-Default &  &  &  &  &  &  &  & 51.36 & 0.721 & 0.82707 \\
-Bfloat16 & \cmark &  &  &  &  &  &  & 46.48 & 0.937 & 0.82640 \\
-Triton Conv1d & \cmark & \cmark & \cmark &  &  &  &  & 32.58 & 0.736 & 0.82662 \\
-No intermediates & \cmark & \cmark & \cmark & \cmark &  &  &  & 28.58 & 0.749 & 0.82662 \\
-Triton pool & \cmark & \cmark & \cmark & \cmark & \cmark &  &  & 30.08 & 0.753 & 0.82662 \\
-Fused embedder & \cmark & \cmark & \cmark & \cmark & \cmark & \cmark &  & 28.83 & 0.701 & 0.82658 \\
-Fused down0 & \cmark & \cmark & \cmark & \cmark & \cmark &  & \cmark & 26.58 & 0.697 & 0.82643 \\
-Fused embedder+down0 & \cmark & \cmark & \cmark & \cmark & \cmark & \cmark & \cmark & 23.58 & 0.650 & 0.82634 \\
+Default &  &  &  &  &  &  &  &  &  & 51.36 & 0.721 & 0.82707 \\
+Bfloat16 & \cmark &  &  &  &  &  &  &  &  & 46.48 & 0.937 & 0.82640 \\
+Triton Conv1d & \cmark & \cmark & \cmark &  &  &  &  &  &  & 32.58 & 0.736 & 0.82662 \\
+FlexAttention & \cmark & \cmark & \cmark &  &  &  &  & \cmark &  & 28.58 & 0.746 & 0.82663 \\
+Flex low-res bias & \cmark & \cmark & \cmark &  &  &  &  & \cmark & \cmark & 20.58 & 0.827 & 0.82663 \\
+No intermediates & \cmark & \cmark & \cmark & \cmark &  &  &  &  &  & 28.58 & 0.749 & 0.82662 \\
+Triton pool & \cmark & \cmark & \cmark & \cmark & \cmark &  &  &  &  & 30.08 & 0.753 & 0.82662 \\
+Fused embedder & \cmark & \cmark & \cmark & \cmark & \cmark & \cmark &  &  &  & 28.83 & 0.701 & 0.82658 \\
+Fused down0 & \cmark & \cmark & \cmark & \cmark & \cmark &  & \cmark &  &  & 26.58 & 0.697 & 0.82643 \\
+Fused embedder+down0 & \cmark & \cmark & \cmark & \cmark & \cmark & \cmark & \cmark &  &  & 23.58 & 0.650 & 0.82634 \\
 \bottomrule
 \end{tabular}
+}
 \end{table}
 
 At 1 Mb, default inference exceeded 48 GiB. Plain bfloat16 inference fit just
 under 48 GiB, while the Triton/no-intermediates family reduced memory
 substantially further. The fused blocks primarily reduced observed memory at
 this longer context length; they are useful for minimum VRAM but not for maximum
-throughput.
-
-\subsection{1 Mb FlexAttention follow-up}
-
-FlexAttention was re-tested at 1 Mb because attention and attention-bias tensors
-become more important at longer context. These runs used the same batch size 2,
-checkpoint, target cache, and \texttt{bf16\_triton\_conv\_stdconv\_effective}
-baseline.
-
-\begin{table}[h]
-\centering
-\caption{1 Mb attention-backend follow-up on top of the Triton Conv1d baseline.}
-\label{tab:flex-1mb}
-\scriptsize
-\begin{tabular}{llrrrrr}
-\toprule
-Attention path & Bias & Peak GiB & Alloc GiB & Reserved GiB & Ex./s & Test \(r\) \\
-\midrule
-Eager baseline & full repeated & 32.58 & 21.98 & 31.91 & 0.736 & 0.82662 \\
-FlexAttention & full repeated & 28.58 & 18.01 & 27.91 & 0.746 & 0.82663 \\
-FlexAttention & low-res & 20.58 & 13.91 & 19.91 & 0.827 & 0.82663 \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-At 1 Mb, the low-res-bias FlexAttention path is useful: it avoids expanding the
-attention bias to the full repeated tensor, reduces observed peak memory by
-about 12 GiB relative to eager attention, and improves throughput by about 12\%,
-with unchanged test differential Pearson at displayed precision.
+throughput. The low-res-bias FlexAttention path became useful at 1 Mb: it
+avoided expanding the attention bias to the full repeated tensor, reduced
+observed peak memory by about 12 GiB relative to the Triton Conv1d baseline, and
+improved throughput by about 12\%, with unchanged test differential Pearson at
+displayed precision.
 
 \section{Discussion}
 
@@ -234,16 +222,15 @@ NF4 linears and 1x1 convolutions to the Triton-conv stack used essentially the
 same observed memory as the bfloat16 Triton-conv stack, 43.62 GiB versus
 43.61 GiB, with about a 0.001 drop in test differential Pearson.
 
-\paragraph{FlexAttention at 131 kb.}
+\paragraph{FlexAttention.}
 A parity-preserving FlexAttention replacement for \texttt{MHABlock} was
 implemented as \texttt{flex\_mha}. It preserves the AlphaGenome score transform:
-additive attention bias, then tanh soft-cap, then softmax. Standalone parity
-was close, and full-model test differential Pearson was unchanged at displayed
-precision. At 131 kb it did not reduce peak memory, because the measured peak is
-dominated elsewhere after Triton convs are enabled. At batch 32, plain
-FlexAttention was slower than eager attention in the recorded full run, 8.44
-versus 9.10 examples/s, with the same torch allocation. This makes FlexAttention
-context-dependent rather than a default 131 kb recommendation; the 1 Mb
-low-res-bias variant is the useful case.
+additive attention bias, then tanh soft-cap, then softmax. The low-res-bias
+variant keeps the attention bias at the lower pairwise-resolution grid and
+indexes it inside FlexAttention rather than materializing the full repeated
+attention-bias tensor. Standalone parity was close, and full-model test
+differential Pearson was unchanged at displayed precision. FlexAttention is
+context-dependent: it did not help at 131 kb, but the low-res-bias variant was
+useful at 1 Mb.
 
 \end{document}
