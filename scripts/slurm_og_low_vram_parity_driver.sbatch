@@ -16,7 +16,6 @@ PYTHON="${PYTHON:-$HOME/venv/torchfix/bin/python}"
 OUTPUT_ROOT="${OUTPUT_ROOT:-$ROOT/outputs/og_low_vram/$(date +%Y%m%d_%H%M%S)_parity_driver}"
 REFERENCE_ROOT="${REFERENCE_ROOT:-$OUTPUT_ROOT/reference_predictions}"
 OG_WEIGHTS="${OG_WEIGHTS:-/gpfs/commons/home/daknowles/projects/mpragent/outputs/models/alphagenome/model_all_folds.safetensors}"
-BF16_WEFF_WEIGHTS="${BF16_WEFF_WEIGHTS:-$ROOT/outputs/og_low_vram/alphagenome_og_bf16_weff.safetensors}"
 TORCH_REPO="${TORCH_REPO:-/gpfs/commons/home/daknowles/projects/alphagenome-pytorch}"
 CHROM="${CHROM:-chr9}"
 HEAD="${HEAD:-atac}"
@@ -68,17 +67,12 @@ submit_and_wait() {
     --time=12:00:00 \
     -o "logs/og_low_vram/%x_%j.out" \
     -e "logs/og_low_vram/%x_%j.err" \
-    --wrap "cd '$ROOT' && '$PYTHON' scripts/run_og_low_vram_parity.py --strategy '$strategy' --reference-predictions '$ref' --output-dir '$run_dir' --og-weights '$OG_WEIGHTS' --bf16-weff-weights '$BF16_WEFF_WEIGHTS' --torch-repo '$TORCH_REPO' --window-size '$window_size' --batch-size '$batch_size' --chrom '$CHROM' --head '$HEAD' $reference_arg $max_windows_arg"
+    --wrap "cd '$ROOT' && '$PYTHON' scripts/run_og_low_vram_parity.py --strategy '$strategy' --reference-predictions '$ref' --output-dir '$run_dir' --og-weights '$OG_WEIGHTS' --torch-repo '$TORCH_REPO' --window-size '$window_size' --batch-size '$batch_size' --chrom '$CHROM' --head '$HEAD' $reference_arg $max_windows_arg"
 }
-
-if [[ ! -s "$BF16_WEFF_WEIGHTS" ]]; then
-  echo "Missing bf16 W_eff checkpoint: $BF16_WEFF_WEIGHTS" >&2
-  exit 1
-fi
 
 echo "output_root=$OUTPUT_ROOT"
 echo "reference_root=$REFERENCE_ROOT"
-echo "bf16_weff_weights=$BF16_WEFF_WEIGHTS"
+echo "og_weights=$OG_WEIGHTS"
 
 for window_spec in "${WINDOWS[@]}"; do
   IFS=: read -r window_size batch_size <<< "$window_spec"

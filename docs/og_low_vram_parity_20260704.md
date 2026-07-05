@@ -12,6 +12,10 @@ skip unused encoder intermediates for 128 bp output; Pool = Triton max-pool with
 indices; FEmb = fused DNA embedder block; FD0 = fused first downsampling block;
 Flex = FlexAttention MHA; LRB = low-resolution attention bias.
 
+The supported low-VRAM pipeline uses the original OG safetensors directly. For
+Eff. rows, standardized convolutions are materialized in memory at load time;
+there is no separate bf16/W_eff checkpoint artifact to share.
+
 ## 131,072 bp windows, batch size 32
 
 | Strategy | BF16 | Eff. | Int8 | NoInt | Pool | FEmb | FD0 | Flex | LRB | Peak GiB | Ex./s | max abs | RMSE | Pearson |

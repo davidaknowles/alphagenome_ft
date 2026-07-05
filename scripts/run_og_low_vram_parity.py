@@ -22,7 +22,6 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from scripts.run_quant_ablation import (  # noqa: E402
-    TORCH_STDCONV_EFFECTIVE_SUFFIX,
     apply_torch_quant_policy,
     _split_torch_strategy,
 )
@@ -33,7 +32,6 @@ DEFAULT_FASTA = Path("/gpfs/commons/home/daknowles/knowles_lab/index/hg38/hg38.f
 DEFAULT_OG_WEIGHTS = Path(
     "/gpfs/commons/home/daknowles/projects/mpragent/outputs/models/alphagenome/model_all_folds.safetensors"
 )
-DEFAULT_WEFF_WEIGHTS = Path("outputs/og_low_vram/alphagenome_og_bf16_weff.safetensors")
 
 TABLE_STRATEGIES: dict[str, str] = {
     "default": "default",
@@ -187,26 +185,7 @@ def _iter_sequence_batches(
         yield start_idx, np.stack(seqs, axis=0)
 
 
-def _load_weff_state(path: Path) -> tuple[dict[str, Any], dict[str, Any]]:
-    from safetensors import safe_open
-    from safetensors.torch import load_file
-
-    path = path.expanduser().resolve()
-    metadata: dict[str, Any] = {}
-    with safe_open(str(path), framework="pt", device="cpu") as handle:
-        raw = handle.metadata() or {}
-    if "alphagenome_fp4_metadata" in raw:
-        metadata = json.loads(raw["alphagenome_fp4_metadata"])
-    else:
-        sidecar = path.with_suffix(path.suffix + ".json")
-        if sidecar.exists():
-            with sidecar.open() as handle:
-                metadata = json.load(handle)
-    return load_file(str(path), device="cpu"), metadata
-
-
 def _load_model(args: argparse.Namespace, strategy: str, device: Any):
-    import torch
     from alphagenome_pytorch.config import DtypePolicy
     from alphagenome_pytorch.model import AlphaGenome
 
@@ -216,32 +195,22 @@ def _load_model(args: argparse.Namespace, strategy: str, device: Any):
         if strategy != "default"
         else DtypePolicy.full_float32()
     )
+    model = AlphaGenome.from_pretrained(
+        args.og_weights.expanduser().resolve(),
+        dtype_policy=dtype_policy,
+        device=device,
+    )
     if needs_effective:
-        model = AlphaGenome(dtype_policy=dtype_policy)
         materialized = materialize_standardized_convs(model)
-        state, checkpoint_metadata = _load_weff_state(args.bf16_weff_weights)
-        result = model.load_state_dict(state, strict=True)
-        if result.missing_keys or result.unexpected_keys:
-            raise RuntimeError(
-                f"Unexpected W_eff load result: missing={result.missing_keys}, "
-                f"unexpected={result.unexpected_keys}"
-            )
-        model.to(device)
-        load_stats = {
-            "weights_path": str(args.bf16_weff_weights.expanduser().resolve()),
-            "loaded_bf16_weff_checkpoint": True,
-            "materialized_before_load": len(materialized),
-            "checkpoint_metadata": checkpoint_metadata,
-        }
-    else:
-        model = AlphaGenome.from_pretrained(
-            args.og_weights.expanduser().resolve(),
-            dtype_policy=dtype_policy,
-            device=device,
-        )
         load_stats = {
             "weights_path": str(args.og_weights.expanduser().resolve()),
-            "loaded_bf16_weff_checkpoint": False,
+            "runtime_materialized_standardized_convs": True,
+            "materialized_before_load": len(materialized),
+        }
+    else:
+        load_stats = {
+            "weights_path": str(args.og_weights.expanduser().resolve()),
+            "runtime_materialized_standardized_convs": False,
         }
     model.eval()
 
@@ -249,7 +218,7 @@ def _load_model(args: argparse.Namespace, strategy: str, device: Any):
         quant_strategy = base_strategy
         standardized_stats = {
             "standardized_convs_materialized": int(load_stats["materialized_before_load"]),
-            "standardized_conv_source": "checkpoint",
+            "standardized_conv_source": "runtime_from_og_weights",
         }
     else:
         quant_strategy = strategy
@@ -423,7 +392,6 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--reference-predictions", type=Path, required=True)
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("--og-weights", type=Path, default=DEFAULT_OG_WEIGHTS)
-    parser.add_argument("--bf16-weff-weights", type=Path, default=DEFAULT_WEFF_WEIGHTS)
     parser.add_argument(
         "--torch-repo",
         type=Path,

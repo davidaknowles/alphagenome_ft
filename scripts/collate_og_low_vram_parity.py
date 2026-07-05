@@ -106,6 +106,10 @@ def _write_markdown(path: Path, rows: list[dict[str, Any]], root: Path) -> None:
         "skip unused encoder intermediates for 128 bp output; Pool = Triton max-pool without",
         "indices; FEmb = fused DNA embedder block; FD0 = fused first downsampling block;",
         "Flex = FlexAttention MHA; LRB = low-resolution attention bias.",
+        "",
+        "The supported low-VRAM pipeline uses the original OG safetensors directly. For",
+        "Eff. rows, standardized convolutions are materialized in memory at load time;",
+        "there is no separate bf16/W_eff checkpoint artifact to share.",
     ]
 
     for window_size in sorted({row["window_size"] for row in rows}):
