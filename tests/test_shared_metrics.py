@@ -11,6 +11,7 @@ def test_shared_r2_metrics_are_one_for_perfect_predictions():
     assert metrics["r2_over_loci"] == 1.0
     assert metrics["r2_over_cell_types"] == 1.0
     np.testing.assert_allclose(metrics["differential_pearson_r"], 1.0, rtol=1e-6)
+    np.testing.assert_allclose(metrics["double_centered_r2"], 1.0, rtol=1e-6)
 
 
 def test_shared_r2_metrics_accept_prediction_mapping():
@@ -33,3 +34,17 @@ def test_shared_differential_pearson_double_centers_loci_and_tracks():
     metrics = r2_metrics(prediction, targets)
 
     np.testing.assert_allclose(metrics["differential_pearson_r"], 1.0, rtol=1e-6)
+    np.testing.assert_allclose(metrics["double_centered_r2"], 1.0, rtol=1e-6)
+
+
+def test_double_centered_r2_is_squared_differential_correlation():
+    targets = np.square(np.arange(2 * 4 * 3, dtype=np.float32)).reshape(2, 4, 3)
+    prediction = targets[..., ::-1]
+
+    metrics = r2_metrics(prediction, targets)
+
+    np.testing.assert_allclose(
+        metrics["double_centered_r2"],
+        metrics["differential_pearson_r"] ** 2,
+        rtol=1e-6,
+    )

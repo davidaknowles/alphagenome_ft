@@ -52,6 +52,8 @@ coverage.xml
 # Training outputs
 logs/
 checkpoints/
+outputs/
+wandb/
 
 # Translations
 *.mo

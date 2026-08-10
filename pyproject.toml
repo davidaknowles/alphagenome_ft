@@ -27,10 +27,14 @@ dependencies = [
     "dm-haiku>=0.0.10",
     # orbax-checkpoint imports flax internally (tree utils); not always pulled as a transitive dep.
     "flax>=0.8.0",
+    "h5py>=3.8.0",
     "jaxtyping>=0.2.0",
+    "numpy>=1.26.0",
     "optax>=0.2.7",
     "orbax-checkpoint>=0.4.0",
     "pandas>=2.0.0",
+    "pyfaidx>=0.8.0",
+    "pybigwig>=0.3.0",
     "requests>=2.0.0",
 ]
 

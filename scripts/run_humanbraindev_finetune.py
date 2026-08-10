@@ -179,6 +179,12 @@ def parse_args() -> argparse.Namespace:
         description="Heads-only AlphaGenome ATAC finetuning on human brain development BigWigs."
     )
     parser.add_argument("--bigwig-dir", type=Path, default=DEFAULT_BIGWIG_DIR)
+    parser.add_argument(
+        "--targets-config",
+        type=Path,
+        default=None,
+        help="Optional multi-head YAML/JSON target config. Overrides --bigwig-dir discovery.",
+    )
     parser.add_argument("--fasta-path", type=Path, default=DEFAULT_FASTA)
     parser.add_argument("--checkpoint-dir", type=Path, default=DEFAULT_CHECKPOINT_DIR)
     parser.add_argument(
@@ -454,10 +460,25 @@ def main() -> None:
     if args.split_source == "bed" and args.interval_bed is None:
         raise ValueError("--interval-bed is required when --split-source=bed")
 
-    bigwigs = discover_bigwigs(bigwig_dir)
-    print(f"Discovered {len(bigwigs)} BigWig target tracks in {bigwig_dir}")
-
-    targets_config = load_targets_config(build_targets_config(bigwigs, args.head_id))
+    if args.targets_config is None:
+        bigwigs = discover_bigwigs(bigwig_dir)
+        print(f"Discovered {len(bigwigs)} BigWig target tracks in {bigwig_dir}")
+        targets_config = load_targets_config(build_targets_config(bigwigs, args.head_id))
+    else:
+        if args.backend != "jax":
+            raise ValueError("Multi-head --targets-config runs currently require --backend=jax.")
+        targets_config_path = args.targets_config.expanduser().resolve()
+        bigwig_dir = targets_config_path.parent
+        targets_config = load_targets_config(targets_config_path)
+        bigwigs = [
+            Path(target["path"])
+            for head in targets_config.get("heads", ())
+            for target in head.get("targets", ())
+        ]
+        print(
+            f"Loaded {len(targets_config.get('heads', ()))} heads and "
+            f"{len(bigwigs)} target tracks from {targets_config_path}"
+        )
     head_specs = prepare_head_specs(targets_config, organism="HOMO_SAPIENS")
     validate_head_specs(head_specs)
     register_predefined_heads(head_specs)

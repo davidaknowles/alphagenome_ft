@@ -1332,6 +1332,17 @@ def build_fasta_index(fasta_path: Path) -> dict[str, int]:
     if not fai_path.exists():
         raise FileNotFoundError(f"Failed to create FASTA index: {fai_path}")
 
+    chromosome_sizes: dict[str, int] = {}
+    with fai_path.open() as handle:
+        for line in handle:
+            fields = line.rstrip("\n").split("\t")
+            if len(fields) < 2:
+                raise ValueError(f"Invalid FASTA index row in {fai_path}: {line!r}")
+            chromosome_sizes[fields[0]] = int(fields[1])
+    if not chromosome_sizes:
+        raise ValueError(f"FASTA index contains no chromosomes: {fai_path}")
+    return chromosome_sizes
+
 
 def prepare_batch(
     batch: Mapping[str, np.ndarray],

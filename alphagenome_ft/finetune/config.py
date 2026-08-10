@@ -59,6 +59,7 @@ class TrackInfo:
 
     name: str
     path: Path
+    strand: str = "."
     nonzero_mean: float | None = None
 
 
@@ -219,12 +220,24 @@ def _parse_targets(entries: Sequence[Mapping[str, Any]]) -> list[TrackInfo]:
             raise ValueError(f'Each target must include "path": {item!r}')
         path = Path(str(item['path']))
         name = str(item.get('label') or path.stem)
+        strand = str(item.get('strand', '.'))
+        if strand not in {'+', '-', '.'}:
+            raise ValueError(
+                f'Target "{name}" has invalid strand {strand!r}; expected "+", "-", or ".".'
+            )
         nonzero_mean = item.get('nonzero_mean')
         if nonzero_mean is not None:
             nonzero_mean = float(nonzero_mean)
         if not path.exists():
             raise FileNotFoundError(f'Target file not found: {path}')
-        tracks.append(TrackInfo(name=name, path=path, nonzero_mean=nonzero_mean))
+        tracks.append(
+            TrackInfo(
+                name=name,
+                path=path,
+                strand=strand,
+                nonzero_mean=nonzero_mean,
+            )
+        )
     return tracks
 
 
@@ -244,7 +257,7 @@ def _build_track_metadata(
     df = pd.DataFrame(
         {
             "name": [track.name for track in tracks],
-            "strand": ["+"] * len(tracks),
+            "strand": [track.strand for track in tracks],
         }
     )
     # AlphaGenomeOutputMetadata stores per-output-type DataFrames as named

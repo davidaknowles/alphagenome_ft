@@ -363,12 +363,14 @@ def _finalize_r2_stats(stats: Mapping[str, np.ndarray | float]) -> dict[str, flo
         differential_pearson_r = float("nan")
     else:
         differential_pearson_r = float(pred_target_cov / np.sqrt(pred_ss * target_ss))
+    double_centered_r2 = differential_pearson_r * differential_pearson_r
 
     return {
         "r2_global": r2_global,
         "r2_over_loci": r2_over_loci,
         "r2_over_cell_types": r2_over_cell_types,
         "differential_pearson_r": differential_pearson_r,
+        "double_centered_r2": double_centered_r2,
     }
 
 
@@ -1082,7 +1084,8 @@ def train(
                         f"r2_global={head_result['r2_global']:.4f}, "
                         f"r2_over_loci={head_result['r2_over_loci']:.4f}, "
                         f"r2_over_cell_types={head_result['r2_over_cell_types']:.4f}, "
-                        f"differential_pearson_r={head_result['differential_pearson_r']:.4f}"
+                        f"differential_pearson_r={head_result['differential_pearson_r']:.4f}, "
+                        f"double_centered_r2={head_result['double_centered_r2']:.4f}"
                     )
                 print(f"  {split.capitalize()} metrics:", "; ".join(printable))
                 if use_wandb:

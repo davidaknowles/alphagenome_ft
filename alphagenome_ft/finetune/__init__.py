@@ -28,6 +28,13 @@ from alphagenome_ft.finetune.metrics import (
     select_prediction_for_targets,
     r2_metrics,
 )
+from alphagenome_ft.finetune.rna_tracks import (
+    GeneBody,
+    PseudobulkExpression,
+    read_gene_bodies,
+    read_pseudobulk_expression,
+    write_stranded_gene_body_bigwigs,
+)
 from alphagenome_ft.finetune.backends import (
     BackendName,
     PreparedRun,
@@ -60,6 +67,12 @@ __all__ = [
     # metrics
     'select_prediction_for_targets',
     'r2_metrics',
+    # RNA pseudobulk tracks
+    'GeneBody',
+    'PseudobulkExpression',
+    'read_gene_bodies',
+    'read_pseudobulk_expression',
+    'write_stranded_gene_body_bigwigs',
     # backends
     'BackendName',
     'PreparedRun',

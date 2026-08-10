@@ -97,6 +97,7 @@ def r2_metrics(prediction: Any, targets: Any) -> dict[str, float]:
 
     target_mean_by_locus = np.mean(y, axis=-1, keepdims=True)
     differential_pearson_r = _double_center_pearson(yhat, y)
+    double_centered_r2 = float(np.square(differential_pearson_r))
 
     sst_by_locus = np.sum(np.square(y - target_mean_by_locus), axis=-1)
     sse_by_locus = np.sum(np.square(residual), axis=-1)
@@ -122,6 +123,7 @@ def r2_metrics(prediction: Any, targets: Any) -> dict[str, float]:
         "r2_over_loci": r2_over_loci,
         "r2_over_cell_types": r2_over_cell_types,
         "differential_pearson_r": differential_pearson_r,
+        "double_centered_r2": double_centered_r2,
     }
 
 
