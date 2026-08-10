@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import os
 from pathlib import Path
 import sys
@@ -25,6 +26,7 @@ from alphagenome_ft import (
 )
 from alphagenome_ft.finetune import (
     BigWigDataModule,
+    MultiSpeciesDataModule,
     PreparedRun,
     TorchBackendConfig,
     TorchSubprocessBackend,
@@ -39,7 +41,6 @@ from alphagenome_ft.finetune import (
     train,
     validate_head_specs,
 )
-
 
 DEFAULT_BIGWIG_DIR = Path(
     "/gpfs/commons/home/daknowles/knowles_lab/data/multiome/humanbraindev/bigwigs"
@@ -77,10 +78,7 @@ def build_targets_config(bigwigs: list[Path], head_id: str) -> dict:
                 "kind": "atac",
                 "resolutions": [1, 128],
                 "apply_squashing": False,
-                "targets": [
-                    {"path": str(path), "label": path.stem}
-                    for path in bigwigs
-                ],
+                "targets": [{"path": str(path), "label": path.stem} for path in bigwigs],
             }
         ]
     }
@@ -113,12 +111,17 @@ def make_chromosome_split_intervals(
     limit_train: int | None,
     limit_valid: int | None,
     limit_test: int | None,
+    include_chroms: set[str] | None = None,
 ) -> dict:
     chrom_sizes = read_fai_chrom_sizes(fasta_path)
     rows: list[tuple[str, int, int, str]] = []
 
     for chrom, chrom_size in chrom_sizes.items():
-        if chrom in exclude_chroms or "_" in chrom or chrom.startswith("chrUn"):
+        if chrom in exclude_chroms:
+            continue
+        if include_chroms is not None and chrom not in include_chroms:
+            continue
+        if include_chroms is None and ("_" in chrom or chrom.startswith("chrUn")):
             continue
         if chrom_size < window_size:
             continue
@@ -184,6 +187,12 @@ def parse_args() -> argparse.Namespace:
         type=Path,
         default=None,
         help="Optional multi-head YAML/JSON target config. Overrides --bigwig-dir discovery.",
+    )
+    parser.add_argument(
+        "--species-config",
+        type=Path,
+        default=None,
+        help="JSON config for balanced multi-species JAX training.",
     )
     parser.add_argument("--fasta-path", type=Path, default=DEFAULT_FASTA)
     parser.add_argument("--checkpoint-dir", type=Path, default=DEFAULT_CHECKPOINT_DIR)
@@ -354,7 +363,9 @@ def parse_args() -> argparse.Namespace:
     )
     torch_group.add_argument("--torch-nf4-include-name-patterns", default="")
     torch_group.add_argument("--torch-gradient-checkpointing", action="store_true")
-    torch_group.add_argument("--torch-track-means-samples", type=_positive_int_or_none, default=None)
+    torch_group.add_argument(
+        "--torch-track-means-samples", type=_positive_int_or_none, default=None
+    )
     torch_group.add_argument("--torch-num-workers", type=int, default=4)
     torch_group.add_argument("--torch-max-io-workers", type=int, default=16)
     torch_group.add_argument("--torch-save-delta", action="store_true", default=True)
@@ -454,13 +465,41 @@ def main() -> None:
     bigwig_dir = args.bigwig_dir.expanduser().resolve()
     fasta_path = args.fasta_path.expanduser().resolve()
     checkpoint_dir = args.checkpoint_dir.expanduser().resolve()
-
-    if not fasta_path.exists():
-        raise FileNotFoundError(f"FASTA file not found: {fasta_path}")
-    if args.split_source == "bed" and args.interval_bed is None:
-        raise ValueError("--interval-bed is required when --split-source=bed")
-
-    if args.targets_config is None:
+    species_entries = None
+    if args.species_config is not None:
+        if args.targets_config is not None:
+            raise ValueError("--species-config and --targets-config are mutually exclusive.")
+        if args.backend != "jax":
+            raise ValueError("Multi-species training currently requires --backend=jax.")
+        species_config_path = args.species_config.expanduser().resolve()
+        species_payload = json.loads(species_config_path.read_text())
+        species_entries = species_payload.get("species")
+        if not species_entries or len(species_entries) < 2:
+            raise ValueError("Species config must contain at least two species entries.")
+        config_root = species_config_path.parent
+        normalized_entries = []
+        for entry in species_entries:
+            normalized = dict(entry)
+            for key in ("fasta", "targets_config"):
+                path = Path(normalized[key]).expanduser()
+                if not path.is_absolute():
+                    path = config_root / path
+                normalized[key] = path.resolve()
+            normalized_entries.append(normalized)
+        species_entries = normalized_entries
+        fasta_path = species_entries[0]["fasta"]
+        targets_config_path = species_entries[0]["targets_config"]
+        bigwig_dir = targets_config_path.parent
+        targets_config = load_targets_config(targets_config_path)
+        bigwigs = [
+            Path(target["path"])
+            for head in targets_config.get("heads", ())
+            for target in head.get("targets", ())
+        ]
+        print(f"Loaded joint training configuration for {len(species_entries)} species.")
+    elif args.targets_config is None:
+        if not fasta_path.exists():
+            raise FileNotFoundError(f"FASTA file not found: {fasta_path}")
         bigwigs = discover_bigwigs(bigwig_dir)
         print(f"Discovered {len(bigwigs)} BigWig target tracks in {bigwig_dir}")
         targets_config = load_targets_config(build_targets_config(bigwigs, args.head_id))
@@ -479,11 +518,78 @@ def main() -> None:
             f"Loaded {len(targets_config.get('heads', ()))} heads and "
             f"{len(bigwigs)} target tracks from {targets_config_path}"
         )
+
+    if not fasta_path.exists():
+        raise FileNotFoundError(f"FASTA file not found: {fasta_path}")
+    if args.split_source == "bed" and args.interval_bed is None:
+        raise ValueError("--interval-bed is required when --split-source=bed")
     head_specs = prepare_head_specs(targets_config, organism="HOMO_SAPIENS")
     validate_head_specs(head_specs)
     register_predefined_heads(head_specs)
 
-    if args.split_source == "fold":
+    if species_entries is not None:
+        species_modules = {}
+        expected_signature = [
+            (spec.head_id, spec.kind, len(spec.tracks), tuple(track.name for track in spec.tracks))
+            for spec in head_specs
+        ]
+        for entry in species_entries:
+            species_name = str(entry["name"])
+            species_fasta = entry["fasta"]
+            species_specs = prepare_head_specs(
+                load_targets_config(entry["targets_config"]), organism="HOMO_SAPIENS"
+            )
+            validate_head_specs(species_specs)
+            signature = [
+                (
+                    spec.head_id,
+                    spec.kind,
+                    len(spec.tracks),
+                    tuple(track.name for track in spec.tracks),
+                )
+                for spec in species_specs
+            ]
+            if signature != expected_signature:
+                raise ValueError(
+                    f"Species {species_name} target heads do not match the shared head layout."
+                )
+            species_intervals = make_chromosome_split_intervals(
+                species_fasta,
+                window_size=args.window_size,
+                stride=args.stride,
+                valid_chroms=parse_chrom_set(str(entry["valid_chroms"])),
+                test_chroms=parse_chrom_set(str(entry["test_chroms"])),
+                exclude_chroms=parse_chrom_set(str(entry.get("exclude_chroms", ""))),
+                limit_train=args.limit_train,
+                limit_valid=args.limit_valid,
+                limit_test=args.limit_test,
+                include_chroms=parse_chrom_set(str(entry.get("include_chroms", ""))) or None,
+            )
+            species_modules[species_name] = BigWigDataModule(
+                intervals=species_intervals,
+                fasta_path=species_fasta,
+                head_specs=species_specs,
+                batch_size=args.batch_size,
+                shuffle=not args.no_shuffle,
+                drop_last=args.drop_last,
+                target_workers=args.target_workers,
+                window_workers=(
+                    args.window_workers
+                    if args.window_workers is not None
+                    else min(args.batch_size, _available_cpu_count())
+                ),
+                target_cache_dir=None,
+                target_cache_dtype=args.target_cache_dtype,
+            )
+            print(
+                f"{species_name}: "
+                + ", ".join(
+                    f"{split}={len(windows)}" for split, windows in species_intervals.items()
+                )
+            )
+        data_module = MultiSpeciesDataModule(species_modules)
+        intervals = data_module._intervals
+    elif args.split_source == "fold":
         intervals = prepare_intervals_from_fold(
             fold=args.fold,
             window_size=args.window_size,
@@ -513,14 +619,15 @@ def main() -> None:
             limit_test=args.limit_test,
         )
 
-    for split, split_intervals in intervals.items():
-        print(f"{split}: {len(split_intervals)} interval(s)")
+    if species_entries is None:
+        for split, split_intervals in intervals.items():
+            print(f"{split}: {len(split_intervals)} interval(s)")
 
     target_cache_dir = (
-        args.target_cache_dir.expanduser().resolve()
-        if args.target_cache_dir is not None
-        else None
+        args.target_cache_dir.expanduser().resolve() if args.target_cache_dir is not None else None
     )
+    if species_entries is not None and target_cache_dir is not None:
+        raise ValueError("Target caches are not yet supported with --species-config.")
     if args.build_target_cache:
         if target_cache_dir is None:
             raise ValueError("--target-cache-dir is required with --build-target-cache.")
@@ -623,8 +730,14 @@ def main() -> None:
                     ("lora_compute_dtype", metadata_value(args.lora_compute_dtype)),
                     ("activation_dtype", metadata_value(args.activation_dtype)),
                     ("torch_dtype", metadata_value(_infer_torch_dtype(args))),
-                    ("torch_fp8_include_name_patterns", metadata_value(args.torch_fp8_include_name_patterns)),
-                    ("torch_nf4_include_name_patterns", metadata_value(args.torch_nf4_include_name_patterns)),
+                    (
+                        "torch_fp8_include_name_patterns",
+                        metadata_value(args.torch_fp8_include_name_patterns),
+                    ),
+                    (
+                        "torch_nf4_include_name_patterns",
+                        metadata_value(args.torch_nf4_include_name_patterns),
+                    ),
                     ("bigwig_dir", str(bigwig_dir)),
                     ("num_bigwigs", metadata_value(len(bigwigs))),
                     ("split_source", args.split_source),
@@ -647,22 +760,23 @@ def main() -> None:
         )
         return
 
-    data_module = BigWigDataModule(
-        intervals=intervals,
-        fasta_path=fasta_path,
-        head_specs=head_specs,
-        batch_size=args.batch_size,
-        shuffle=not args.no_shuffle,
-        drop_last=args.drop_last,
-        target_workers=args.target_workers,
-        window_workers=(
-            args.window_workers
-            if args.window_workers is not None
-            else min(args.batch_size, _available_cpu_count())
-        ),
-        target_cache_dir=target_cache_dir,
-        target_cache_dtype=args.target_cache_dtype,
-    )
+    if species_entries is None:
+        data_module = BigWigDataModule(
+            intervals=intervals,
+            fasta_path=fasta_path,
+            head_specs=head_specs,
+            batch_size=args.batch_size,
+            shuffle=not args.no_shuffle,
+            drop_last=args.drop_last,
+            target_workers=args.target_workers,
+            window_workers=(
+                args.window_workers
+                if args.window_workers is not None
+                else min(args.batch_size, _available_cpu_count())
+            ),
+            target_cache_dir=target_cache_dir,
+            target_cache_dtype=args.target_cache_dtype,
+        )
 
     head_ids = [spec.head_id for spec in head_specs]
     backbone_lora_config = None

@@ -59,7 +59,12 @@ def _read_h5ad_column(group: h5py.Group, name: str) -> np.ndarray:
     raise ValueError(f"Unsupported h5ad encoding for {group.name}/{name}.")
 
 
-def read_pseudobulk_expression(path: Path, *, normalize_cpm: bool = True) -> PseudobulkExpression:
+def read_pseudobulk_expression(
+    path: Path,
+    *,
+    normalize_cpm: bool = True,
+    gene_id_column: str = "gene_id",
+) -> PseudobulkExpression:
     """Read a dense group-by-gene h5ad matrix and return CPM values."""
     path = Path(path).expanduser().resolve()
     with h5py.File(path, "r") as handle:
@@ -68,7 +73,7 @@ def read_pseudobulk_expression(path: Path, *, normalize_cpm: bool = True) -> Pse
             raise ValueError(f"{path} must store a dense matrix in X.")
         values = np.asarray(matrix_node[:], dtype=np.float32)
         groups = _decode(_read_h5ad_column(handle["obs"], "Group"))
-        gene_ids = _decode(_read_h5ad_column(handle["var"], "gene_id"))
+        gene_ids = _decode(_read_h5ad_column(handle["var"], gene_id_column))
 
     if values.shape != (len(groups), len(gene_ids)):
         raise ValueError(
@@ -85,7 +90,27 @@ def read_pseudobulk_expression(path: Path, *, normalize_cpm: bool = True) -> Pse
     return PseudobulkExpression(groups=groups, gene_ids=gene_ids, cpm=values)
 
 
-_GENE_ID_RE = re.compile(r'(?:^|;\s*)gene_id\s+"([^"]+)"')
+def remap_expression_gene_ids(
+    expression: PseudobulkExpression,
+    gene_id_map: Mapping[str, str],
+) -> PseudobulkExpression:
+    """Replace expression identifiers and retain columns with a unique mapping."""
+    mapped_ids: list[str] = []
+    column_indices: list[int] = []
+    seen: set[str] = set()
+    for column_idx, gene_id in enumerate(expression.gene_ids):
+        mapped = gene_id_map.get(gene_id.split(".", 1)[0], "")
+        if mapped and mapped not in seen:
+            mapped_ids.append(mapped)
+            column_indices.append(column_idx)
+            seen.add(mapped)
+    if not mapped_ids:
+        raise ValueError("No expression genes matched the supplied identifier map.")
+    return PseudobulkExpression(
+        groups=expression.groups,
+        gene_ids=tuple(mapped_ids),
+        cpm=expression.cpm[:, column_indices],
+    )
 
 
 def _merge_intervals(intervals: Sequence[tuple[int, int]]) -> tuple[tuple[int, int], ...]:
@@ -103,9 +128,13 @@ def read_gene_exons(
     *,
     gene_ids: Sequence[str],
     chromosome_sizes: Mapping[str, int],
+    gene_attribute: str = "gene_id",
+    chromosome_aliases: Mapping[str, str] | None = None,
 ) -> dict[str, GeneExons]:
     """Read and merge GTF exon records for requested stable Ensembl identifiers."""
     wanted = {gene_id.split(".", 1)[0] for gene_id in gene_ids}
+    gene_pattern = re.compile(rf'(?:^|;\s*){re.escape(gene_attribute)}\s+"([^"]+)"')
+    chromosome_aliases = chromosome_aliases or {}
     raw: dict[str, tuple[str, str, list[tuple[int, int]]]] = {}
     opener = gzip.open if str(gtf_path).endswith(".gz") else open
     with opener(gtf_path, "rt") as handle:
@@ -115,11 +144,11 @@ def read_gene_exons(
             fields = line.rstrip("\n").split("\t")
             if len(fields) != 9 or fields[2] != "exon":
                 continue
-            match = _GENE_ID_RE.search(fields[8])
+            match = gene_pattern.search(fields[8])
             if match is None:
                 continue
             gene_id = match.group(1).split(".", 1)[0]
-            chromosome = fields[0]
+            chromosome = chromosome_aliases.get(fields[0], fields[0])
             strand = fields[6]
             if (
                 gene_id not in wanted
@@ -162,9 +191,17 @@ def read_gene_bodies(
     *,
     gene_ids: Sequence[str],
     chromosome_sizes: Mapping[str, int],
+    gene_attribute: str = "gene_id",
+    chromosome_aliases: Mapping[str, str] | None = None,
 ) -> dict[str, GeneExons]:
     """Compatibility wrapper; RNA annotations now contain union exons."""
-    return read_gene_exons(gtf_path, gene_ids=gene_ids, chromosome_sizes=chromosome_sizes)
+    return read_gene_exons(
+        gtf_path,
+        gene_ids=gene_ids,
+        chromosome_sizes=chromosome_sizes,
+        gene_attribute=gene_attribute,
+        chromosome_aliases=chromosome_aliases,
+    )
 
 
 def _safe_track_name(value: str) -> str:
@@ -345,6 +382,7 @@ __all__ = [
     "read_gene_bodies",
     "read_gene_exons",
     "read_pseudobulk_expression",
+    "remap_expression_gene_ids",
     "write_gene_expression_supervision",
     "write_stranded_exon_bigwigs",
     "write_stranded_gene_body_bigwigs",

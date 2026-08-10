@@ -10,6 +10,7 @@ from alphagenome_ft.finetune.config import (
 from alphagenome_ft.finetune.data import (
     get_fold_split,
     BigWigDataModule,
+    MultiSpeciesDataModule,
     WindowedTargetCache,
     build_interval,
     load_intervals_from_bed,
@@ -35,6 +36,7 @@ from alphagenome_ft.finetune.rna_tracks import (
     read_gene_bodies,
     read_gene_exons,
     read_pseudobulk_expression,
+    remap_expression_gene_ids,
     write_stranded_gene_body_bigwigs,
     write_gene_expression_supervision,
     write_stranded_exon_bigwigs,
@@ -56,6 +58,7 @@ __all__ = [
     # data
     "get_fold_split",
     "BigWigDataModule",
+    "MultiSpeciesDataModule",
     "WindowedTargetCache",
     "build_interval",
     "load_intervals_from_bed",
@@ -78,6 +81,7 @@ __all__ = [
     "read_gene_bodies",
     "read_gene_exons",
     "read_pseudobulk_expression",
+    "remap_expression_gene_ids",
     "write_stranded_gene_body_bigwigs",
     "write_gene_expression_supervision",
     "write_stranded_exon_bigwigs",

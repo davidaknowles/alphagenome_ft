@@ -1425,6 +1425,100 @@ class BigWigDataModule:
         return padded
 
 
+class MultiSpeciesDataModule:
+    """Round-robin batches from species-specific modules with shared heads."""
+
+    def __init__(self, modules: Mapping[str, BigWigDataModule]) -> None:
+        if not modules:
+            raise ValueError("At least one species data module is required.")
+        self._modules = dict(modules)
+        drop_last_values = {module._drop_last for module in self._modules.values()}
+        if len(drop_last_values) != 1:
+            raise ValueError("All species data modules must use the same drop_last setting.")
+        self._drop_last = drop_last_values.pop()
+        batch_sizes = {module._batch_size for module in self._modules.values()}
+        if len(batch_sizes) != 1:
+            raise ValueError("All species data modules must use the same batch size.")
+        self._batch_size = batch_sizes.pop()
+
+        all_gene_heads = {
+            head_name for module in self._modules.values() for head_name in module._max_genes
+        }
+        for head_name in all_gene_heads:
+            global_max = max(
+                module._max_genes.get(head_name, 0) for module in self._modules.values()
+            )
+            for species, module in self._modules.items():
+                if head_name not in module._max_genes:
+                    raise ValueError(
+                        f"Species {species} is missing gene supervision for {head_name}."
+                    )
+                module._max_genes[head_name] = global_max
+
+        self._intervals: dict[str, list[genome.Interval]] = {}
+        split_names = set.intersection(
+            *(set(module._intervals) for module in self._modules.values())
+        )
+        for split in split_names:
+            species_intervals = [module._intervals[split] for module in self._modules.values()]
+            if split == "train":
+                common_count = min(len(intervals) for intervals in species_intervals)
+                if self._drop_last:
+                    batch_size = next(iter(self._modules.values()))._batch_size
+                    common_count = common_count // batch_size * batch_size
+                self._intervals[split] = [
+                    interval
+                    for intervals in species_intervals
+                    for interval in intervals[:common_count]
+                ]
+            else:
+                self._intervals[split] = [
+                    interval for intervals in species_intervals for interval in intervals
+                ]
+
+    def iter_batches(
+        self,
+        split: str,
+        *,
+        seed: int | None = None,
+        shuffle: bool | None = None,
+    ) -> Iterator[dict[str, np.ndarray]]:
+        iterators = [
+            iter(
+                module.iter_batches(
+                    split,
+                    seed=None if seed is None else seed + species_idx,
+                    shuffle=shuffle,
+                )
+            )
+            for species_idx, module in enumerate(self._modules.values())
+        ]
+        if split == "train":
+            batch_counts = []
+            for module in self._modules.values():
+                interval_count = len(module._intervals[split])
+                if module._drop_last:
+                    batch_counts.append(interval_count // module._batch_size)
+                else:
+                    batch_counts.append(
+                        (interval_count + module._batch_size - 1) // module._batch_size
+                    )
+            for _ in range(min(batch_counts)):
+                for iterator in iterators:
+                    yield next(iterator)
+            return
+        active = list(range(len(iterators)))
+        while active:
+            next_active: list[int] = []
+            for species_idx in active:
+                try:
+                    yield next(iterators[species_idx])
+                    next_active.append(species_idx)
+                except StopIteration:
+                    pass
+            active = next_active
+
+
 def build_fasta_index(fasta_path: Path) -> dict[str, int]:
     """Ensure ``<fasta>.fai`` exists and return chromosome sizes from the index.
 

@@ -10,6 +10,7 @@ from alphagenome_ft.finetune.data import GeneExpressionSupervision
 from alphagenome_ft.finetune.rna_tracks import (
     read_gene_exons,
     read_pseudobulk_expression,
+    remap_expression_gene_ids,
     write_gene_expression_supervision,
     write_stranded_exon_bigwigs,
 )
@@ -84,3 +85,24 @@ def test_gene_supervision_builds_128bp_exon_weights_and_targets(tmp_path: Path):
     np.testing.assert_allclose(arrays["weights"][:, 1].sum(), 20 / 128)
     np.testing.assert_allclose(arrays["targets"][0], [2.0 / 3.0 * 1_000_000])
     np.testing.assert_allclose(arrays["targets"][1], [1.0 / 3.0 * 1_000_000])
+
+
+def test_expression_remap_and_gtf_attribute_aliases(tmp_path: Path):
+    expression = _tiny_expression(tmp_path)
+    remapped = remap_expression_gene_ids(expression, {"ENSG1": "GENE1"})
+    assert remapped.gene_ids == ("GENE1",)
+    assert remapped.cpm.shape == (1, 1)
+
+    gtf = tmp_path / "aliased.gtf"
+    gtf.write_text(
+        '1\ttest\texon\t11\t20\t.\t+\t.\tgene_id "unused"; gene "GENE1";\n'
+    )
+    genes = read_gene_exons(
+        gtf,
+        gene_ids=remapped.gene_ids,
+        chromosome_sizes={"NC_1": 100},
+        gene_attribute="gene",
+        chromosome_aliases={"1": "NC_1"},
+    )
+    assert genes["GENE1"].chromosome == "NC_1"
+    assert genes["GENE1"].exons == ((10, 20),)
