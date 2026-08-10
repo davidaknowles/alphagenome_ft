@@ -4,7 +4,7 @@
 #SBATCH --gres=gpu:b6k:1
 #SBATCH --cpus-per-task=32
 #SBATCH --mem=96G
-#SBATCH -t 24:00:00
+#SBATCH -t 7-00:00:00
 #SBATCH -o logs/allen_atac_old_settings/%x-%j.out
 #SBATCH -e logs/allen_atac_old_settings/%x-%j.err
 
@@ -29,7 +29,7 @@ python scripts/run_humanbraindev_finetune.py \
   --window-size 131072 \
   --stride 131072 \
   --batch-size 8 \
-  --num-epochs 5 \
+  --num-epochs 100 \
   --learning-rate 1e-3 \
   --weight-decay 1e-4 \
   --backbone-lora \
