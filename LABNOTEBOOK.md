@@ -1,5 +1,13 @@
 # Lab Notebook
 
+## Allen and Human Brain Development ATAC scaling
+
+The Allen adult basal ganglia ATAC pseudobulks and the earlier Human Brain Development ATAC tracks are not comparably scaled. Eight matched 131,072 bp windows on validation chromosome 8 were evaluated over all 60 Allen tracks and all 134 developmental tracks. Missing BigWig values were treated as zero, matching the training loader, and base-resolution values were also averaged into 128 bp bins.
+
+The developmental tracks had mean 0.480 and root mean square 5.58 across sampled bases, compared with mean 0.0499 and root mean square 0.556 for Allen. Median per-track root mean square was 4.32 for the developmental data and 0.157 for Allen. Base-resolution zero fractions were 0.327 and 0.604, respectively. At 128 bp, the developmental and Allen nonzero medians were closer, 0.0391 and 0.0325, but their 99th percentiles were 11.85 and 0.591. The datasets therefore differ in sparsity and upper-tail magnitude, and no single scalar makes their target distributions equivalent.
+
+An Allen ATAC-only baseline retains the raw Allen targets and matches the earlier best LoRA setup, five full epochs at 131 kb, batch size 8, learning rate \(10^{-3}\), LoRA without LoCon, float32 frozen and adapter parameters, and bfloat16 activations and compute. This isolates the effect of removing joint RNA supervision and the reduced calibration schedule without introducing an arbitrary target transformation.
+
 ## Model and fine-tuning components
 
 AlphaGenome uses a convolutional encoder, transformer tower, decoder, and assay-specific genomic output heads. The current Allen Brain Multiome experiment trains two new heads together with LoRA adapters on linear layers and LoCon adapters on selected convolutions. Frozen backbone parameters are stored in bfloat16, while adapter and head optimization remains compatible with bfloat16 forward compute.
