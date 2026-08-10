@@ -72,7 +72,12 @@ class HeadSpec:
     kind: str | None  # Predefined head kind (e.g., "rna_seq"); None for custom.
     tracks: Sequence[TrackInfo]  # Target tracks used as supervision for this head.
     config: Any | None = None  # Runtime predefined-head config object when applicable.
-    metadata: Mapping[dna_client.Organism, AlphaGenomeOutputMetadata] | None = None  # Optional per-organism track metadata.
+    metadata: Mapping[dna_client.Organism, AlphaGenomeOutputMetadata] | None = (
+        None  # Optional per-organism track metadata.
+    )
+    gene_supervision_path: Path | None = None
+    gene_loss_weight: float = 0.0
+    coverage_loss_weight: float = 1.0
 
 
 def _resolve_target_path(path_value: str, base_dir: Path | None) -> str:
@@ -100,7 +105,7 @@ def _normalize_targets_config_paths(
     if config is None:
         return {}
 
-    heads_cfg = config.get('heads')
+    heads_cfg = config.get("heads")
     if heads_cfg is None:
         return config
 
@@ -110,10 +115,10 @@ def _normalize_targets_config_paths(
     normalized_heads: list[dict[str, Any]] = []
     for head in heads_cfg:
         if not isinstance(head, Mapping):
-            raise ValueError(f'Each head entry must be a mapping: {head!r}')
+            raise ValueError(f"Each head entry must be a mapping: {head!r}")
 
         head_dict = dict(head)
-        targets = head_dict.get('targets')
+        targets = head_dict.get("targets")
         if targets is None:
             normalized_heads.append(head_dict)
             continue
@@ -121,35 +126,38 @@ def _normalize_targets_config_paths(
         if not isinstance(targets, Sequence) or isinstance(targets, (str, bytes)):
             raise ValueError(
                 f'Head "{head_dict.get("id", "<unknown>")}" field "targets" '
-                'must be a list of track paths or target mappings.'
+                "must be a list of track paths or target mappings."
             )
 
         normalized_targets: list[dict[str, Any]] = []
         for item in targets:
             if isinstance(item, str):
-                normalized_targets.append(
-                    {'path': _resolve_target_path(item, base_dir)}
-                )
+                normalized_targets.append({"path": _resolve_target_path(item, base_dir)})
                 continue
 
             if not isinstance(item, Mapping):
-                raise ValueError(
-                    f'Each target entry must be a string path or mapping: {item!r}'
-                )
-            if 'path' not in item:
+                raise ValueError(f"Each target entry must be a string path or mapping: {item!r}")
+            if "path" not in item:
                 raise ValueError(f'Each target must include "path": {item!r}')
 
             target_item = dict(item)
-            target_item['path'] = _resolve_target_path(
-                str(target_item['path']), base_dir
-            )
+            target_item["path"] = _resolve_target_path(str(target_item["path"]), base_dir)
             normalized_targets.append(target_item)
 
-        head_dict['targets'] = normalized_targets
+        head_dict["targets"] = normalized_targets
+        gene_supervision = head_dict.get("gene_supervision")
+        if gene_supervision is not None:
+            if not isinstance(gene_supervision, Mapping) or "path" not in gene_supervision:
+                raise ValueError('gene_supervision must be a mapping containing "path".')
+            normalized_gene_supervision = dict(gene_supervision)
+            normalized_gene_supervision["path"] = _resolve_target_path(
+                str(normalized_gene_supervision["path"]), base_dir
+            )
+            head_dict["gene_supervision"] = normalized_gene_supervision
         normalized_heads.append(head_dict)
 
     normalized_config = dict(config)
-    normalized_config['heads'] = normalized_heads
+    normalized_config["heads"] = normalized_heads
     return normalized_config
 
 
@@ -163,11 +171,11 @@ def _load_targets_config_file(path: Path) -> Mapping[str, Any]:
         Parsed config mapping.
     """
     if not path.exists():
-        raise FileNotFoundError(f'Target config not found: {path}')
+        raise FileNotFoundError(f"Target config not found: {path}")
     text = path.read_text()
-    if path.suffix.lower() in {'.yml', '.yaml'}:
+    if path.suffix.lower() in {".yml", ".yaml"}:
         if yaml is None:
-            raise ImportError('pyyaml is required to parse YAML configs.')
+            raise ImportError("pyyaml is required to parse YAML configs.")
         config = yaml.safe_load(text)
     else:
         config = json.loads(text)
@@ -195,17 +203,13 @@ def load_targets_config(
     if isinstance(source, Path):
         resolved_source = source.expanduser().resolve()
         effective_base_dir = (
-            base_dir.expanduser().resolve()
-            if base_dir is not None
-            else resolved_source.parent
+            base_dir.expanduser().resolve() if base_dir is not None else resolved_source.parent
         )
         return _normalize_targets_config_paths(
             _load_targets_config_file(resolved_source),
             base_dir=effective_base_dir,
         )
-    raise TypeError(
-        f'load_targets_config expected Path or Mapping, got {type(source)!r}.'
-    )
+    raise TypeError(f"load_targets_config expected Path or Mapping, got {type(source)!r}.")
 
 
 def _parse_targets(entries: Sequence[Mapping[str, Any]]) -> list[TrackInfo]:
@@ -213,23 +217,21 @@ def _parse_targets(entries: Sequence[Mapping[str, Any]]) -> list[TrackInfo]:
     tracks: list[TrackInfo] = []
     for item in entries:
         if not isinstance(item, Mapping):
-            raise ValueError(
-                "Entries under 'targets' must be mappings with a 'path'."
-            )
-        if 'path' not in item:
+            raise ValueError("Entries under 'targets' must be mappings with a 'path'.")
+        if "path" not in item:
             raise ValueError(f'Each target must include "path": {item!r}')
-        path = Path(str(item['path']))
-        name = str(item.get('label') or path.stem)
-        strand = str(item.get('strand', '.'))
-        if strand not in {'+', '-', '.'}:
+        path = Path(str(item["path"]))
+        name = str(item.get("label") or path.stem)
+        strand = str(item.get("strand", "."))
+        if strand not in {"+", "-", "."}:
             raise ValueError(
                 f'Target "{name}" has invalid strand {strand!r}; expected "+", "-", or ".".'
             )
-        nonzero_mean = item.get('nonzero_mean')
+        nonzero_mean = item.get("nonzero_mean")
         if nonzero_mean is not None:
             nonzero_mean = float(nonzero_mean)
         if not path.exists():
-            raise FileNotFoundError(f'Target file not found: {path}')
+            raise FileNotFoundError(f"Target file not found: {path}")
         tracks.append(
             TrackInfo(
                 name=name,
@@ -258,6 +260,9 @@ def _build_track_metadata(
         {
             "name": [track.name for track in tracks],
             "strand": [track.strand for track in tracks],
+            "nonzero_mean": [
+                track.nonzero_mean if track.nonzero_mean is not None else 1.0 for track in tracks
+            ],
         }
     )
     # AlphaGenomeOutputMetadata stores per-output-type DataFrames as named
@@ -275,7 +280,7 @@ def prepare_head_specs(
     *,
     organism: str | None = None,
 ) -> list[HeadSpec]:
-    heads_cfg = config.get('heads')
+    heads_cfg = config.get("heads")
     if not heads_cfg:
         raise ValueError('Config must define a non-empty "heads" list.')
 
@@ -289,57 +294,69 @@ def prepare_head_specs(
     specs: list[HeadSpec] = []
     seen_ids: set[str] = set()
     for entry in heads_cfg:
-        if 'id' not in entry:
+        if "id" not in entry:
             raise ValueError('Each head entry must include an "id".')
-        if 'source' not in entry:
-            raise ValueError(
-                f'Head "{entry["id"]}" must include a "source" (custom|predefined).'
-            )
+        if "source" not in entry:
+            raise ValueError(f'Head "{entry["id"]}" must include a "source" (custom|predefined).')
 
-        head_id = normalize_head_name(entry['id'])
+        head_id = normalize_head_name(entry["id"])
         if head_id in seen_ids:
             raise ValueError(f'Duplicate head id "{head_id}" in config.')
         seen_ids.add(head_id)
 
-        source = str(entry['source']).lower()
-        targets = entry.get('targets')
+        source = str(entry["source"]).lower()
+        targets = entry.get("targets")
         if targets is None:
             raise ValueError(f'Head "{head_id}" must include "targets".')
         tracks = _parse_targets(targets)
-        if source == 'custom':
+        gene_supervision = entry.get("gene_supervision")
+        gene_supervision_path = None
+        gene_loss_weight = 0.0
+        coverage_loss_weight = 1.0
+        if gene_supervision is not None:
+            if source != "predefined":
+                raise ValueError(
+                    "gene_supervision is currently supported only for predefined heads."
+                )
+            gene_supervision_path = Path(str(gene_supervision["path"]))
+            gene_loss_weight = float(gene_supervision.get("loss_weight", 1.0))
+            coverage_loss_weight = float(gene_supervision.get("coverage_loss_weight", 0.1))
+            if gene_loss_weight <= 0 or coverage_loss_weight < 0:
+                raise ValueError(
+                    "Gene loss weight must be positive and coverage loss weight non-negative."
+                )
+        if source == "custom":
             if not is_custom_head(head_id):
                 raise ValueError(
                     f'Custom head "{head_id}" is not registered. '
-                    'Register it before loading this config.'
+                    "Register it before loading this config."
                 )
             head_config = get_custom_head_config(head_id)
             if head_config is not None and len(tracks) != head_config.num_tracks:
                 raise ValueError(
                     f'Custom head "{head_id}" expects {head_config.num_tracks} '
-                    f'target tracks, got {len(tracks)}.'
+                    f"target tracks, got {len(tracks)}."
                 )
             specs.append(
                 HeadSpec(
                     head_id=head_id,
-                    source='custom',
+                    source="custom",
                     kind=None,
                     tracks=tracks,
                 )
             )
-        elif source == 'predefined':
-            kind_name = entry.get('kind')
+        elif source == "predefined":
+            kind_name = entry.get("kind")
             if not kind_name:
-                raise ValueError(
-                    f'Predefined head "{head_id}" must include "kind".'
-                )
+                raise ValueError(f'Predefined head "{head_id}" must include "kind".')
             overrides = {
                 field: entry.get(field)
                 for field in (
-                    'resolutions',
-                    'apply_squashing',
-                    'embedding_channels',
-                    'num_tissues',
-                    'num_tracks',
+                    "resolutions",
+                    "apply_squashing",
+                    "embedding_channels",
+                    "num_tissues",
+                    "num_tracks",
                 )
                 if field in entry
             }
@@ -349,39 +366,40 @@ def prepare_head_specs(
                     f'Unknown predefined head kind "{kind_name}". '
                     f"Available kinds: {valid_kinds}"
                 )
-            if 'num_tracks' in overrides:
-                if int(overrides['num_tracks']) != len(tracks):
+            if "num_tracks" in overrides:
+                if int(overrides["num_tracks"]) != len(tracks):
                     raise ValueError(
                         f'Predefined head "{head_id}" num_tracks '
                         f'{overrides["num_tracks"]} does not match targets '
-                        f'({len(tracks)}).'
+                        f"({len(tracks)})."
                     )
             head_config = get_predefined_head_config(
                 kind_name,
                 num_tracks=len(tracks),
-                resolutions=overrides.get('resolutions'),
-                apply_squashing=overrides.get('apply_squashing'),
-                embedding_channels=overrides.get('embedding_channels'),
-                num_tissues=overrides.get('num_tissues'),
+                resolutions=overrides.get("resolutions"),
+                apply_squashing=overrides.get("apply_squashing"),
+                embedding_channels=overrides.get("embedding_channels"),
+                num_tissues=overrides.get("num_tissues"),
             )
             metadata = _build_track_metadata(tracks, organism_enum, head_config.output_type)
             specs.append(
                 HeadSpec(
                     head_id=head_id,
-                    source='predefined',
+                    source="predefined",
                     kind=str(kind_name),
                     tracks=tracks,
                     config=head_config,
                     metadata=metadata,
+                    gene_supervision_path=gene_supervision_path,
+                    gene_loss_weight=gene_loss_weight,
+                    coverage_loss_weight=coverage_loss_weight,
                 )
             )
         else:
-            raise ValueError(
-                f'Head "{head_id}" has invalid source "{source}" (custom|predefined).'
-            )
+            raise ValueError(f'Head "{head_id}" has invalid source "{source}" (custom|predefined).')
 
     if not specs:
-        raise ValueError('Config did not produce any heads.')
+        raise ValueError("Config did not produce any heads.")
     return specs
 
 
@@ -396,51 +414,47 @@ def validate_head_specs(specs: Sequence[HeadSpec]) -> None:
         seen_ids.add(spec.head_id)
 
         if not spec.tracks:
-            raise ValueError(
-                f'Head "{spec.head_id}" must include at least one target track.'
-            )
+            raise ValueError(f'Head "{spec.head_id}" must include at least one target track.')
         for track in spec.tracks:
             if not track.path.exists():
                 raise FileNotFoundError(
                     f'Head "{spec.head_id}" target file not found: {track.path}'
                 )
+        if spec.gene_supervision_path is not None and not spec.gene_supervision_path.exists():
+            raise FileNotFoundError(
+                f'Head "{spec.head_id}" gene supervision file not found: {spec.gene_supervision_path}'
+            )
 
-        if spec.source == 'custom':
+        if spec.source == "custom":
             if not is_custom_head(spec.head_id):
                 raise ValueError(
                     f'Custom head "{spec.head_id}" is not registered. '
-                    'Register it before loading this config.'
+                    "Register it before loading this config."
                 )
             custom_config = get_custom_head_config(spec.head_id)
             if custom_config is not None and len(spec.tracks) != custom_config.num_tracks:
                 raise ValueError(
                     f'Custom head "{spec.head_id}" expects {custom_config.num_tracks} '
-                    f'target tracks, got {len(spec.tracks)}.'
+                    f"target tracks, got {len(spec.tracks)}."
                 )
-        elif spec.source == 'predefined':
+        elif spec.source == "predefined":
             if not spec.kind:
-                raise ValueError(
-                    f'Predefined head "{spec.head_id}" missing kind.'
-                )
+                raise ValueError(f'Predefined head "{spec.head_id}" missing kind.')
             if not is_predefined_head(spec.kind):
                 raise ValueError(
-                    f'Predefined head "{spec.head_id}" has unknown kind '
-                    f'"{spec.kind}".'
+                    f'Predefined head "{spec.head_id}" has unknown kind ' f'"{spec.kind}".'
                 )
             if spec.config is None:
-                raise ValueError(
-                    f'Predefined head "{spec.head_id}" missing config.'
-                )
-            if hasattr(spec.config, 'num_tracks'):
+                raise ValueError(f'Predefined head "{spec.head_id}" missing config.')
+            if hasattr(spec.config, "num_tracks"):
                 expected_num_tracks = int(spec.config.num_tracks)
                 if expected_num_tracks != len(spec.tracks):
                     raise ValueError(
                         f'Predefined head "{spec.head_id}" expects '
-                        f'{expected_num_tracks} target tracks, got '
-                        f'{len(spec.tracks)}.'
+                        f"{expected_num_tracks} target tracks, got "
+                        f"{len(spec.tracks)}."
                     )
         else:
             raise ValueError(
-                f'Head "{spec.head_id}" has invalid source "{spec.source}" '
-                '(custom|predefined).'
+                f'Head "{spec.head_id}" has invalid source "{spec.source}" ' "(custom|predefined)."
             )

@@ -15,9 +15,10 @@ if str(REPO_ROOT) not in sys.path:
 
 from alphagenome_ft.finetune import (
     build_fasta_index,
-    read_gene_bodies,
+    read_gene_exons,
     read_pseudobulk_expression,
-    write_stranded_gene_body_bigwigs,
+    write_gene_expression_supervision,
+    write_stranded_exon_bigwigs,
 )
 
 
@@ -39,18 +40,18 @@ def safe_name(value: str) -> str:
 def main() -> None:
     args = parse_args()
     output_dir = args.output_dir.expanduser().resolve()
-    rna_dir = output_dir / "rna_gene_body_cpm"
+    rna_dir = output_dir / "rna_exon_cpm"
     expression = read_pseudobulk_expression(args.rna_h5ad, normalize_cpm=True)
     chromosome_sizes = build_fasta_index(args.fasta.expanduser().resolve())
-    gene_bodies = read_gene_bodies(
+    genes = read_gene_exons(
         args.gtf.expanduser().resolve(),
         gene_ids=expression.gene_ids,
         chromosome_sizes=chromosome_sizes,
     )
-    coverage = len(gene_bodies) / len(expression.gene_ids)
+    coverage = len(genes) / len(expression.gene_ids)
     if coverage < 0.9:
         raise ValueError(
-            f"Only {len(gene_bodies)}/{len(expression.gene_ids)} RNA genes ({coverage:.1%}) "
+            f"Only {len(genes)}/{len(expression.gene_ids)} RNA genes ({coverage:.1%}) "
             "matched the GTF and FASTA chromosomes."
         )
 
@@ -64,12 +65,18 @@ def main() -> None:
             f"ATAC/RNA group mismatch, missing ATAC={missing_atac}, extra ATAC={extra_atac}."
         )
 
-    rna_targets = write_stranded_gene_body_bigwigs(
+    rna_targets = write_stranded_exon_bigwigs(
         expression,
-        gene_bodies=gene_bodies,
+        genes=genes,
         chromosome_sizes=chromosome_sizes,
         output_dir=rna_dir,
         overwrite=args.overwrite,
+    )
+    gene_supervision_path = output_dir / "gene_expression_supervision.npz"
+    matched_genes = write_gene_expression_supervision(
+        gene_supervision_path,
+        expression,
+        genes=genes,
     )
     atac_targets = [
         {
@@ -95,6 +102,11 @@ def main() -> None:
                 "kind": "rna_seq",
                 "resolutions": [1, 128],
                 "apply_squashing": True,
+                "gene_supervision": {
+                    "path": str(gene_supervision_path),
+                    "loss_weight": 1.0,
+                    "coverage_loss_weight": 0.1,
+                },
                 "targets": rna_targets,
             },
         ]
@@ -109,10 +121,11 @@ def main() -> None:
         "fasta": str(args.fasta.expanduser().resolve()),
         "groups": len(expression.groups),
         "input_genes": len(expression.gene_ids),
-        "matched_genes": len(gene_bodies),
+        "matched_genes": matched_genes,
         "atac_tracks": len(atac_targets),
         "rna_tracks": len(rna_targets),
-        "rna_representation": "strand-specific gene-body density with each gene integral equal to CPM",
+        "rna_representation": "strand-specific union-exon density with each gene integral equal to CPM",
+        "rna_gene_objective": "log1p MSE and R2 on 128 bp predictions summed over fully contained union exons",
     }
     (output_dir / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
     print(json.dumps(manifest, indent=2))

@@ -2,7 +2,11 @@ import numpy as np
 import jax
 import jax.numpy as jnp
 
-from alphagenome_ft.finetune.train import _finalize_r2_stats, _r2_stats
+from alphagenome_ft.finetune.train import (
+    _finalize_r2_stats,
+    _gene_expression_prediction,
+    _r2_stats,
+)
 
 
 def test_r2_stats_are_one_for_perfect_predictions():
@@ -37,3 +41,32 @@ def test_r2_stats_track_loci_and_cell_type_axes_separately():
     assert metrics["r2_global"] < 1.0
     assert metrics["r2_over_loci"] < 1.0
     assert metrics["r2_over_cell_types"] < 1.0
+
+
+def test_masked_r2_ignores_padded_genes():
+    targets = jnp.asarray([[[1.0, 3.0], [2.0, 4.0], [99.0, 99.0]]])
+    predictions = jnp.asarray([[[1.0, 3.0], [2.0, 4.0], [-99.0, -99.0]]])
+
+    stats = jax.tree_util.tree_map(
+        np.asarray,
+        _r2_stats(predictions, targets, jnp.asarray([[True, True, False]])),
+    )
+    metrics = _finalize_r2_stats(stats)
+
+    assert metrics["r2_global"] == 1.0
+    assert metrics["r2_over_loci"] == 1.0
+
+
+def test_gene_expression_prediction_selects_strand_and_exon_fraction():
+    prediction = {
+        "predictions_128bp": jnp.asarray([[[8.0, 80.0, 4.0, 40.0], [16.0, 160.0, 2.0, 20.0]]])
+    }
+    batch = {
+        "gene_weights_rna": jnp.asarray([[[0.5, 0.25], [1.0, 0.5]]]),
+        "gene_strands_rna": jnp.asarray([[0, 1]]),
+    }
+
+    result = np.asarray(_gene_expression_prediction(prediction, batch, "rna"))
+
+    np.testing.assert_allclose(result[0, 0], [20.0, 4.0])
+    np.testing.assert_allclose(result[0, 1], [100.0, 20.0])

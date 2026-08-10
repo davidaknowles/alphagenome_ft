@@ -43,13 +43,105 @@ _ORGANISM_ALIASES = {
     "homo-sapiens": "HOMO_SAPIENS",
     "homo sapiens": "HOMO_SAPIENS",
     "hg38": "HOMO_SAPIENS",
-
     "mouse": "MUS_MUSCULUS",
     "mus_musculus": "MUS_MUSCULUS",
     "mus-musculus": "MUS_MUSCULUS",
     "mus musculus": "MUS_MUSCULUS",
     "mm10": "MUS_MUSCULUS",
 }
+
+
+class GeneExpressionSupervision:
+    """Window-indexed exon geometry and gene-by-track expression targets."""
+
+    def __init__(self, path: Path, spec: HeadSpec) -> None:
+        with np.load(path, allow_pickle=False) as data:
+            self.gene_ids = tuple(str(value) for value in data["gene_ids"])
+            self.chromosomes = np.asarray(data["chromosomes"]).astype(str)
+            self.starts = np.asarray(data["starts"], dtype=np.int64)
+            self.ends = np.asarray(data["ends"], dtype=np.int64)
+            self.strands = np.asarray(data["strands"]).astype(str)
+            self.exon_offsets = np.asarray(data["exon_offsets"], dtype=np.int64)
+            self.exon_starts = np.asarray(data["exon_starts"], dtype=np.int64)
+            self.exon_ends = np.asarray(data["exon_ends"], dtype=np.int64)
+            self.groups = tuple(str(value) for value in data["groups"])
+            self.cpm = np.asarray(data["cpm"], dtype=np.float32)
+        gene_count = len(self.gene_ids)
+        if self.cpm.shape != (len(self.groups), gene_count):
+            raise ValueError(f"Invalid gene CPM shape {self.cpm.shape} in {path}.")
+        if len(spec.tracks) != 2 * len(self.groups):
+            raise ValueError(
+                f"Head {spec.head_id} has {len(spec.tracks)} tracks but gene supervision "
+                f"contains {len(self.groups)} groups; paired strand tracks are required."
+            )
+        expected_strands = tuple(strand for _ in self.groups for strand in ("+", "-"))
+        if tuple(track.strand for track in spec.tracks) != expected_strands:
+            raise ValueError(f"Head {spec.head_id} tracks must be interleaved + and - by group.")
+        self._by_chromosome: dict[str, np.ndarray] = {}
+        for chromosome in np.unique(self.chromosomes):
+            indices = np.flatnonzero(self.chromosomes == chromosome)
+            self._by_chromosome[str(chromosome)] = indices[np.argsort(self.starts[indices])]
+
+    def contained_indices(self, window: genome.Interval) -> np.ndarray:
+        indices = self._by_chromosome.get(window.chromosome)
+        if indices is None:
+            return np.empty((0,), dtype=np.int64)
+        starts = self.starts[indices]
+        upper = np.searchsorted(starts, window.end, side="right")
+        candidates = indices[:upper]
+        return candidates[
+            (self.starts[candidates] >= window.start) & (self.ends[candidates] <= window.end)
+        ]
+
+    def max_genes(self, intervals: Mapping[str, Sequence[genome.Interval]]) -> int:
+        return max(
+            (
+                len(self.contained_indices(window))
+                for windows in intervals.values()
+                for window in windows
+            ),
+            default=0,
+        )
+
+    def arrays_for_window(
+        self,
+        window: genome.Interval,
+        *,
+        sequence_length: int,
+        max_genes: int,
+    ) -> dict[str, np.ndarray]:
+        if sequence_length % 128:
+            raise ValueError(
+                "Gene expression supervision requires sequence length divisible by 128."
+            )
+        indices = self.contained_indices(window)
+        if len(indices) > max_genes:
+            raise ValueError(
+                f"Window contains {len(indices)} genes, exceeding configured {max_genes}."
+            )
+        weights = np.zeros((sequence_length // 128, max_genes), dtype=np.float32)
+        targets = np.zeros((max_genes, len(self.groups)), dtype=np.float32)
+        strands = np.zeros((max_genes,), dtype=np.int8)
+        valid = np.zeros((max_genes,), dtype=bool)
+        for output_idx, gene_idx in enumerate(indices):
+            exon_begin = self.exon_offsets[gene_idx]
+            exon_end = self.exon_offsets[gene_idx + 1]
+            for start, end in zip(
+                self.exon_starts[exon_begin:exon_end],
+                self.exon_ends[exon_begin:exon_end],
+                strict=True,
+            ):
+                local_start = int(start) - window.start
+                local_end = int(end) - window.start
+                first_bin = local_start // 128
+                last_bin = (local_end - 1) // 128
+                for bin_idx in range(first_bin, last_bin + 1):
+                    overlap = min(local_end, (bin_idx + 1) * 128) - max(local_start, bin_idx * 128)
+                    weights[bin_idx, output_idx] += overlap / 128.0
+            targets[output_idx] = self.cpm[:, gene_idx]
+            strands[output_idx] = 0 if self.strands[gene_idx] == "+" else 1
+            valid[output_idx] = True
+        return {"weights": weights, "targets": targets, "strands": strands, "valid": valid}
 
 
 def _available_cpu_count() -> int:
@@ -97,10 +189,9 @@ def _json_load(path: Path) -> dict:
 def _normalize_cache_dtype(dtype: str | np.dtype) -> np.dtype:
     normalized = np.dtype(dtype)
     if normalized not in {np.dtype("float16"), np.dtype("float32")}:
-        raise ValueError(
-            f"target_cache_dtype must be float16 or float32, got {normalized.name}."
-        )
+        raise ValueError(f"target_cache_dtype must be float16 or float32, got {normalized.name}.")
     return normalized
+
 
 # https://hgdownload.cse.ucsc.edu/goldenpath/hg38/bigZips/hg38.chrom.sizes
 # https://hgdownload.cse.ucsc.edu/goldenpath/mm10/bigZips/mm10.chrom.sizes
@@ -129,7 +220,7 @@ _CHROMSIZES = {
         "chr21": 46_709_983,
         "chr22": 50_818_468,
         "chrX": 156_040_895,
-        "chrY": 57_227_415
+        "chrY": 57_227_415,
     },
     "MUS_MUSCULUS": {
         "chr1": 195_471_971,
@@ -346,7 +437,9 @@ def get_fold_split(
 
     num_filtered = len(windows) - len(filtered)
     if num_filtered > 0:
-        print(f"Filtered out {num_filtered} intervals from valid/test sets due to training overlap.")
+        print(
+            f"Filtered out {num_filtered} intervals from valid/test sets due to training overlap."
+        )
 
     return pd.DataFrame(filtered, columns=["chromosome", "start", "end", "split"])
 
@@ -355,7 +448,7 @@ def build_interval(
     *, chromosome: str, start: int, end: int, window_size: int | None = None
 ) -> genome.Interval:
     if start >= end:
-        raise ValueError(f'Invalid interval ({chromosome}, {start}, {end}).')
+        raise ValueError(f"Invalid interval ({chromosome}, {start}, {end}).")
     if window_size is not None:
         center = (start + end) // 2
         half = window_size // 2
@@ -377,12 +470,12 @@ def _finalize_splits(
     limit_test: int | None,
     empty_train_error: str,
 ) -> Mapping[str, list[genome.Interval]]:
-    if not splits['train']:
+    if not splits["train"]:
         raise ValueError(empty_train_error)
 
-    _maybe_limit(splits['train'], limit_train)
-    _maybe_limit(splits['valid'], limit_valid)
-    _maybe_limit(splits['test'], limit_test)
+    _maybe_limit(splits["train"], limit_train)
+    _maybe_limit(splits["valid"], limit_valid)
+    _maybe_limit(splits["test"], limit_test)
 
     for key in list(splits.keys()):
         if not splits[key]:
@@ -448,7 +541,7 @@ def load_intervals_from_dataframe(
         )
 
     for chrom, start, end, label in row_iter:
-        if label not in {'train', 'valid', 'test'}:
+        if label not in {"train", "valid", "test"}:
             continue
         interval = build_interval(
             chromosome=chrom,
@@ -463,7 +556,7 @@ def load_intervals_from_dataframe(
         limit_train=limit_train,
         limit_valid=limit_valid,
         limit_test=limit_test,
-        empty_train_error='No training intervals found in generated fold intervals.',
+        empty_train_error="No training intervals found in generated fold intervals.",
     )
 
 
@@ -495,19 +588,19 @@ def load_intervals_from_bed(
         ValueError: If no training intervals are present after parsing/limits.
     """
     splits: dict[str, list[genome.Interval]] = defaultdict(list)
-    opened = gzip.open if bed_path.suffix == '.gz' else open
-    mode = 'rt'
+    opened = gzip.open if bed_path.suffix == ".gz" else open
+    mode = "rt"
     with opened(bed_path, mode) as handle:
         for raw in handle:
             line = raw.strip()
-            if not line or line.startswith('#'):
+            if not line or line.startswith("#"):
                 continue
             parts = line.split()
             if len(parts) < 4:
                 continue
             chrom, start_str, end_str, split = parts[:4]
             label = split.lower()
-            if label not in {'train', 'valid', 'test'}:
+            if label not in {"train", "valid", "test"}:
                 continue
             interval = build_interval(
                 chromosome=chrom,
@@ -522,7 +615,7 @@ def load_intervals_from_bed(
         limit_train=limit_train,
         limit_valid=limit_valid,
         limit_test=limit_test,
-        empty_train_error='No training intervals found in --bed file.',
+        empty_train_error="No training intervals found in --bed file.",
     )
 
 
@@ -984,6 +1077,18 @@ class BigWigDataModule:
         self._target_workers = target_workers
         self._window_workers = window_workers
         self._encoder = one_hot_encoder.DNAOneHotEncoder(dtype=np.float32)
+        self._gene_supervisions = {
+            spec.head_id: GeneExpressionSupervision(spec.gene_supervision_path, spec)
+            for spec in head_specs
+            if spec.gene_supervision_path is not None
+        }
+        self._max_genes = {
+            head_name: supervision.max_genes(self._intervals)
+            for head_name, supervision in self._gene_supervisions.items()
+        }
+        for head_name, max_genes in self._max_genes.items():
+            if max_genes == 0:
+                raise ValueError(f"No fully contained genes were found for head {head_name}.")
         self._target_cache = (
             WindowedTargetCache(
                 target_cache_dir,
@@ -1073,7 +1178,9 @@ class BigWigDataModule:
         extractor = fasta_lib.FastaExtractor(str(self._fasta_path))
         with contextlib.ExitStack() as stack:
             target_cache_arrays = (
-                self._target_cache.arrays_for_split(split) if self._target_cache is not None else None
+                self._target_cache.arrays_for_split(split)
+                if self._target_cache is not None
+                else None
             )
             head_handles: dict[str, list[pyBigWig.pyBigWig]] = {}
             if target_cache_arrays is None:
@@ -1179,8 +1286,7 @@ class BigWigDataModule:
                 handles = head_handles[spec.head_id]
                 if target_executor is None:
                     channel_arrays = [
-                        self._read_track(handle, window, seq_len)
-                        for handle in handles
+                        self._read_track(handle, window, seq_len) for handle in handles
                     ]
                 else:
                     channel_arrays = list(
@@ -1192,14 +1298,27 @@ class BigWigDataModule:
                 targets[spec.head_id].append(np.stack(channel_arrays, axis=-1))
 
         batch = {
-            'sequences': np.stack(sequences, axis=0).astype(np.float32),
-            'negative_strand_mask': np.zeros((len(batch_indices),), dtype=bool),
+            "sequences": np.stack(sequences, axis=0).astype(np.float32),
+            "negative_strand_mask": np.zeros((len(batch_indices),), dtype=bool),
         }
         for head_name, arrays in targets.items():
             if target_cache_arrays is None:
-                batch[f'targets_{head_name}'] = np.stack(arrays, axis=0).astype(np.float32)
+                batch[f"targets_{head_name}"] = np.stack(arrays, axis=0).astype(np.float32)
             else:
-                batch[f'targets_{head_name}'] = np.stack(arrays, axis=0)
+                batch[f"targets_{head_name}"] = np.stack(arrays, axis=0)
+        for head_name, supervision in self._gene_supervisions.items():
+            gene_arrays = [
+                supervision.arrays_for_window(
+                    windows[idx],
+                    sequence_length=batch["sequences"].shape[1],
+                    max_genes=self._max_genes[head_name],
+                )
+                for idx in batch_indices
+            ]
+            for key in ("weights", "targets", "strands", "valid"):
+                batch[f"gene_{key}_{head_name}"] = np.stack(
+                    [arrays[key] for arrays in gene_arrays], axis=0
+                )
         return batch
 
     def _make_batch_parallel(
@@ -1242,8 +1361,7 @@ class BigWigDataModule:
                 handles = head_handles[spec.head_id]
                 if target_executor is None:
                     channel_arrays = [
-                        self._read_track(handle, window, seq_len)
-                        for handle in handles
+                        self._read_track(handle, window, seq_len) for handle in handles
                     ]
                 else:
                     channel_arrays = list(
@@ -1268,6 +1386,19 @@ class BigWigDataModule:
         }
         for head_name, arrays in targets.items():
             batch[f"targets_{head_name}"] = np.stack(arrays, axis=0)
+        for head_name, supervision in self._gene_supervisions.items():
+            gene_arrays = [
+                supervision.arrays_for_window(
+                    windows[idx],
+                    sequence_length=batch["sequences"].shape[1],
+                    max_genes=self._max_genes[head_name],
+                )
+                for idx in batch_indices
+            ]
+            for key in ("weights", "targets", "strands", "valid"):
+                batch[f"gene_{key}_{head_name}"] = np.stack(
+                    [arrays[key] for arrays in gene_arrays], axis=0
+                )
         return batch
 
     def _read_track(
@@ -1365,12 +1496,16 @@ def prepare_batch(
     import jax.numpy as jnp
 
     prepared = {
-        'sequences': jnp.asarray(batch['sequences']),
-        'organism_index': jnp.full(
-            (batch['sequences'].shape[0],), organism_index_value, dtype=jnp.int32
+        "sequences": jnp.asarray(batch["sequences"]),
+        "organism_index": jnp.full(
+            (batch["sequences"].shape[0],), organism_index_value, dtype=jnp.int32
         ),
-        'negative_strand_mask': jnp.asarray(batch['negative_strand_mask']),
+        "negative_strand_mask": jnp.asarray(batch["negative_strand_mask"]),
     }
     for head_name in head_names:
-        prepared[f'targets_{head_name}'] = jnp.asarray(batch[f'targets_{head_name}'])
+        prepared[f"targets_{head_name}"] = jnp.asarray(batch[f"targets_{head_name}"])
+        for key in ("weights", "targets", "strands", "valid"):
+            batch_key = f"gene_{key}_{head_name}"
+            if batch_key in batch:
+                prepared[batch_key] = jnp.asarray(batch[batch_key])
     return prepared

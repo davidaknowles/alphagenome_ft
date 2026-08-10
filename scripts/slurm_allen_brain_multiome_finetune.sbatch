@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH -J ag_allen_v0
+#SBATCH -J ag_allen_v1
 #SBATCH -p gpu
 #SBATCH --gres=gpu:l40s:1
 #SBATCH --cpus-per-task=16
@@ -11,7 +11,8 @@
 set -euo pipefail
 
 cd /gpfs/commons/home/daknowles/projects/alphagenome_fp4
-mkdir -p logs/allen_brain_multiome checkpoints/allen_brain_multiome_v0
+CHECKPOINT_DIR="${CHECKPOINT_DIR:-checkpoints/allen_brain_multiome_v1}"
+mkdir -p logs/allen_brain_multiome "${CHECKPOINT_DIR}"
 
 export LD_LIBRARY_PATH="/nfs/sw/easybuild/software/Python/3.12.3-GCCcore-13.3.0/lib:${LD_LIBRARY_PATH:-}"
 source ~/venv/jax/bin/activate
@@ -34,7 +35,7 @@ if [[ -n "${LIMIT_TEST:-}" ]]; then
 fi
 
 DATA_ROOT="/gpfs/commons/datasets/controlled/NYGC_AI_Initiative/AllenBrainMultiome"
-PREPARED_DIR="${PREPARED_DIR:-outputs/allen_brain_multiome_v0}"
+PREPARED_DIR="${PREPARED_DIR:-outputs/allen_brain_multiome_v1}"
 FASTA="${FASTA:-/gpfs/commons/home/daknowles/knowles_lab/index/hg38/hg38.fa}"
 
 python scripts/prepare_allen_brain_multiome.py \
@@ -47,7 +48,7 @@ python scripts/prepare_allen_brain_multiome.py \
 python scripts/run_humanbraindev_finetune.py \
   --targets-config "${PREPARED_DIR}/targets.json" \
   --fasta-path "${FASTA}" \
-  --checkpoint-dir checkpoints/allen_brain_multiome_v0 \
+  --checkpoint-dir "${CHECKPOINT_DIR}" \
   --checkpoint-path "${CHECKPOINT_PATH:-/gpfs/commons/home/daknowles/.cache/kagglehub/models/google/alphagenome/jax/all_folds/1}" \
   --split-source chromosome \
   --window-size "${WINDOW_SIZE:-131072}" \
@@ -68,6 +69,6 @@ python scripts/run_humanbraindev_finetune.py \
   --window-workers "${WINDOW_WORKERS:-8}" \
   --prefetch-batches 1 \
   --wandb-project "${WANDB_PROJECT:-alphagenome-allen-brain}" \
-  --wandb-run-name "${WANDB_RUN_NAME:-allen_multiome_v0_lora_locon}" \
+  --wandb-run-name "${WANDB_RUN_NAME:-allen_multiome_v1_exon_lora_locon}" \
   --wandb-mode "${WANDB_MODE:-online}" \
   "${EXTRA_ARGS[@]}"

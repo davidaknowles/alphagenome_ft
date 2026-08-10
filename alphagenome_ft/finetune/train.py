@@ -35,9 +35,7 @@ def register_predefined_heads(head_specs: Sequence[HeadSpec]) -> None:
         if spec.source != "predefined":
             continue
         if spec.config is None:
-            raise ValueError(
-                f'Predefined head "{spec.head_id}" missing config.'
-            )
+            raise ValueError(f'Predefined head "{spec.head_id}" missing config.')
         register_predefined_head(
             spec.head_id,
             spec.config,
@@ -114,9 +112,7 @@ def create_optimizer(
             )
         if train_lora:
             lora_paths = [
-                path
-                for path in parameter_utils.get_parameter_paths(params)
-                if _is_lora_path(path)
+                path for path in parameter_utils.get_parameter_paths(params) if _is_lora_path(path)
             ]
             if not lora_paths:
                 raise ValueError(
@@ -150,9 +146,11 @@ def _replicate_tree(tree, devices):
 def _unreplicate_tree(tree):
     """Extract the first local replica from a replicated pytree."""
     return jax.tree_util.tree_map(
-        lambda value: np.asarray(value.addressable_shards[0].data).squeeze(0)
-        if hasattr(value, "addressable_shards")
-        else value[0],
+        lambda value: (
+            np.asarray(value.addressable_shards[0].data).squeeze(0)
+            if hasattr(value, "addressable_shards")
+            else value[0]
+        ),
         tree,
     )
 
@@ -230,10 +228,7 @@ def _select_prediction_for_targets(prediction, targets):
         ):
             return value
 
-    shapes = {
-        str(key): getattr(value, "shape", None)
-        for key, value in prediction.items()
-    }
+    shapes = {str(key): getattr(value, "shape", None) for key, value in prediction.items()}
     raise ValueError(
         "Could not find a prediction array matching target shape "
         f"{targets.shape}; available prediction shapes: {shapes}"
@@ -252,38 +247,55 @@ def _maybe_bin_128bp_jax(value):
     return value
 
 
-def _r2_stats(prediction, targets):
+def _r2_stats(prediction, targets, observation_mask=None):
     prediction = _select_prediction_for_targets(prediction, targets).astype(jnp.float32)
     targets = targets.astype(jnp.float32)
     residual = prediction - targets
 
-    count = jnp.asarray(targets.size, dtype=jnp.float32)
-    sum_y = jnp.sum(targets)
-    sum_y2 = jnp.sum(jnp.square(targets))
-    sse = jnp.sum(jnp.square(residual))
+    if observation_mask is None:
+        mask = jnp.ones(targets.shape[:-1], dtype=jnp.float32)
+    else:
+        mask = observation_mask.astype(jnp.float32)
+        if mask.shape != targets.shape[:-1]:
+            raise ValueError(
+                f"Observation mask shape {mask.shape} does not match {targets.shape[:-1]}."
+            )
+    mask_channels = mask[..., None]
 
-    loci_count = jnp.asarray(targets.shape[0] * targets.shape[1], dtype=jnp.float32)
-    sum_y_by_track = jnp.sum(targets, axis=(0, 1))
-    sum_y2_by_track = jnp.sum(jnp.square(targets), axis=(0, 1))
-    sse_by_track = jnp.sum(jnp.square(residual), axis=(0, 1))
+    count = jnp.sum(mask) * targets.shape[-1]
+    sum_y = jnp.sum(targets * mask_channels)
+    sum_y2 = jnp.sum(jnp.square(targets) * mask_channels)
+    sse = jnp.sum(jnp.square(residual) * mask_channels)
+
+    loci_count = jnp.sum(mask)
+    sum_y_by_track = jnp.sum(targets * mask_channels, axis=(0, 1))
+    sum_y2_by_track = jnp.sum(jnp.square(targets) * mask_channels, axis=(0, 1))
+    sse_by_track = jnp.sum(jnp.square(residual) * mask_channels, axis=(0, 1))
     count_by_track = jnp.ones_like(sum_y_by_track, dtype=jnp.float32) * loci_count
 
     prediction_bins = _maybe_bin_128bp_jax(prediction)
     target_bins = _maybe_bin_128bp_jax(targets)
     pred_matrix = prediction_bins.reshape((-1, prediction_bins.shape[-1]))
     target_matrix = target_bins.reshape((-1, target_bins.shape[-1]))
+    if observation_mask is None:
+        differential_mask = jnp.ones((pred_matrix.shape[0],), dtype=jnp.float32)
+    else:
+        differential_mask = mask.reshape((-1,))
+    differential_mask_channels = differential_mask[:, None]
+    pred_matrix = pred_matrix * differential_mask_channels
+    target_matrix = target_matrix * differential_mask_channels
     pred_row_sum = jnp.sum(pred_matrix, axis=-1)
     target_row_sum = jnp.sum(target_matrix, axis=-1)
     pred_track_sum = jnp.sum(pred_matrix, axis=0)
     target_track_sum = jnp.sum(target_matrix, axis=0)
-    differential_count = jnp.asarray(pred_matrix.shape[0], dtype=jnp.float32)
+    differential_count = jnp.sum(differential_mask)
     differential_pred_sum = jnp.sum(pred_matrix)
     differential_target_sum = jnp.sum(target_matrix)
 
     target_mean_by_locus = jnp.mean(targets, axis=-1, keepdims=True)
     sst_by_locus = jnp.sum(jnp.square(targets - target_mean_by_locus), axis=-1)
     sse_by_locus = jnp.sum(jnp.square(residual), axis=-1)
-    valid_locus = sst_by_locus > 0
+    valid_locus = (sst_by_locus > 0) & (mask > 0)
     r2_by_locus = 1.0 - (sse_by_locus / jnp.maximum(sst_by_locus, 1e-8))
     r2_cell_type_sum = jnp.sum(jnp.where(valid_locus, r2_by_locus, 0.0))
     r2_cell_type_count = jnp.sum(valid_locus.astype(jnp.float32))
@@ -311,6 +323,28 @@ def _r2_stats(prediction, targets):
         "r2_cell_type_sum": r2_cell_type_sum,
         "r2_cell_type_count": r2_cell_type_count,
     }
+
+
+def _gene_expression_prediction(prediction, batch, head_name: str):
+    """Sum 128 bp predictions over annotated exons on each gene's strand."""
+    if not isinstance(prediction, Mapping) or "predictions_128bp" not in prediction:
+        raise ValueError(f"Head {head_name} requires predictions_128bp for gene supervision.")
+    prediction_128bp = prediction["predictions_128bp"].astype(jnp.float32)
+    weights = batch[f"gene_weights_{head_name}"].astype(jnp.float32)
+    if prediction_128bp.shape[-1] % 2:
+        raise ValueError(f"Head {head_name} must have paired strand channels.")
+    positive = jnp.einsum("bsg,bsc->bgc", weights, prediction_128bp[..., 0::2])
+    negative = jnp.einsum("bsg,bsc->bgc", weights, prediction_128bp[..., 1::2])
+    strands = batch[f"gene_strands_{head_name}"][..., None]
+    return jnp.where(strands == 0, positive, negative)
+
+
+def _gene_log_mse(prediction, targets, valid):
+    residual = jnp.log1p(jnp.maximum(prediction, 0.0)) - jnp.log1p(targets.astype(jnp.float32))
+    mask = valid.astype(jnp.float32)[..., None]
+    return jnp.sum(jnp.square(residual) * mask) / jnp.maximum(
+        jnp.sum(mask) * targets.shape[-1], 1.0
+    )
 
 
 def _finalize_r2_stats(stats: Mapping[str, np.ndarray | float]) -> dict[str, float]:
@@ -667,6 +701,7 @@ def train(
         )
 
     head_names = [spec.head_id for spec in head_specs]
+    head_specs_by_name = {spec.head_id: spec for spec in head_specs}
     if num_devices > 1 and not data_module._drop_last:
         raise ValueError(
             "Single-host multi-GPU training currently requires drop_last=True so every "
@@ -716,14 +751,28 @@ def train(
                     },
                 )
                 head_loss = head_loss_dict["loss"]
+                spec = head_specs_by_name[head_name]
+                if spec.gene_supervision_path is not None:
+                    gene_prediction = _gene_expression_prediction(
+                        predictions[head_name], batch, head_name
+                    )
+                    gene_targets = batch[f"gene_targets_{head_name}"]
+                    gene_valid = batch[f"gene_valid_{head_name}"]
+                    gene_loss = _gene_log_mse(gene_prediction, gene_targets, gene_valid)
+                    head_loss = (
+                        spec.coverage_loss_weight * head_loss + spec.gene_loss_weight * gene_loss
+                    )
                 head_losses[head_name] = head_loss
-                head_stats[head_name] = _r2_stats(predictions[head_name], targets)
+                if spec.gene_supervision_path is not None:
+                    head_stats[head_name] = _r2_stats(gene_prediction, gene_targets, gene_valid)
+                else:
+                    head_stats[head_name] = _r2_stats(predictions[head_name], targets)
                 total_loss = total_loss + head_loss
             return total_loss, (head_losses, head_stats)
 
-        (loss_value, (head_losses, head_stats)), grads = jax.value_and_grad(
-            loss_fn, has_aux=True
-        )(params)
+        (loss_value, (head_losses, head_stats)), grads = jax.value_and_grad(loss_fn, has_aux=True)(
+            params
+        )
         loss_value = jax.lax.pmean(loss_value, axis_name="data")
         grads = jax.lax.pmean(grads, axis_name="data")
         head_losses = jax.tree_util.tree_map(
@@ -750,6 +799,7 @@ def train(
             strand_reindexing=batch["strand_reindexing"],
         )
         head_losses = {}
+        head_stats = {}
         for head_name in head_names:
             loss_dict = loss_fns[head_name](
                 predictions[head_name],
@@ -758,11 +808,25 @@ def train(
                     "organism_index": batch["organism_index"],
                 },
             )
-            head_losses[head_name] = loss_dict["loss"]
-        head_stats = {
-            head_name: _r2_stats(predictions[head_name], batch[f"targets_{head_name}"])
-            for head_name in head_names
-        }
+            spec = head_specs_by_name[head_name]
+            head_loss = loss_dict["loss"]
+            if spec.gene_supervision_path is not None:
+                gene_prediction = _gene_expression_prediction(
+                    predictions[head_name], batch, head_name
+                )
+                gene_targets = batch[f"gene_targets_{head_name}"]
+                gene_valid = batch[f"gene_valid_{head_name}"]
+                head_loss = (
+                    spec.coverage_loss_weight * head_loss
+                    + spec.gene_loss_weight
+                    * _gene_log_mse(gene_prediction, gene_targets, gene_valid)
+                )
+                head_stats[head_name] = _r2_stats(gene_prediction, gene_targets, gene_valid)
+            else:
+                head_stats[head_name] = _r2_stats(
+                    predictions[head_name], batch[f"targets_{head_name}"]
+                )
+            head_losses[head_name] = head_loss
         head_losses = jax.tree_util.tree_map(
             lambda loss_value: jax.lax.pmean(loss_value, axis_name="data"),
             head_losses,
@@ -841,6 +905,7 @@ def train(
                 "step_dispatch": 0.0,
                 "sync": 0.0,
             }
+
             def prepare_eval_batch(batch_np):
                 prep_start = time.perf_counter()
                 batch = prepare_batch(batch_np, organism_index_value, head_names)
@@ -925,6 +990,7 @@ def train(
                 "step_dispatch": 0.0,
                 "sync": 0.0,
             }
+
             def prepare_train_batch(batch_np):
                 prep_start = time.perf_counter()
                 batch = prepare_batch(batch_np, organism_index_value, head_names)
