@@ -1,8 +1,8 @@
 #!/bin/bash
 #SBATCH -J ag_allen_atac_old
 #SBATCH -p gpu
-#SBATCH --gres=gpu:l40s:1
-#SBATCH --cpus-per-task=24
+#SBATCH --gres=gpu:b6k:1
+#SBATCH --cpus-per-task=32
 #SBATCH --mem=96G
 #SBATCH -t 24:00:00
 #SBATCH -o logs/allen_atac_old_settings/%x-%j.out
@@ -41,7 +41,7 @@ python scripts/run_humanbraindev_finetune.py \
   --lora-compute-dtype bfloat16 \
   --early-stopping-patience 2 \
   --eval-splits valid,test \
-  --target-workers 24 \
+  --target-workers 32 \
   --prefetch-batches 1 \
   --wandb-project alphagenome-allen-brain \
   --wandb-run-name allen_atac_old_settings_full \
