@@ -15,6 +15,7 @@ cd /gpfs/commons/home/daknowles/projects/alphagenome_fp4
 mkdir -p logs/v0data checkpoints/v0data
 export PYTHONPATH="$PWD:${PYTHONPATH:-}"
 export XLA_PYTHON_CLIENT_PREALLOCATE=false
+export JAX_COMPILATION_CACHE_DIR="${JAX_COMPILATION_CACHE_DIR:-$PWD/outputs/jax_compilation_cache}"
 export MPLCONFIGDIR="${MPLCONFIGDIR:-/tmp/matplotlib-${USER}}"
 
 STRATEGIES=(lora lora+locon)
