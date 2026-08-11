@@ -5,9 +5,23 @@ import jax.numpy as jnp
 from alphagenome_ft.finetune.train import (
     _double_centered_correlation_loss,
     _finalize_r2_stats,
+    _flatten_valid_metrics,
     _gene_expression_prediction,
     _r2_stats,
 )
+
+
+def test_flatten_valid_metrics_builds_joint_selection_mean():
+    flattened = _flatten_valid_metrics(
+        {
+            "atac": {"loss": 3.0, "differential_pearson_r": 0.8},
+            "rna": {"loss": 1.0, "differential_pearson_r": 0.6},
+        }
+    )
+
+    assert flattened["atac"] == 3.0
+    assert flattened["rna/differential_pearson_r"] == 0.6
+    np.testing.assert_allclose(flattened["mean/differential_pearson_r"], 0.7)
 
 
 def test_double_centered_correlation_loss_matches_metric_invariances():

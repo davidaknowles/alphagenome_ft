@@ -22,6 +22,7 @@ from alphagenome_ft import (
     BackboneLoConConfig,
     BackboneLoRAConfig,
     create_model_with_heads,
+    load_checkpoint,
     lora,
     parse_locon_target_names,
     parse_lora_target_names,
@@ -226,6 +227,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--head-id", default="humanbraindev_atac")
     parser.add_argument("--model-version", default="all_folds")
     parser.add_argument("--checkpoint-path", type=Path, default=None)
+    parser.add_argument(
+        "--resume-from",
+        type=Path,
+        default=None,
+        help="Restore head and adapter parameters from a saved last/best checkpoint.",
+    )
     parser.add_argument(
         "--split-source",
         choices=("chromosome", "fold", "bed"),
@@ -884,16 +891,35 @@ def main() -> None:
                 f"targets={sorted(backbone_locon_config.normalized_target_names())}"
             )
 
-    model = create_model_with_heads(
-        args.model_version,
-        heads=head_ids,
-        checkpoint_path=args.checkpoint_path,
-        detach_backbone=not args.backbone_lora,
-        init_seq_len=args.window_size,
-        backbone_lora_config=backbone_lora_config,
-        backbone_locon_config=backbone_locon_config,
-        runtime_backbone_param_dtype=args.base_param_dtype,
-    )
+    start_epoch = 1
+    initial_global_step = 0
+    if args.resume_from is None:
+        model = create_model_with_heads(
+            args.model_version,
+            heads=head_ids,
+            checkpoint_path=args.checkpoint_path,
+            detach_backbone=not args.backbone_lora,
+            init_seq_len=args.window_size,
+            backbone_lora_config=backbone_lora_config,
+            backbone_locon_config=backbone_locon_config,
+            runtime_backbone_param_dtype=args.base_param_dtype,
+        )
+    else:
+        resume_from = args.resume_from.expanduser().resolve()
+        resume_metrics_path = resume_from / "metrics.json"
+        if not resume_metrics_path.exists():
+            raise FileNotFoundError(f"Resume checkpoint metrics not found: {resume_metrics_path}")
+        resume_record = json.loads(resume_metrics_path.read_text())
+        start_epoch = int(resume_record["epoch"]) + 1
+        initial_global_step = int(resume_record["global_step"])
+        model = load_checkpoint(
+            resume_from,
+            base_model_version=args.model_version,
+            base_checkpoint_path=args.checkpoint_path,
+            init_seq_len=args.window_size,
+            backbone_lora_config=backbone_lora_config,
+            backbone_locon_config=backbone_locon_config,
+        )
     if args.backbone_lora:
         lora_paths = lora.get_lora_parameter_paths(model._params)
         total_params = parameter_utils.count_parameters(model._params)
@@ -965,6 +991,8 @@ def main() -> None:
         progress_interval=args.progress_interval,
         prefetch_batches=args.prefetch_batches,
         profile_host_timing=args.profile_host_timing,
+        start_epoch=start_epoch,
+        initial_global_step=initial_global_step,
     )
 
 

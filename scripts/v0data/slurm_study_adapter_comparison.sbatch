@@ -44,13 +44,22 @@ fi
 
 EXTRA_ARGS=()
 if [[ "${SMOKE:-0}" == "1" ]]; then
-  EXTRA_ARGS+=(--num-epochs 1 --max-train-steps 1 --limit-train 8 --limit-valid 8 --limit-test 8)
+  EXTRA_ARGS+=(
+    --num-epochs "${NUM_EPOCHS:-1}"
+    --max-train-steps "${MAX_TRAIN_STEPS:-1}"
+    --limit-train 8
+    --limit-valid 8
+    --limit-test 8
+  )
 else
   EXTRA_ARGS+=(--num-epochs "${NUM_EPOCHS:-100}")
 fi
 if [[ -n "${WANDB_PROJECT:-}" ]]; then
   EXTRA_ARGS+=(--wandb-project "${WANDB_PROJECT}" --wandb-run-name "${RUN_NAME}")
   [[ -n "${WANDB_ENTITY:-}" ]] && EXTRA_ARGS+=(--wandb-entity "${WANDB_ENTITY}")
+fi
+if [[ -n "${RESUME_FROM:-}" ]]; then
+  EXTRA_ARGS+=(--resume-from "${RESUME_FROM}")
 fi
 
 "${HOME}/venv/jax/bin/python" scripts/run_humanbraindev_finetune.py \

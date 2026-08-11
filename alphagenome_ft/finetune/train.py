@@ -606,6 +606,26 @@ def _format_host_timing_summary(title: str, stats: Mapping[str, float], count: i
     return f"  {title}: " + "; ".join(parts)
 
 
+def _flatten_valid_metrics(
+    metrics_by_head: Mapping[str, Mapping[str, float]],
+) -> dict[str, float]:
+    """Flatten per-head validation metrics using the checkpoint-selection keys."""
+    flattened: dict[str, float] = {}
+    for head, values in metrics_by_head.items():
+        flattened[head] = values["loss"]
+        for metric_name, metric_value in values.items():
+            flattened.setdefault(metric_name, metric_value)
+            flattened[f"{head}/{metric_name}"] = metric_value
+    if metrics_by_head:
+        metric_names = set.intersection(*(set(values) for values in metrics_by_head.values()))
+        for metric_name in metric_names:
+            values = [head_values[metric_name] for head_values in metrics_by_head.values()]
+            finite_values = [value for value in values if math.isfinite(value)]
+            if finite_values:
+                flattened[f"mean/{metric_name}"] = float(sum(finite_values) / len(finite_values))
+    return flattened
+
+
 def train(
     model: CustomAlphaGenomeModel,
     data_module: BigWigDataModule,
@@ -639,6 +659,8 @@ def train(
     progress_interval: int = 50,
     prefetch_batches: int = 2,
     profile_host_timing: bool = False,
+    start_epoch: int = 1,
+    initial_global_step: int = 0,
 ) -> None:
     """Run fine-tuning with pmapped train/eval steps.
 
@@ -681,6 +703,9 @@ def train(
             background thread. Set to 0 to disable prefetching.
         profile_host_timing: If True, print wall-clock timing buckets for host-side
             work each epoch.
+        start_epoch: One-indexed epoch at which to continue training. Values above
+            one require prior metric history in ``checkpoint_dir``.
+        initial_global_step: Number of optimizer updates completed before this call.
 
     Notes:
         Total planned steps are computed before training from train-set size and
@@ -728,6 +753,12 @@ def train(
         raise ValueError(f"progress_interval must be at least 1, got {progress_interval}.")
     if prefetch_batches < 0:
         raise ValueError(f"prefetch_batches must be non-negative, got {prefetch_batches}.")
+    if start_epoch < 1 or start_epoch > num_epochs:
+        raise ValueError(
+            f"start_epoch must be between 1 and num_epochs={num_epochs}, got {start_epoch}."
+        )
+    if initial_global_step < 0:
+        raise ValueError("initial_global_step must be non-negative.")
 
     available_devices = jax.local_devices()
     if num_devices > len(available_devices):
@@ -995,8 +1026,37 @@ def train(
 
     best_value: float | None = None
     epochs_since_improvement = 0
-    global_step = 0
+    global_step = initial_global_step
     metrics_history_path = checkpoint_dir / "metrics.jsonl" if checkpoint_dir else None
+    if start_epoch > 1:
+        if metrics_history_path is None or not metrics_history_path.exists():
+            raise FileNotFoundError("Continuation requires existing checkpoint metric history.")
+        prior_records = [
+            json.loads(line)
+            for line in metrics_history_path.read_text().splitlines()
+            if line.strip()
+        ]
+        if not prior_records or int(prior_records[-1]["epoch"]) != start_epoch - 1:
+            raise ValueError(f"Metric history does not end at epoch {start_epoch - 1}.")
+        if int(prior_records[-1]["global_step"]) != initial_global_step:
+            raise ValueError("Metric history global step does not match continuation state.")
+        for record in prior_records:
+            valid_metrics = _flatten_valid_metrics(record.get("metrics", {}).get("valid", {}))
+            _, metric_value = resolve_metric(
+                best_metric,
+                record.get("train_epoch_loss"),
+                valid_metrics,
+            )
+            if metric_value is not None and math.isfinite(metric_value):
+                if is_improved(metric_value, best_value):
+                    best_value = metric_value
+                    epochs_since_improvement = 0
+                else:
+                    epochs_since_improvement += 1
+        print(
+            f"Continuing at epoch {start_epoch} and global step {initial_global_step}; "
+            "optimizer state starts fresh."
+        )
 
     requested_eval_splits = tuple(dict.fromkeys(str(split) for split in eval_splits))
 
@@ -1093,7 +1153,7 @@ def train(
                 )
             return split_result
 
-        for epoch in range(1, num_epochs + 1):
+        for epoch in range(start_epoch, num_epochs + 1):
             if verbose:
                 print(f"\n{'=' * 60}")
                 print(f"Epoch {epoch}/{num_epochs}")
@@ -1293,24 +1353,7 @@ def train(
 
             valid_metrics: Mapping[str, float] | None = None
             if "valid" in split_metrics:
-                valid_metrics = {}
-                for head, values in split_metrics["valid"].items():
-                    valid_metrics[head] = values["loss"]
-                    for metric_name, metric_value in values.items():
-                        valid_metrics.setdefault(metric_name, metric_value)
-                        valid_metrics[f"{head}/{metric_name}"] = metric_value
-                metric_names = set.intersection(
-                    *(set(values) for values in split_metrics["valid"].values())
-                )
-                for metric_name in metric_names:
-                    values = [
-                        head_values[metric_name] for head_values in split_metrics["valid"].values()
-                    ]
-                    finite_values = [value for value in values if math.isfinite(value)]
-                    if finite_values:
-                        valid_metrics[f"mean/{metric_name}"] = float(
-                            sum(finite_values) / len(finite_values)
-                        )
+                valid_metrics = _flatten_valid_metrics(split_metrics["valid"])
 
             metric_label, metric_value = resolve_metric(best_metric, train_loss_avg, valid_metrics)
             epoch_record = {
