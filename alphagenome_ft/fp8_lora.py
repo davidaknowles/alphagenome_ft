@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Iterator, Sequence
 from contextlib import ExitStack, contextmanager
 from dataclasses import dataclass
+import hashlib
 import math
 from typing import Literal
 
@@ -199,6 +200,13 @@ class BackboneLoConConfig:
 
 def _default_w_init(input_size: int):
     return hk.initializers.TruncatedNormal(stddev=1.0 / math.sqrt(input_size))
+
+
+def _adapter_parameter_rng(parameter_name: str):
+    """Return a stable local RNG keyed by module path and adapter leaf name."""
+    identity = f"{hk.experimental.current_name()}/{parameter_name}".encode("utf-8")
+    seed = int.from_bytes(hashlib.sha256(identity).digest()[:4], "little")
+    return jax.random.PRNGKey(seed)
 
 
 def _low_precision_safe_init(init):
@@ -476,18 +484,20 @@ class LinearWithLoRA(hk.Module):
             y = y + b.astype(y.dtype)
 
         rank = self._config.rank
-        lora_a = hk.get_parameter(
-            "lora_a",
-            shape=(input_size, rank),
-            dtype=lora_param_dtype,
-            init=hk.initializers.RandomNormal(stddev=0.01),
-        )
-        lora_b = hk.get_parameter(
-            "lora_b",
-            shape=(rank, self._output_size),
-            dtype=lora_param_dtype,
-            init=hk.initializers.Constant(0.0),
-        )
+        with hk.with_rng(_adapter_parameter_rng("lora_a")):
+            lora_a = hk.get_parameter(
+                "lora_a",
+                shape=(input_size, rank),
+                dtype=lora_param_dtype,
+                init=hk.initializers.RandomNormal(stddev=0.01),
+            )
+        with hk.with_rng(_adapter_parameter_rng("lora_b")):
+            lora_b = hk.get_parameter(
+                "lora_b",
+                shape=(rank, self._output_size),
+                dtype=lora_param_dtype,
+                init=hk.initializers.Constant(0.0),
+            )
         lora_precision = self._config.resolved_lora_compute_dtype()
         delta = _dense(
             activation,
@@ -607,18 +617,20 @@ def _locon_delta(
         config.compute_dtype,
         fallback_dtype=x.dtype,
     )
-    down_w = hk.get_parameter(
-        "locon_down_w",
-        shape=(width, input_channels, rank),
-        dtype=param_dtype,
-        init=hk.initializers.VarianceScaling(),
-    )
-    up_w = hk.get_parameter(
-        "locon_up_w",
-        shape=(1, rank, num_channels),
-        dtype=param_dtype,
-        init=hk.initializers.Constant(0.0),
-    )
+    with hk.with_rng(_adapter_parameter_rng("locon_down_w")):
+        down_w = hk.get_parameter(
+            "locon_down_w",
+            shape=(width, input_channels, rank),
+            dtype=param_dtype,
+            init=hk.initializers.VarianceScaling(),
+        )
+    with hk.with_rng(_adapter_parameter_rng("locon_up_w")):
+        up_w = hk.get_parameter(
+            "locon_up_w",
+            shape=(1, rank, num_channels),
+            dtype=param_dtype,
+            init=hk.initializers.Constant(0.0),
+        )
     down_w = _cast_for_compute(
         down_w,
         config.compute_dtype,

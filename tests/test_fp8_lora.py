@@ -1,3 +1,5 @@
+from contextlib import nullcontext
+
 import haiku as hk
 import jax
 import jax.numpy as jnp
@@ -73,6 +75,52 @@ def test_patch_haiku_locon_adds_locon_only_to_matching_conv_paths():
         f"{adapted_key}/locon_down_w",
         f"{adapted_key}/locon_up_w",
     ]
+
+
+def test_locon_does_not_change_shared_lora_or_reserved_head_initialization():
+    from alphagenome_research.model import convolutions
+
+    lora_config = BackboneLoRAConfig(rank=2, alpha=2.0, target_names=("q_layer",))
+    locon_config = BackboneLoConConfig(
+        rank=2,
+        alpha=1.0,
+        target_names=("target_block",),
+    )
+
+    def initialize(include_locon):
+        def forward(x):
+            head_rng = hk.next_rng_key()
+            with patch_haiku_linear(lora_config):
+                locon_context = (
+                    patch_haiku_locon(locon_config) if include_locon else nullcontext()
+                )
+                with locon_context:
+                    trunk = convolutions.ConvBlock(
+                        num_channels=4,
+                        width=3,
+                        name="target_block",
+                    )(x, is_training=True)
+                    trunk = hk.Linear(3, with_bias=False, name="q_layer")(trunk)
+            with hk.with_rng(head_rng), hk.name_scope("head"):
+                return hk.Linear(2, with_bias=False, name="output")(trunk)
+
+        transformed = hk.transform_with_state(forward)
+        return transformed.init(
+            jax.random.PRNGKey(42),
+            jnp.ones((1, 8, 3), dtype=jnp.bfloat16),
+        )[0]
+
+    lora_params = initialize(False)
+    combo_params = initialize(True)
+    assert jnp.array_equal(
+        lora_params["q_layer"]["lora_a"], combo_params["q_layer"]["lora_a"]
+    )
+    assert jnp.array_equal(
+        lora_params["q_layer"]["lora_b"], combo_params["q_layer"]["lora_b"]
+    )
+    assert jnp.array_equal(
+        lora_params["head/output"]["w"], combo_params["head/output"]["w"]
+    )
 
 
 def test_lora_precision_config_controls_parameter_storage_dtype():
