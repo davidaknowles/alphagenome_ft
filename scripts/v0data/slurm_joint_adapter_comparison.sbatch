@@ -68,7 +68,7 @@ fi
   --best-metric-mode max \
   --early-stopping-patience "${EARLY_STOPPING_PATIENCE:-5}" \
   --eval-splits valid,test \
-  --target-workers "${TARGET_WORKERS:-8}" \
+  --target-workers "${TARGET_WORKERS:-24}" \
   --window-workers "${WINDOW_WORKERS:-8}" \
   --prefetch-batches 2 \
   --progress-interval 100 \
