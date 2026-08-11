@@ -18,7 +18,9 @@ The full-depth Allen ATAC baseline reached validation signed double-centered (R=
 
 The same Allen run reached validation (R=0.4154) and test (R=0.4572) at epoch 5. The final Johansen joint comparison replaces released ATAC tracks with this all-fragment coverage SPMR definition for human, macaque, and marmoset while preserving the aligned 48-group RNA targets. Human shards are reused, nonhuman shards are reconstructed against their own assemblies, and only the ATAC heads are replaced in the aligned species configuration.
 
-The first full HDA ATAC epoch reached validation and test (R=0.7716) and (0.7820) with LoRA. LoRA plus LoCon reached (0.7673) and (0.7753). These are preliminary early-stopping trajectories, but HDA is already close to the target correlation under the requested metric and LoRA leads after one epoch.
+The first full HDA ATAC epoch reached validation and test (R=0.7716) and (0.7820) with LoRA. LoRA plus LoCon reached (0.7673) and (0.7753). These values demonstrated that HDA can approach the target correlation, but the pair is superseded because adding LoCon changed Haiku's parameter-creation order and therefore changed the random initialization of later shared LoRA matrices and assay heads.
+
+Adapter initialization now reserves a head random-number-generator key before trunk construction and restores it only inside the head scope. Random adapter leaves use local keys derived from their complete module paths, so adding LoCon does not advance the outer Haiku random-number-generator sequence or alter shared LoRA leaves. The paired smoke gate requires bit-identical shared LoRA and head initialization; LoCon's up projection starts at zero, so its added residual is also exactly zero before optimization.
 
 ## GRR prediction-target audit
 
