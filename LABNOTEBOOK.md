@@ -32,6 +32,8 @@ At HDA epoch 2, LoRA reached validation and test (R=0.7905) and (R=0.8024), whil
 
 The first paired HDA epoch gave LoRA validation and test (R=0.7722) and (R=0.7830) for ATAC and (R=0.4361) and (R=0.5720) for gene-supervised RNA. LoRA plus LoCon gave (R=0.7729) and (R=0.7837) for ATAC and (R=0.4313) and (R=0.5713) for RNA. ATAC is close to the single-head trajectory, while RNA remains well below the target range and requires further epochs or an RNA-specific objective improvement.
 
+The first human Zemke 2023 epoch gave LoRA validation and test (R=0.6760) and (R=0.6930) for ATAC and (R=0.3963) and (R=0.3475) for RNA. LoRA plus LoCon gave (R=0.6784) and (R=0.6939) for ATAC and (R=0.3999) and (R=0.3462) for RNA. LoRA plus LoCon led both validation heads slightly, but neither RNA result is near the target range after one epoch.
+
 Final adapter comparisons are collated from each run's `metrics.jsonl`. One epoch is selected per run by the mean validation signed double-centered Pearson correlation across all heads, and every per-head validation and test value is reported from that same epoch. This preserves the joint checkpoint-selection contract and avoids selecting separate favorable epochs for ATAC and RNA.
 
 The Liu preparation keeps its target manifest with the generated exon RNA tracks and gene-level supervision under `outputs/v0data/liu-hdma/joint`. The generic joint launcher resolves this dataset-specific layout automatically; without that mapping it would look for a nonexistent parent-level manifest and fail before model construction.
@@ -41,6 +43,8 @@ Johansen reprocessing launchers query species configurations with Python's struc
 Johansen fragment cell identifiers require species-specific joins. All 90 macaque fragment files contain library-local 10x barcodes; barcode overlap assigns every file to a distinct metadata library with 100% coverage and recovers 58 groups. Marmoset has 112 biological libraries stored twice, once as a full fragment file and once as an H5AD-filtered exact subset. For overlapping cells, the subset and full resource have identical whole-genome fragment counts. Reprocessing uses only the 112 filtered copies so retained cells are counted once; processing all 224 resource directories would duplicate their fragments.
 
 BigWig loading now assigns each target worker one track handle and reads that track across the batch before transposing the result to window-major layout. The earlier nested window and target pools divided the available reader budget by the number of outer workers, and multiple outer workers could submit reads against the same BigWig handle. Track-major loading uses all configured readers without concurrent access to one handle. This is important for the pending Johansen and Liu joint panels, which contain substantially more channels than the 40-track Zemke 2023 panel.
+
+The human Zemke pair completed epoch 1 under the earlier loader, then continued from the saved head and adapter parameters under track-major loading. Continuation preserves metric history, epoch numbering, deterministic epoch shuffle seeds, and early-stopping state. The checkpoint format does not contain optimizer moments, so Adam restarts at the continuation boundary. Both adapter strategies use the same boundary and optimizer reset; this is a throughput intervention rather than a strategy-specific change.
 
 ## GRR prediction-target audit
 
