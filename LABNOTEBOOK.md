@@ -26,6 +26,8 @@ The reserved head key must be consumed only while Haiku initializes parameters. 
 
 The full AlphaGenome initialization audit passed on the HDA head. All 54 head parameter leaves and 162 shared LoRA parameter leaves were bit-identical between LoRA and LoRA plus LoCon, and all four LoCon up-projection leaves were exactly zero. The paired HDA smoke subsequently produced the same displayed first-step loss, 70.8766, for both strategies. The four-species Zemke smoke differed by less than (10^{-6}) in relative first-step loss, which is consistent with separate XLA graphs evaluating an initially zero residual.
 
+In the first full fair HDA epoch, LoRA reached validation and test signed double-centered (R=0.7715) and (R=0.7819). LoRA plus LoCon reached (R=0.7696) and (R=0.7783). The runs continued because these are epoch-one observations rather than early-stopped model selections; LoRA led validation by 0.0019 at this point.
+
 Final adapter comparisons are collated from each run's `metrics.jsonl`. One epoch is selected per run by the mean validation signed double-centered Pearson correlation across all heads, and every per-head validation and test value is reported from that same epoch. This preserves the joint checkpoint-selection contract and avoids selecting separate favorable epochs for ATAC and RNA.
 
 The Liu preparation keeps its target manifest with the generated exon RNA tracks and gene-level supervision under `outputs/v0data/liu-hdma/joint`. The generic joint launcher resolves this dataset-specific layout automatically; without that mapping it would look for a nonexistent parent-level manifest and fail before model construction.
