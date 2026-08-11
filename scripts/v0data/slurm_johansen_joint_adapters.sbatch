@@ -20,7 +20,7 @@ export MPLCONFIGDIR="${MPLCONFIGDIR:-/tmp/matplotlib-${USER}}"
 STRATEGIES=(lora lora+locon)
 strategy="${STRATEGIES[$SLURM_ARRAY_TASK_ID]}"
 run_name="johansen_joint_${strategy//+/_}${RUN_SUFFIX:-}"
-species_config=outputs/allen_brain_multiome_multispecies_v1/species.json
+species_config="${SPECIES_CONFIG:-outputs/v0data/johansen-fragment-joint/species.json}"
 test -f "$species_config"
 
 EXTRA_ARGS=(--num-epochs "${NUM_EPOCHS:-100}")

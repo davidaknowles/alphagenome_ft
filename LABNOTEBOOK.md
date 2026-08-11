@@ -16,6 +16,10 @@ The Zemke reference audit checks every modeled chromosome in every ATAC and RNA 
 
 The full-depth Allen ATAC baseline reached validation signed double-centered (R=0.4011), (0.4098), and (0.4129) over its first three epochs, with test (R=0.4450), (0.4507), and (0.4546). These values improve monotonically but remain below 0.8. They must not be compared directly with the earlier HDA global score near 0.8 because that score used a different statistic.
 
+The same Allen run reached validation (R=0.4154) and test (R=0.4572) at epoch 5. The final Johansen joint comparison replaces released ATAC tracks with this all-fragment coverage SPMR definition for human, macaque, and marmoset while preserving the aligned 48-group RNA targets. Human shards are reused, nonhuman shards are reconstructed against their own assemblies, and only the ATAC heads are replaced in the aligned species configuration.
+
+The first full HDA ATAC epoch reached validation and test (R=0.7716) and (0.7820) with LoRA. LoRA plus LoCon reached (0.7673) and (0.7753). These are preliminary early-stopping trajectories, but HDA is already close to the target correlation under the requested metric and LoRA leads after one epoch.
+
 ## GRR prediction-target audit
 
 Excluding the Encyclopedia of DNA Elements collection, all four single-cell Genomic Resource Repository, GRR, studies contain experimentally measured targets suitable for some form of sequence-model supervision. `johansen2025Crossspecies` has released assay for transposase-accessible chromatin, ATAC, BigWigs and raw fragments, while its RNA measurements are gene-level. `liu2026Multiomics` has raw ATAC fragments and gene-level RNA; its released observed BigWig is a Model-based Analysis of ChIP-Seq version 2 significance transformation, and its other two BigWigs are ChromBPNet predictions and Deep Learning Important FeaTures attributions rather than assay targets. `zemke2023Conserved` has coordinate-resolved ATAC, RNA, high-throughput chromosome conformation capture, and methylation targets. `zemke2024Epigenetic` has coordinate-resolved ATAC and RNA targets, with missing age-by-cell-type combinations that require masks.
