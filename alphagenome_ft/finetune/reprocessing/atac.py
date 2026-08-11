@@ -6,7 +6,7 @@ from dataclasses import dataclass
 import json
 from pathlib import Path
 import subprocess
-from typing import Mapping, Sequence
+from typing import Collection, Mapping, Sequence
 
 import h5py
 import numpy as np
@@ -41,6 +41,62 @@ def read_cell_groups(
     if any(not group for group in result.values()):
         raise ValueError(f"Cell groups in {h5ad_path} must be nonempty.")
     return result
+
+
+def read_cell_groups_by_library(
+    h5ad_path: Path,
+    *,
+    barcode_column: str = "cell_barcode",
+    library_column: str = "barcoded_cell_sample_label",
+    group_column: str = "Group",
+) -> dict[str, dict[str, str]]:
+    """Read library-local cell barcodes and their target groups from an H5AD file."""
+    with h5py.File(Path(h5ad_path), "r") as handle:
+        obs = handle["obs"]
+        barcodes = _read_h5ad_column(obs, barcode_column)
+        libraries = _read_h5ad_column(obs, library_column)
+        groups = _read_h5ad_column(obs, group_column)
+    if not (len(barcodes) == len(libraries) == len(groups)):
+        raise ValueError("Cell barcode, library, and group columns must have equal lengths.")
+
+    result: dict[str, dict[str, str]] = {}
+    for barcode_value, library_value, group_value in zip(barcodes, libraries, groups):
+        barcode = _decode(barcode_value)
+        library = _decode(library_value)
+        group = _decode(group_value)
+        library_groups = result.setdefault(library, {})
+        previous = library_groups.setdefault(barcode, group)
+        if previous != group:
+            raise ValueError(f"Barcode {barcode!r} maps to multiple groups in library {library!r}.")
+    return result
+
+
+def _normalize_10x_barcode(cell: str) -> str:
+    return cell[:-2] if cell.endswith("-1") else cell
+
+
+def match_fragment_library(
+    fragment_cells: Collection[str],
+    cell_groups_by_library: Mapping[str, Mapping[str, str]],
+) -> tuple[str, dict[str, str]]:
+    """Match library-local 10x fragment barcodes to one metadata library."""
+    if not fragment_cells:
+        raise ValueError("Fragment cell identifiers must be nonempty.")
+    normalized_cells = {cell: _normalize_10x_barcode(cell) for cell in fragment_cells}
+    scores = {
+        library: sum(barcode in cell_groups for barcode in normalized_cells.values())
+        for library, cell_groups in cell_groups_by_library.items()
+    }
+    best_score = max(scores.values(), default=0)
+    winners = [library for library, score in scores.items() if score == best_score]
+    if best_score != len(normalized_cells) or len(winners) != 1:
+        raise ValueError(
+            "Fragment barcodes must have one unique metadata library with complete coverage, "
+            f"found best score {best_score}/{len(normalized_cells)} across {winners}."
+        )
+    library = winners[0]
+    library_groups = cell_groups_by_library[library]
+    return library, {cell: library_groups[barcode] for cell, barcode in normalized_cells.items()}
 
 
 @dataclass

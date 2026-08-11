@@ -18,6 +18,8 @@ if str(REPO_ROOT) not in sys.path:
 from alphagenome_ft.finetune.reprocessing import (
     BinnedAtacAccumulator,
     fragment_totals_by_group,
+    match_fragment_library,
+    read_cell_groups_by_library,
     read_cell_groups,
 )
 
@@ -32,16 +34,28 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--bin-size", type=int, default=100)
     parser.add_argument("--chunk-size", type=int, default=250_000)
     parser.add_argument("--max-files", type=int)
+    parser.add_argument("--fragment-library-suffix")
     parser.add_argument("--tabix", default="tabix")
     parser.add_argument("--no-tn5-shift", action="store_true")
+    parser.add_argument(
+        "--fragment-cell-id-mode",
+        choices=("direct", "library_barcode"),
+        default="direct",
+    )
     return parser.parse_args()
 
 
-def discover_fragment_paths(root: Path, max_files: int | None) -> list[Path]:
+def discover_fragment_paths(
+    root: Path,
+    max_files: int | None,
+    library_suffix: str | None = None,
+) -> list[Path]:
     paths = sorted(
         path
         for path in root.glob("*/*.gz")
-        if not path.name.endswith(".tbi") and Path(f"{path}.tbi").exists()
+        if not path.name.endswith(".tbi")
+        and Path(f"{path}.tbi").exists()
+        and (library_suffix is None or path.parent.name.endswith(library_suffix))
     )
     if max_files is not None:
         paths = paths[:max_files]
@@ -122,15 +136,37 @@ def stream_chromosome(
 
 def main() -> None:
     args = parse_args()
-    fragment_paths = discover_fragment_paths(args.fragment_root, args.max_files)
-    cell_groups = read_cell_groups(args.cell_metadata_h5ad)
-    all_groups = sorted(set(cell_groups.values()))
+    fragment_paths = discover_fragment_paths(
+        args.fragment_root,
+        args.max_files,
+        args.fragment_library_suffix,
+    )
+    histograms = {path: read_fragment_histogram(path) for path in fragment_paths}
+    fragment_cell_groups = {}
+    fragment_libraries = {}
+    if args.fragment_cell_id_mode == "library_barcode":
+        cell_groups_by_library = read_cell_groups_by_library(args.cell_metadata_h5ad)
+        for path, histogram in histograms.items():
+            library, cell_groups = match_fragment_library(
+                histogram,
+                cell_groups_by_library,
+            )
+            fragment_cell_groups[path] = cell_groups
+            fragment_libraries[path.parent.name] = library
+        metadata_cells = sum(len(groups) for groups in cell_groups_by_library.values())
+    else:
+        cell_groups = read_cell_groups(args.cell_metadata_h5ad)
+        fragment_cell_groups = {path: cell_groups for path in fragment_paths}
+        metadata_cells = len(cell_groups)
+    all_groups = sorted(
+        {group for cell_groups in fragment_cell_groups.values() for group in cell_groups.values()}
+    )
 
     all_total_fragments = np.zeros(len(all_groups), dtype=np.float64)
     histogram_missing_cells = 0
-    for path in fragment_paths:
+    for path, histogram in histograms.items():
         file_totals, missing = fragment_totals_by_group(
-            read_fragment_histogram(path), cell_groups, all_groups
+            histogram, fragment_cell_groups[path], all_groups
         )
         all_total_fragments += file_totals
         histogram_missing_cells += missing
@@ -138,9 +174,6 @@ def main() -> None:
     groups = [all_groups[index] for index in retained]
     total_fragments = all_total_fragments[retained]
     group_indices = {group: index for index, group in enumerate(groups)}
-    cell_group_indices = {
-        cell: group_indices[group] for cell, group in cell_groups.items() if group in group_indices
-    }
 
     accumulator = BinnedAtacAccumulator(
         num_groups=len(groups),
@@ -151,6 +184,11 @@ def main() -> None:
     matched_records = 0
     missing_records = 0
     for index, path in enumerate(fragment_paths, start=1):
+        cell_group_indices = {
+            cell: group_indices[group]
+            for cell, group in fragment_cell_groups[path].items()
+            if group in group_indices
+        }
         matched, missing = stream_chromosome(
             path,
             args.chromosome,
@@ -187,7 +225,9 @@ def main() -> None:
         "bin_size": args.bin_size,
         "groups": len(groups),
         "fragment_files": len(fragment_paths),
-        "metadata_cells": len(cell_groups),
+        "metadata_cells": metadata_cells,
+        "fragment_cell_id_mode": args.fragment_cell_id_mode,
+        "fragment_libraries": fragment_libraries,
         "histogram_cells_missing_metadata": histogram_missing_cells,
         "chromosome_records_matched": matched_records,
         "chromosome_records_missing_metadata": missing_records,

@@ -33,9 +33,9 @@ This is a cross-species basal-ganglia atlas for human, macaque, and marmoset. It
 |---|---:|---:|---:|
 | Human | 60 | 204 | 1 |
 | Macaque | 58 | 90 | 1 |
-| Marmoset | 51 | 224 | 1 |
+| Marmoset | 51 | 112 | 1 |
 
-The assay for transposase-accessible chromatin, ATAC, tracks are cell-group pseudobulk BigWigs. Fragment resources are tabix-indexed five-column records with chromosome, start, end, cell identifier, and multiplicity; per-cell whole-genome fragment histograms are stored alongside them. The comprehensive expression matrices use the AnnData Hierarchical Data Format 5, H5AD, format and contain cell identifiers, group assignments, and expression. Additional resources include aligned 10x multiome matrices, expression metadata, taxonomy mappings, spatial-expression data from MERSCOPE and Xenium platforms, macaque Patch-seq data, and supplementary tables.
+The assay for transposase-accessible chromatin, ATAC, tracks are cell-group pseudobulk BigWigs. Fragment resources are tabix-indexed five-column records with chromosome, start, end, cell identifier, and multiplicity; per-cell whole-genome fragment histograms are stored alongside them. Marmoset has 112 distinct libraries, each represented by a full fragment resource and an H5AD-filtered exact subset, yielding 224 resource directories but not 224 independent libraries. Reprocessing uses the filtered copy because it retains every fragment for cells in the comprehensive metadata and avoids double-counting the same cells. The comprehensive expression matrices use the AnnData Hierarchical Data Format 5, H5AD, format and contain cell identifiers, group assignments, and expression. Additional resources include aligned 10x multiome matrices, expression metadata, taxonomy mappings, spatial-expression data from MERSCOPE and Xenium platforms, macaque Patch-seq data, and supplementary tables.
 
 This is the strongest collection for aligned primate basal-ganglia training. The fragment records support rebuilding targets with controlled normalization, while the released BigWigs provide a direct baseline. Species use different reference assemblies and should not share genomic coordinates without an explicit orthology or liftover mapping.
 

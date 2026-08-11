@@ -4,7 +4,9 @@ import numpy as np
 from alphagenome_ft.finetune.reprocessing import (
     BinnedAtacAccumulator,
     fragment_totals_by_group,
+    match_fragment_library,
     read_cell_groups,
+    read_cell_groups_by_library,
 )
 
 
@@ -18,6 +20,31 @@ def test_read_cell_groups_supports_categorical_groups(tmp_path):
         group.create_dataset("codes", data=np.asarray([1, 0]))
 
     assert read_cell_groups(path) == {"cell-a": "B", "cell-b": "A"}
+
+
+def test_library_local_barcodes_match_one_complete_metadata_library(tmp_path):
+    path = tmp_path / "cells.h5ad"
+    with h5py.File(path, "w") as handle:
+        obs = handle.create_group("obs")
+        obs.create_dataset("cell_barcode", data=np.asarray([b"AAAA", b"CCCC", b"AAAA"]))
+        obs.create_dataset(
+            "barcoded_cell_sample_label", data=np.asarray([b"lib-a", b"lib-a", b"lib-b"])
+        )
+        obs.create_dataset("Group", data=np.asarray([b"A", b"B", b"C"]))
+
+    by_library = read_cell_groups_by_library(path)
+    library, groups = match_fragment_library({"AAAA-1", "CCCC-1"}, by_library)
+
+    assert library == "lib-a"
+    assert groups == {"AAAA-1": "A", "CCCC-1": "B"}
+
+
+def test_library_local_barcode_match_rejects_incomplete_coverage():
+    with np.testing.assert_raises_regex(ValueError, "complete coverage"):
+        match_fragment_library(
+            {"AAAA-1", "GGGG-1"},
+            {"lib-a": {"AAAA": "A"}, "lib-b": {"GGGG": "B"}},
+        )
 
 
 def test_binned_atac_accumulator_tracks_insertions_and_coverage():

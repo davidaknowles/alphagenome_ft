@@ -39,10 +39,17 @@ root=/gpfs/commons/datasets/controlled/NYGC_AI_Initiative/GRRs/SC_Summaries_GRR/
 metadata="$root/comprehensive_expression_matrix/$title/${title}_HMBA_basalganglia_AIT_pre-print.h5ad"
 chromosome_size="$(awk -v chromosome="$chromosome" '$1 == chromosome {print $2}' "${fasta}.fai")"
 test -n "$chromosome_size"
+extra_args=()
+if [[ "$species" == "macaque" ]]; then
+  extra_args+=(--fragment-cell-id-mode library_barcode)
+elif [[ "$species" == "marmoset" ]]; then
+  extra_args+=(--fragment-library-suffix .h5ad)
+fi
 
 python scripts/allen_atac_reprocessing/aggregate.py \
   --fragment-root "$root/fragment/$species" \
   --cell-metadata-h5ad "$metadata" \
   --chromosome "$chromosome" \
   --chromosome-size "$chromosome_size" \
-  --output "outputs/v0data/johansen-fragment-atac/$species/shards/${chromosome}_100bp.npz"
+  --output "outputs/v0data/johansen-fragment-atac/$species/shards/${chromosome}_100bp.npz" \
+  "${extra_args[@]}"
