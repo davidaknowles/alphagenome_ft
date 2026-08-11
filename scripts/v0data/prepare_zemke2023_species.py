@@ -22,7 +22,7 @@ if str(REPO_ROOT) not in sys.path:
 from alphagenome_ft.finetune import build_fasta_index
 
 UCSC_FASTA_URLS = {
-    "marmoset": "https://hgdownload.soe.ucsc.edu/goldenPath/calJac3/bigZips/calJac3.fa.gz",
+    "marmoset": "https://hgdownload.soe.ucsc.edu/goldenPath/calJac4/bigZips/calJac4.fa.gz",
     "mouse": "https://hgdownload.soe.ucsc.edu/goldenPath/mm10/bigZips/mm10.fa.gz",
 }
 SPECIES = ("human", "macaque", "marmoset", "mouse")
@@ -174,7 +174,7 @@ def main() -> None:
             references / "rheMac10.fa",
             rename_ncbi_chromosomes=True,
         ),
-        "marmoset": download_fasta(UCSC_FASTA_URLS["marmoset"], references / "calJac3.fa"),
+        "marmoset": download_fasta(UCSC_FASTA_URLS["marmoset"], references / "calJac4.fa"),
         "mouse": download_fasta(UCSC_FASTA_URLS["mouse"], references / "mm10.fa"),
     }
     target_paths = pooled_target_configs(args.targets_root.expanduser().resolve(), output_dir)

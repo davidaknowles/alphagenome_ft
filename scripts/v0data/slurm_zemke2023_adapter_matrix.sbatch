@@ -32,7 +32,7 @@ case "$species" in
     include_chroms=chr1,chr2,chr3,chr4,chr5,chr6,chr7,chr8,chr9,chr10,chr11,chr12,chr13,chr14,chr15,chr16,chr17,chr18,chr19,chr20,chrX
     ;;
   marmoset)
-    fasta=outputs/v0data/zemke2023-species/references/calJac3.fa
+    fasta=outputs/v0data/zemke2023-species/references/calJac4.fa
     include_chroms=chr1,chr2,chr3,chr4,chr5,chr6,chr7,chr8,chr9,chr10,chr11,chr12,chr13,chr14,chr15,chr16,chr17,chr18,chr19,chr20,chr21,chr22,chrX
     ;;
   mouse)
