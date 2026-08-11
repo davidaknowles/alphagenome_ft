@@ -23,6 +23,13 @@
       "released_double_centered_r": 0.6464863504270072
     }
   },
+  "distribution_reference": {
+    "mean": 0.47957222934730515,
+    "rms": 5.579438169841345,
+    "zero_fraction": 0.32581534123276745,
+    "q99": 7.554397106170654,
+    "tracks": 134
+  },
   "chromosome": "chr8",
   "starts": [
     5000000,

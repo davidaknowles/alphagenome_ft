@@ -16,6 +16,11 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--shard", type=Path, required=True)
     parser.add_argument("--released-bigwig-dir", type=Path, required=True)
+    parser.add_argument(
+        "--distribution-reference-dir",
+        type=Path,
+        help="Optional BigWig collection summarized on the same windows.",
+    )
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--starts", required=True, help="Comma-separated, bin-aligned starts")
     parser.add_argument("--window-size", type=int, default=131_000)
@@ -107,6 +112,23 @@ def main() -> None:
             "released_double_centered_r": pearson(
                 double_center(matrix), double_center(released_matrix)
             ),
+        }
+    if args.distribution_reference_dir is not None:
+        reference_paths = sorted(args.distribution_reference_dir.glob("*.bw"))
+        if not reference_paths:
+            raise FileNotFoundError(
+                f"No reference BigWigs found in {args.distribution_reference_dir}."
+            )
+        reference_matrix = np.stack(
+            [
+                released_bins(path, chromosome, starts, args.window_size, bin_size)
+                for path in reference_paths
+            ],
+            axis=1,
+        )
+        result["distribution_reference"] = {
+            **summarize(reference_matrix),
+            "tracks": len(reference_paths),
         }
     result["chromosome"] = chromosome
     result["starts"] = starts
