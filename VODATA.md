@@ -12,6 +12,19 @@ This note summarizes the Genomic Resource Repositories, GRRs, maintained for the
 
 ## Single-cell studies
 
+### Prediction-target suitability
+
+A valid sequence-to-signal target here means an experimentally measured signal associated with genomic coordinates in a known reference assembly. Gene-expression matrices remain valid for gene-level supervision, but they are not base-resolution RNA coverage. Predictions and attribution scores from another model are not ground-truth assay targets.
+
+| Dataset | ATAC target | RNA target | Other targets | Main qualification |
+|---|---|---|---|---|
+| `johansen2025Crossspecies` | Yes, released pseudobulk BigWigs or targets reconstructed from fragments | Gene-level only | None in the core release | Exon pseudo-coverage may be derived from expression, but is not measured RNA coverage |
+| `liu2026Multiomics` | Yes, preferably reconstructed from fragments | Gene-level only | None in the core release | The released observed track is a nonlinear significance score; the predicted and contribution tracks are model outputs |
+| `zemke2023Conserved` | Yes, 20 published cell types per species | Yes, 20 published cell types per species | Hi-C and methylation | Chandelier-cell ATAC and RNA tracks were not published; do not treat them as failed required downloads |
+| `zemke2024Epigenetic` | Yes, released pseudobulks or targets reconstructed from fragments | Yes, released pseudobulk BigWigs, plus gene-level matrices | None in the core release | Some age-by-cell-type combinations are absent and require a validity mask rather than zero targets |
+
+All four studies therefore provide useful measured prediction targets, but only `zemke2023Conserved` and `zemke2024Epigenetic` provide released coordinate-resolved RNA tracks. For joint training, target transformations, genome assemblies, strand conventions, cell-group definitions, and missing-channel masks must be represented explicitly.
+
 ### `johansen2025Crossspecies`
 
 This is a cross-species basal-ganglia atlas for human, macaque, and marmoset. It is the source of the Allen Human Multiome Brain Atlas data used in the current fine-tuning work.
@@ -38,7 +51,7 @@ The repository covers adrenal gland, brain, eye, heart, liver, lung, muscle, ski
 | `mean_pred_corrected` | Bias-corrected accessibility predicted by ChromBPNet |
 | `mean_counts_contribs` | Base-resolution contribution scores for the ChromBPNet counts head, computed with Deep Learning Important FeaTures, DeepLIFT |
 
-This collection is useful for developmental and multi-organ sequence modeling. The observed track is a transformed significance signal rather than a depth-normalized coverage target, while the prediction and contribution tracks are model outputs. They should not be mixed as interchangeable supervision channels.
+This collection is useful for developmental and multi-organ sequence modeling. The observed track is a transformed significance signal rather than depth-normalized coverage, while the prediction and contribution tracks are model outputs. The raw fragment resources are the preferred source for constructing measured accessibility targets with a consistent normalization. The expression matrices support gene-level RNA supervision, not direct base-resolution RNA coverage.
 
 ### `zemke2023Conserved`
 
@@ -51,9 +64,11 @@ This study compares motor cortex across human, macaque, marmoset, and mouse. It 
 | Pseudobulk high-throughput chromosome conformation capture, Hi-C, maps | 20 | 20 | 20 | 20 | 80 |
 | Pseudobulk methylated-cytosine bedGraphs | 40 | 40 | 40 | 40 | 160 |
 
-The collection also contains 27 cell-expression H5AD matrices organized by species and sample. Its local README reports that chandelier-cell ATAC and ribonucleic-acid BigWigs failed to download for all four species, so those eight tracks should be treated as known omissions.
+The collection also contains 27 cell-expression H5AD matrices organized by species and sample. The published ATAC and RNA tracks use reads per kilobase per million mapped reads, RPKM, normalization. The WashU source directories contain exactly the 20 downloaded ATAC and 20 downloaded RNA tracks for each species; the attempted chandelier-cell URLs do not exist. The study reports that low-coverage cell types, including chandelier interneurons, were excluded from sequence-model training and evaluation. The eight absent chandelier-cell files are therefore unpublished targets rather than recoverable download failures.
 
-This is the preferred collection for studying conservation across modalities. Track names are aligned at the cell-type level, but coordinate systems, sequence references, and assay normalization remain species-specific.
+The local Gene Expression Omnibus accession GSE229169 matrices do contain chandelier-cell observations, gene counts, and sample-level ATAC peak counts. These permit derived gene-level RNA and peak-restricted ATAC pseudobulks, but not exact reconstruction of the missing genome-wide RPKM BigWigs. Such targets must be labeled as derived and should not be silently appended to the 20 published tracks. Exact whole-genome reconstruction would require reprocessing the raw sequencing reads with the original alignment and track-generation pipeline; low cell counts make that result less reliable. The recommended fix is to define the released ATAC/RNA panel as 20 cell types and remove the eight nonexistent URLs from required-download checks. Hi-C and methylation retain their published `Pvalb-ChC` channels.
+
+This is the preferred collection for studying conservation across modalities. Track names are aligned at the cell-type level, but coordinate systems, sequence references, assay normalization, and modality-specific cell-type availability remain species-specific. The source study and raw multiome accession are described in the [Nature article](https://www.nature.com/articles/s41586-023-06819-6) and [Gene Expression Omnibus GSE229169 record](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE229169).
 
 ### `zemke2024Epigenetic`
 
@@ -102,6 +117,6 @@ Generated statistics and web files should not be counted as independent biologic
 
 For the current Allen basal-ganglia work, use `johansen2025Crossspecies` human fragments plus the comprehensive human expression matrix when rebuilding ATAC targets. Use the released 60 human BigWigs as the reference baseline. The macaque and marmoset resources support joint training only after species-specific references and homologous genomic splits are configured.
 
-For broader cross-species modeling, `zemke2023Conserved` offers matched ATAC, ribonucleic-acid, methylation, and Hi-C modalities. For developmental breadth, `liu2026Multiomics` offers fetal multi-organ fragments and expression, but its released genomic tracks include transformed and model-derived signals. For aging, `zemke2024Epigenetic` offers donor-level human hippocampus fragments, expression, and age-stratified pseudobulks.
+For broader cross-species modeling, `zemke2023Conserved` offers matched ATAC, ribonucleic-acid, methylation, and Hi-C modalities. Use the 20-cell-type intersection for published ATAC/RNA supervision; either mask chandelier ATAC/RNA or exclude chandelier channels when comparing all modalities. For developmental breadth, `liu2026Multiomics` offers fetal multi-organ fragments and expression, but its released genomic tracks include transformed and model-derived signals. For aging, `zemke2024Epigenetic` offers donor-level human hippocampus fragments, expression, and age-stratified pseudobulks.
 
 Across all studies, compare native bin width, sparsity, normalization, assay transformation, genome assembly, cell grouping, and biological domain before combining targets. Similar file formats do not imply comparable numerical targets.
