@@ -379,6 +379,45 @@ def _gene_log_mse(prediction, targets, valid):
     )
 
 
+def _double_centered_correlation_loss(prediction, targets, observation_mask=None):
+    """Return one minus signed Pearson correlation after two-axis centering."""
+    prediction, targets = _align_prediction_and_targets(prediction, targets, observation_mask)
+    prediction = prediction.astype(jnp.float32)
+    targets = targets.astype(jnp.float32)
+    if observation_mask is None:
+        prediction = _maybe_bin_128bp_jax(prediction)
+        targets = _maybe_bin_128bp_jax(targets)
+        mask = jnp.ones(prediction.shape[:-1], dtype=jnp.float32)
+    else:
+        mask = observation_mask.astype(jnp.float32)
+        if mask.shape != targets.shape[:-1]:
+            raise ValueError(
+                f"Observation mask shape {mask.shape} does not match {targets.shape[:-1]}."
+            )
+
+    pred_matrix = prediction.reshape((-1, prediction.shape[-1]))
+    target_matrix = targets.reshape((-1, targets.shape[-1]))
+    row_mask = mask.reshape((-1, 1))
+    count = jnp.sum(row_mask)
+    num_tracks = prediction.shape[-1]
+
+    def center(values):
+        values = values * row_mask
+        track_mean = jnp.sum(values, axis=0, keepdims=True) / jnp.maximum(count, 1.0)
+        row_mean = jnp.mean(values, axis=1, keepdims=True)
+        grand_mean = jnp.sum(values) / jnp.maximum(count * num_tracks, 1.0)
+        return (values - track_mean - row_mean + grand_mean) * row_mask
+
+    pred_centered = center(pred_matrix)
+    target_centered = center(target_matrix)
+    covariance = jnp.sum(pred_centered * target_centered)
+    denominator = jnp.sqrt(
+        jnp.sum(jnp.square(pred_centered)) * jnp.sum(jnp.square(target_centered))
+    )
+    correlation = covariance / jnp.maximum(denominator, 1e-8)
+    return jnp.where((count > 0) & (denominator > 1e-8), 1.0 - correlation, 0.0)
+
+
 def _finalize_r2_stats(stats: Mapping[str, np.ndarray | float]) -> dict[str, float]:
     count = float(np.asarray(stats["count"]))
     sst = float(np.asarray(stats["sum_y2"]) - np.asarray(stats["sum_y"]) ** 2 / max(count, 1.0))
@@ -808,6 +847,22 @@ def train(
                     head_loss = (
                         spec.coverage_loss_weight * head_loss + spec.gene_loss_weight * gene_loss
                     )
+                    correlation_prediction = gene_prediction
+                    correlation_targets = gene_targets
+                    correlation_mask = gene_valid
+                else:
+                    correlation_prediction = predictions[head_name]
+                    correlation_targets = targets
+                    correlation_mask = None
+                if spec.double_centered_correlation_loss_weight > 0:
+                    head_loss = head_loss + (
+                        spec.double_centered_correlation_loss_weight
+                        * _double_centered_correlation_loss(
+                            correlation_prediction,
+                            correlation_targets,
+                            correlation_mask,
+                        )
+                    )
                 head_losses[head_name] = head_loss
                 if spec.gene_supervision_path is not None:
                     head_stats[head_name] = _r2_stats(gene_prediction, gene_targets, gene_valid)
@@ -872,11 +927,26 @@ def train(
                     + spec.gene_loss_weight
                     * _gene_log_mse(gene_prediction, gene_targets, gene_valid)
                 )
+                correlation_prediction = gene_prediction
+                correlation_targets = gene_targets
+                correlation_mask = gene_valid
                 head_stats[head_name] = _r2_stats(gene_prediction, gene_targets, gene_valid)
             else:
+                correlation_prediction = predictions[head_name]
+                correlation_targets = loss_targets
+                correlation_mask = None
                 head_stats[head_name] = _r2_stats(
                     inverse_prediction_for_metrics(head_name, predictions[head_name]),
                     raw_targets,
+                )
+            if spec.double_centered_correlation_loss_weight > 0:
+                head_loss = head_loss + (
+                    spec.double_centered_correlation_loss_weight
+                    * _double_centered_correlation_loss(
+                        correlation_prediction,
+                        correlation_targets,
+                        correlation_mask,
+                    )
                 )
             head_losses[head_name] = head_loss
         head_losses = jax.tree_util.tree_map(
@@ -1234,8 +1304,7 @@ def train(
                 )
                 for metric_name in metric_names:
                     values = [
-                        head_values[metric_name]
-                        for head_values in split_metrics["valid"].values()
+                        head_values[metric_name] for head_values in split_metrics["valid"].values()
                     ]
                     finite_values = [value for value in values if math.isfinite(value)]
                     if finite_values:

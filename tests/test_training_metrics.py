@@ -3,10 +3,32 @@ import jax
 import jax.numpy as jnp
 
 from alphagenome_ft.finetune.train import (
+    _double_centered_correlation_loss,
     _finalize_r2_stats,
     _gene_expression_prediction,
     _r2_stats,
 )
+
+
+def test_double_centered_correlation_loss_matches_metric_invariances():
+    targets = jnp.square(jnp.arange(24, dtype=jnp.float32)).reshape(2, 4, 3)
+    locus_offset = jnp.arange(4, dtype=jnp.float32).reshape(1, 4, 1)
+    track_offset = jnp.asarray([3.0, -2.0, 5.0]).reshape(1, 1, 3)
+    predictions = {"predictions_1bp": targets + locus_offset + track_offset}
+
+    loss = _double_centered_correlation_loss(predictions, targets)
+
+    np.testing.assert_allclose(loss, 0.0, atol=1e-6)
+
+
+def test_double_centered_correlation_loss_ignores_masked_rows():
+    targets = jnp.square(jnp.arange(18, dtype=jnp.float32)).reshape(1, 6, 3)
+    predictions = targets.at[:, -2:, :].set(-1000.0)
+    mask = jnp.asarray([[True, True, True, True, False, False]])
+
+    loss = _double_centered_correlation_loss(predictions, targets, mask)
+
+    np.testing.assert_allclose(loss, 0.0, atol=1e-6)
 
 
 def test_r2_stats_are_one_for_perfect_predictions():

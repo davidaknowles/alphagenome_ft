@@ -78,6 +78,7 @@ class HeadSpec:
     gene_supervision_path: Path | None = None
     gene_loss_weight: float = 0.0
     coverage_loss_weight: float = 1.0
+    double_centered_correlation_loss_weight: float = 0.0
     target_transform_path: Path | None = None
 
 
@@ -333,6 +334,11 @@ def prepare_head_specs(
         gene_supervision_path = None
         gene_loss_weight = 0.0
         coverage_loss_weight = 1.0
+        double_centered_correlation_loss_weight = float(
+            entry.get("double_centered_correlation_loss_weight", 0.0)
+        )
+        if double_centered_correlation_loss_weight < 0:
+            raise ValueError("Double-centered correlation loss weight must be non-negative.")
         if gene_supervision is not None:
             if source != "predefined":
                 raise ValueError(
@@ -363,6 +369,9 @@ def prepare_head_specs(
                     source="custom",
                     kind=None,
                     tracks=tracks,
+                    double_centered_correlation_loss_weight=(
+                        double_centered_correlation_loss_weight
+                    ),
                     target_transform_path=target_transform_path,
                 )
             )
@@ -414,6 +423,9 @@ def prepare_head_specs(
                     gene_supervision_path=gene_supervision_path,
                     gene_loss_weight=gene_loss_weight,
                     coverage_loss_weight=coverage_loss_weight,
+                    double_centered_correlation_loss_weight=(
+                        double_centered_correlation_loss_weight
+                    ),
                     target_transform_path=target_transform_path,
                 )
             )

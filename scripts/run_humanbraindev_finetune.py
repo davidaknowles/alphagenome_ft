@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import dataclasses
 import json
 import os
 from pathlib import Path
@@ -247,6 +248,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--max-train-steps", type=_positive_int_or_none, default=None)
     parser.add_argument("--learning-rate", type=float, default=1e-3)
     parser.add_argument("--weight-decay", type=float, default=1e-4)
+    parser.add_argument(
+        "--double-centered-correlation-loss-weight",
+        type=float,
+        default=None,
+        help="Override every head's optional one-minus double-centered Pearson loss weight.",
+    )
     parser.add_argument("--backbone-lora", action="store_true")
     parser.add_argument("--lora-rank", type=int, default=16)
     parser.add_argument("--lora-alpha", type=float, default=16.0)
@@ -536,6 +543,18 @@ def main() -> None:
         targets_config,
         organism=None if species_entries is not None else args.organism,
     )
+    if args.double_centered_correlation_loss_weight is not None:
+        if args.double_centered_correlation_loss_weight < 0:
+            raise ValueError("Double-centered correlation loss weight must be non-negative.")
+        head_specs = [
+            dataclasses.replace(
+                spec,
+                double_centered_correlation_loss_weight=(
+                    args.double_centered_correlation_loss_weight
+                ),
+            )
+            for spec in head_specs
+        ]
     validate_head_specs(head_specs)
     register_predefined_heads(head_specs)
 
@@ -557,6 +576,16 @@ def main() -> None:
             species_specs = prepare_head_specs(
                 load_targets_config(entry["targets_config"]), organism=None
             )
+            if args.double_centered_correlation_loss_weight is not None:
+                species_specs = [
+                    dataclasses.replace(
+                        spec,
+                        double_centered_correlation_loss_weight=(
+                            args.double_centered_correlation_loss_weight
+                        ),
+                    )
+                    for spec in species_specs
+                ]
             validate_head_specs(species_specs)
             signature = [
                 (
