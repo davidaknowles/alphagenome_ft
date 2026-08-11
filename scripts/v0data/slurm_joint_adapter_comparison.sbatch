@@ -38,6 +38,11 @@ if [[ -n "${WANDB_PROJECT:-}" ]]; then
   EXTRA_ARGS+=(--wandb-project "$WANDB_PROJECT" --wandb-run-name "$run_name")
   [[ -n "${WANDB_ENTITY:-}" ]] && EXTRA_ARGS+=(--wandb-entity "$WANDB_ENTITY")
 fi
+if [[ -n "${CORRELATION_LOSS_WEIGHT:-}" ]]; then
+  EXTRA_ARGS+=(
+    --double-centered-correlation-loss-weight "${CORRELATION_LOSS_WEIGHT}"
+  )
+fi
 
 "${HOME}/venv/jax/bin/python" scripts/run_humanbraindev_finetune.py \
   --targets-config "$targets" \
