@@ -87,9 +87,11 @@ def test_locon_does_not_change_shared_lora_or_reserved_head_initialization():
         target_names=("target_block",),
     )
 
-    def initialize(include_locon):
+    def initialize_and_apply(include_locon):
         def forward(x):
-            head_rng = hk.next_rng_key()
+            head_rng_context = (
+                hk.with_rng(hk.next_rng_key()) if hk.running_init() else nullcontext()
+            )
             with patch_haiku_linear(lora_config):
                 locon_context = (
                     patch_haiku_locon(locon_config) if include_locon else nullcontext()
@@ -101,17 +103,20 @@ def test_locon_does_not_change_shared_lora_or_reserved_head_initialization():
                         name="target_block",
                     )(x, is_training=True)
                     trunk = hk.Linear(3, with_bias=False, name="q_layer")(trunk)
-            with hk.with_rng(head_rng), hk.name_scope("head"):
+            with head_rng_context, hk.name_scope("head"):
                 return hk.Linear(2, with_bias=False, name="output")(trunk)
 
         transformed = hk.transform_with_state(forward)
-        return transformed.init(
+        x = jnp.ones((1, 8, 3), dtype=jnp.bfloat16)
+        params, state = transformed.init(
             jax.random.PRNGKey(42),
-            jnp.ones((1, 8, 3), dtype=jnp.bfloat16),
-        )[0]
+            x,
+        )
+        output, _ = transformed.apply(params, state, None, x)
+        return params, output
 
-    lora_params = initialize(False)
-    combo_params = initialize(True)
+    lora_params, lora_output = initialize_and_apply(False)
+    combo_params, combo_output = initialize_and_apply(True)
     assert jnp.array_equal(
         lora_params["q_layer"]["lora_a"], combo_params["q_layer"]["lora_a"]
     )
@@ -121,6 +126,7 @@ def test_locon_does_not_change_shared_lora_or_reserved_head_initialization():
     assert jnp.array_equal(
         lora_params["head/output"]["w"], combo_params["head/output"]["w"]
     )
+    assert jnp.array_equal(lora_output, combo_output)
 
 
 def test_lora_precision_config_controls_parameter_storage_dtype():

@@ -34,6 +34,7 @@ and embeddings.
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
+from contextlib import nullcontext
 import enum
 import json
 import os
@@ -2423,7 +2424,9 @@ def create_model_with_heads(
         @hk.transform_with_state
         def _forward_with_custom_heads(dna_sequence, organism_index):
             """Forward pass with encoder output only (no transformer/decoder)."""
-            head_rng = hk.next_rng_key()
+            head_rng_context = (
+                hk.with_rng(hk.next_rng_key()) if hk.running_init() else nullcontext()
+            )
             # Apply mixed precision policies to encoder
             with hk.mixed_precision.push_policy(model_lib.AlphaGenome, policy):
                 with hk.mixed_precision.push_policy(model_lib.SequenceEncoder, policy):
@@ -2447,7 +2450,7 @@ def create_model_with_heads(
             # Run heads (outside alphagenome scope)
             predictions = {}
             num_organisms = len(metadata)
-            with hk.with_rng(head_rng), hk.name_scope('head'):
+            with head_rng_context, hk.name_scope('head'):
                 for head_name in normalized_heads:
                     head_config = custom_heads_module.get_registered_head_config(head_name)
                     if custom_heads_module.is_custom_config(head_config):
@@ -2473,7 +2476,9 @@ def create_model_with_heads(
         @hk.transform_with_state
         def _forward_with_custom_heads(dna_sequence, organism_index):
             """Forward pass with requested heads only."""
-            head_rng = hk.next_rng_key()
+            head_rng_context = (
+                hk.with_rng(hk.next_rng_key()) if hk.running_init() else nullcontext()
+            )
             # Create AlphaGenome trunk (encoder, transformer, decoder)
             # This will use pretrained params for the backbone
             # Note: AlphaGenome always creates standard heads based on metadata,
@@ -2500,7 +2505,7 @@ def create_model_with_heads(
             # Run heads
             # Get number of organisms from metadata (should be 2: human and mouse)
             num_organisms = len(metadata)
-            with hk.with_rng(head_rng), hk.name_scope('head'):
+            with head_rng_context, hk.name_scope('head'):
                 for head_name in normalized_heads:
                     head_config = custom_heads_module.get_registered_head_config(head_name)
                     if custom_heads_module.is_custom_config(head_config):
