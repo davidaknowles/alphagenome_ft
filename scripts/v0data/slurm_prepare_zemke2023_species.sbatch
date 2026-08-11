@@ -17,6 +17,5 @@ export PYTHONPATH="$PWD:${PYTHONPATH:-}"
 "${HOME}/venv/jax/bin/python" scripts/v0data/prepare_zemke2023_species.py \
   --human-fasta /gpfs/commons/home/daknowles/knowles_lab/index/hg38/hg38.fa \
   --macaque-fasta outputs/allen_brain_multiome_multispecies_v1/references/macaque.fa \
-  --marmoset-fasta outputs/allen_brain_multiome_multispecies_v1/references/marmoset.fa \
   --targets-root outputs/v0data \
   --output-dir outputs/v0data/zemke2023-species

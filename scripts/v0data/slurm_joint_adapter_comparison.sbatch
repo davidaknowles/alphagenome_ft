@@ -22,6 +22,7 @@ STRATEGIES=(lora lora+locon)
 strategy="${STRATEGIES[$SLURM_ARRAY_TASK_ID]}"
 targets="${TARGETS_CONFIG:-outputs/v0data/${DATASET}/targets.json}"
 run_name="${DATASET}_${strategy//+/_}${RUN_SUFFIX:-}"
+canonical_chroms=chr1,chr2,chr3,chr4,chr5,chr6,chr7,chr8,chr9,chr10,chr11,chr12,chr13,chr14,chr15,chr16,chr17,chr18,chr19,chr20,chr21,chr22,chrX
 test -f "$targets"
 
 EXTRA_ARGS=(--num-epochs "${NUM_EPOCHS:-100}")
@@ -36,6 +37,7 @@ fi
 "${HOME}/venv/jax/bin/python" scripts/run_humanbraindev_finetune.py \
   --targets-config "$targets" \
   --fasta-path "${FASTA_PATH:-/gpfs/commons/home/daknowles/knowles_lab/index/hg38/hg38.fa}" \
+  --include-chroms "$canonical_chroms" \
   --checkpoint-path "${CHECKPOINT_PATH:-/gpfs/commons/home/daknowles/.cache/kagglehub/models/google/alphagenome/jax/all_folds/1}" \
   --checkpoint-dir "checkpoints/v0data/${run_name}" \
   --split-source chromosome \

@@ -209,7 +209,9 @@ def main() -> None:
             "valid_chroms": "chr8",
             "test_chroms": "chr9",
             "exclude_chroms": "chrM,chrY",
-            "include_chroms": "",
+            "include_chroms": ",".join(
+                [f"chr{chromosome}" for chromosome in range(1, 23)] + ["chrX"]
+            ),
         },
         "macaque": {
             "gtf": genomes / "Macaca_mulatta.Mmul_10.115.gtf.gz",
@@ -233,7 +235,9 @@ def main() -> None:
             "valid_chroms": "chr8",
             "test_chroms": "chr9",
             "exclude_chroms": "chrM,chrY",
-            "include_chroms": "",
+            "include_chroms": ",".join(
+                [f"chr{chromosome}" for chromosome in range(1, 23)] + ["chrX"]
+            ),
         },
     }
 

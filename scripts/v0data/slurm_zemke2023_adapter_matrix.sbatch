@@ -23,12 +23,22 @@ species="${SPECIES[$SLURM_ARRAY_TASK_ID]}"
 strategy="${STRATEGIES[$SLURM_ARRAY_TASK_ID]}"
 organism=HOMO_SAPIENS
 case "$species" in
-  human) fasta=/gpfs/commons/home/daknowles/knowles_lab/index/hg38/hg38.fa ;;
-  macaque) fasta=outputs/v0data/zemke2023-species/references/rheMac10.fa ;;
-  marmoset) fasta=outputs/allen_brain_multiome_multispecies_v1/references/marmoset.fa ;;
+  human)
+    fasta=/gpfs/commons/home/daknowles/knowles_lab/index/hg38/hg38.fa
+    include_chroms=chr1,chr2,chr3,chr4,chr5,chr6,chr7,chr8,chr9,chr10,chr11,chr12,chr13,chr14,chr15,chr16,chr17,chr18,chr19,chr20,chr21,chr22,chrX
+    ;;
+  macaque)
+    fasta=outputs/v0data/zemke2023-species/references/rheMac10.fa
+    include_chroms=chr1,chr2,chr3,chr4,chr5,chr6,chr7,chr8,chr9,chr10,chr11,chr12,chr13,chr14,chr15,chr16,chr17,chr18,chr19,chr20,chrX
+    ;;
+  marmoset)
+    fasta=outputs/v0data/zemke2023-species/references/calJac3.fa
+    include_chroms=chr1,chr2,chr3,chr4,chr5,chr6,chr7,chr8,chr9,chr10,chr11,chr12,chr13,chr14,chr15,chr16,chr17,chr18,chr19,chr20,chr21,chr22,chrX
+    ;;
   mouse)
     fasta=outputs/v0data/zemke2023-species/references/mm10.fa
     organism=MUS_MUSCULUS
+    include_chroms=chr1,chr2,chr3,chr4,chr5,chr6,chr7,chr8,chr9,chr10,chr11,chr12,chr13,chr14,chr15,chr16,chr17,chr18,chr19,chrX
     ;;
 esac
 targets="outputs/v0data/zemke2023-${species}/targets.json"
@@ -49,6 +59,7 @@ fi
   --targets-config "$targets" \
   --fasta-path "$fasta" \
   --organism "$organism" \
+  --include-chroms "$include_chroms" \
   --checkpoint-path "${CHECKPOINT_PATH:-/gpfs/commons/home/daknowles/.cache/kagglehub/models/google/alphagenome/jax/all_folds/1}" \
   --checkpoint-dir "checkpoints/v0data/${run_name}" \
   --split-source chromosome \

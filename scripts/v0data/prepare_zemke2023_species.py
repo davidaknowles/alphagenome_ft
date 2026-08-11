@@ -21,15 +21,18 @@ if str(REPO_ROOT) not in sys.path:
 
 from alphagenome_ft.finetune import build_fasta_index
 
-MOUSE_FASTA_URL = "https://hgdownload.soe.ucsc.edu/goldenPath/mm10/bigZips/mm10.fa.gz"
+UCSC_FASTA_URLS = {
+    "marmoset": "https://hgdownload.soe.ucsc.edu/goldenPath/calJac3/bigZips/calJac3.fa.gz",
+    "mouse": "https://hgdownload.soe.ucsc.edu/goldenPath/mm10/bigZips/mm10.fa.gz",
+}
 SPECIES = ("human", "macaque", "marmoset", "mouse")
+CANONICAL_CHROMOSOME_PATTERN = re.compile(r"^chr(?:[1-9][0-9]*|X)$")
 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--human-fasta", required=True, type=Path)
     parser.add_argument("--macaque-fasta", required=True, type=Path)
-    parser.add_argument("--marmoset-fasta", required=True, type=Path)
     parser.add_argument("--targets-root", required=True, type=Path)
     parser.add_argument("--output-dir", required=True, type=Path)
     return parser.parse_args()
@@ -78,7 +81,7 @@ def materialize_fasta(
     return destination
 
 
-def download_mouse_fasta(destination: Path) -> Path:
+def download_fasta(url: str, destination: Path) -> Path:
     if destination.exists():
         build_fasta_index(destination)
         return destination
@@ -87,7 +90,7 @@ def download_mouse_fasta(destination: Path) -> Path:
     if not compressed.exists():
         temporary_download = compressed.with_name(f"{compressed.name}.tmp-{os.getpid()}")
         with (
-            urllib.request.urlopen(MOUSE_FASTA_URL) as response,
+            urllib.request.urlopen(url) as response,
             temporary_download.open("wb") as output,
         ):
             shutil.copyfileobj(response, output, length=16 * 1024 * 1024)
@@ -95,23 +98,38 @@ def download_mouse_fasta(destination: Path) -> Path:
     return materialize_fasta(compressed, destination)
 
 
-def verify_bigwig_reference(targets_path: Path, fasta_path: Path) -> None:
+def verify_bigwig_reference(targets_path: Path, fasta_path: Path) -> list[str]:
     payload = json.loads(targets_path.read_text())
-    first_target = payload["heads"][0]["targets"][0]
-    with pyBigWig.open(first_target["path"]) as bigwig:
-        target_chromosomes = bigwig.chroms()
     fasta_chromosomes = build_fasta_index(fasta_path)
-    missing = sorted(set(target_chromosomes) - set(fasta_chromosomes))
-    mismatched = sorted(
-        chromosome
-        for chromosome in set(target_chromosomes) & set(fasta_chromosomes)
-        if target_chromosomes[chromosome] != fasta_chromosomes[chromosome]
+    modeled_chromosomes = sorted(
+        (
+            chromosome
+            for chromosome in fasta_chromosomes
+            if CANONICAL_CHROMOSOME_PATTERN.match(chromosome)
+        ),
+        key=lambda chromosome: (
+            chromosome == "chrX",
+            int(chromosome[3:]) if chromosome[3:].isdigit() else 0,
+        ),
     )
-    if missing or mismatched:
-        raise ValueError(
-            f"{targets_path} does not match {fasta_path}; missing={missing[:10]}, "
-            f"size mismatches={mismatched[:10]}."
-        )
+    if not {"chr8", "chr9"}.issubset(modeled_chromosomes):
+        raise ValueError(f"{fasta_path} lacks the required chr8 and chr9 holdouts.")
+    for head in payload["heads"]:
+        for target in head["targets"]:
+            with pyBigWig.open(target["path"]) as bigwig:
+                target_chromosomes = bigwig.chroms()
+            missing = sorted(set(modeled_chromosomes) - set(target_chromosomes))
+            mismatched = sorted(
+                chromosome
+                for chromosome in set(modeled_chromosomes) & set(target_chromosomes)
+                if target_chromosomes[chromosome] != fasta_chromosomes[chromosome]
+            )
+            if missing or mismatched:
+                raise ValueError(
+                    f"{target['path']} does not match {fasta_path} on modeled chromosomes; "
+                    f"missing={missing[:10]}, size mismatches={mismatched[:10]}."
+                )
+    return modeled_chromosomes
 
 
 def pooled_target_configs(targets_root: Path, output_dir: Path) -> dict[str, Path]:
@@ -156,12 +174,15 @@ def main() -> None:
             references / "rheMac10.fa",
             rename_ncbi_chromosomes=True,
         ),
-        "marmoset": args.marmoset_fasta.expanduser().resolve(),
-        "mouse": download_mouse_fasta(references / "mm10.fa"),
+        "marmoset": download_fasta(UCSC_FASTA_URLS["marmoset"], references / "calJac3.fa"),
+        "mouse": download_fasta(UCSC_FASTA_URLS["mouse"], references / "mm10.fa"),
     }
     target_paths = pooled_target_configs(args.targets_root.expanduser().resolve(), output_dir)
+    modeled_chromosomes = {}
     for species in SPECIES:
-        verify_bigwig_reference(target_paths[species], fasta_paths[species])
+        modeled_chromosomes[species] = verify_bigwig_reference(
+            target_paths[species], fasta_paths[species]
+        )
     payload = {
         "species": [
             {
@@ -172,7 +193,7 @@ def main() -> None:
                 "valid_chroms": "chr8",
                 "test_chroms": "chr9",
                 "exclude_chroms": "chrM,chrY",
-                "include_chroms": "",
+                "include_chroms": ",".join(modeled_chromosomes[species]),
             }
             for species in SPECIES
         ],

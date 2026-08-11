@@ -238,6 +238,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--valid-chroms", default="chr8")
     parser.add_argument("--test-chroms", default="chr9")
     parser.add_argument("--exclude-chroms", default="chrM,chrY")
+    parser.add_argument("--include-chroms", default="")
     parser.add_argument("--limit-train", type=_positive_int_or_none, default=None)
     parser.add_argument("--limit-valid", type=_positive_int_or_none, default=None)
     parser.add_argument("--limit-test", type=_positive_int_or_none, default=None)
@@ -637,6 +638,7 @@ def main() -> None:
             limit_train=args.limit_train,
             limit_valid=args.limit_valid,
             limit_test=args.limit_test,
+            include_chroms=parse_chrom_set(args.include_chroms) or None,
         )
 
     if species_entries is None:
