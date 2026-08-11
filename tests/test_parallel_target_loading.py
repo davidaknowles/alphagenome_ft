@@ -53,6 +53,7 @@ def test_parallel_batch_reads_each_track_across_windows(monkeypatch, tmp_path):
             tracks=[TrackInfo("a", tmp_path / "a.bw"), TrackInfo("b", tmp_path / "b.bw")],
         )
     ]
+    module._coverage_head_specs = tuple(module._head_specs)
     module._gene_supervisions = {}
     module._max_genes = {}
     windows = [
@@ -84,3 +85,46 @@ def test_parallel_batch_reads_each_track_across_windows(monkeypatch, tmp_path):
             dtype=np.float32,
         ),
     )
+
+
+def test_parallel_batch_omits_gene_only_coverage_targets(monkeypatch, tmp_path):
+    monkeypatch.setattr(data_module.fasta_lib, "FastaExtractor", _FakeExtractor)
+    monkeypatch.setattr(data_module.one_hot_encoder, "DNAOneHotEncoder", _FakeEncoder)
+    atac = HeadSpec(
+        head_id="atac",
+        source="predefined",
+        kind="atac",
+        tracks=[TrackInfo("atac", tmp_path / "atac.bw")],
+    )
+    rna = HeadSpec(
+        head_id="rna",
+        source="predefined",
+        kind="rna_seq",
+        tracks=[TrackInfo("rna (+)", tmp_path / "rna.bw", "+")],
+        gene_supervision_path=tmp_path / "genes.npz",
+        gene_loss_weight=1.0,
+        coverage_loss_weight=0.0,
+    )
+    module = object.__new__(BigWigDataModule)
+    module._fasta_path = tmp_path / "reference.fa"
+    module._encoder = _FakeEncoder()
+    module._head_specs = [atac, rna]
+    module._coverage_head_specs = (atac,)
+    module._gene_supervisions = {}
+    module._max_genes = {}
+    windows = [SimpleNamespace(chromosome="chr1", start=0, end=4)]
+
+    with (
+        ThreadPoolExecutor(max_workers=1) as window_executor,
+        ThreadPoolExecutor(max_workers=1) as target_executor,
+    ):
+        batch = module._make_batch_parallel(
+            [0],
+            windows,
+            {"atac": [_FakeBigWig(10)]},
+            window_executor,
+            target_executor,
+        )
+
+    assert "targets_atac" in batch
+    assert "targets_rna" not in batch

@@ -855,19 +855,22 @@ def train(
             head_losses = {}
             head_stats = {}
             for head_name in head_names:
-                targets = batch[f"targets_{head_name}"]
-                transform = target_transforms.get(head_name)
-                if transform is not None:
-                    targets = transform.forward_jax(targets)
-                head_loss_dict = loss_fns[head_name](
-                    predictions[head_name],
-                    {
-                        "targets": targets,
-                        "organism_index": batch["organism_index"],
-                    },
-                )
-                head_loss = head_loss_dict["loss"]
                 spec = head_specs_by_name[head_name]
+                uses_coverage = spec.gene_supervision_path is None or spec.coverage_loss_weight > 0
+                if uses_coverage:
+                    targets = batch[f"targets_{head_name}"]
+                    transform = target_transforms.get(head_name)
+                    if transform is not None:
+                        targets = transform.forward_jax(targets)
+                    head_loss = loss_fns[head_name](
+                        predictions[head_name],
+                        {
+                            "targets": targets,
+                            "organism_index": batch["organism_index"],
+                        },
+                    )["loss"]
+                else:
+                    head_loss = jnp.asarray(0.0, dtype=jnp.float32)
                 if spec.gene_supervision_path is not None:
                     gene_prediction = _gene_expression_prediction(
                         predictions[head_name], batch, head_name
@@ -933,20 +936,23 @@ def train(
         head_losses = {}
         head_stats = {}
         for head_name in head_names:
-            raw_targets = batch[f"targets_{head_name}"]
-            transform = target_transforms.get(head_name)
-            loss_targets = (
-                transform.forward_jax(raw_targets) if transform is not None else raw_targets
-            )
-            loss_dict = loss_fns[head_name](
-                predictions[head_name],
-                {
-                    "targets": loss_targets,
-                    "organism_index": batch["organism_index"],
-                },
-            )
             spec = head_specs_by_name[head_name]
-            head_loss = loss_dict["loss"]
+            uses_coverage = spec.gene_supervision_path is None or spec.coverage_loss_weight > 0
+            if uses_coverage:
+                raw_targets = batch[f"targets_{head_name}"]
+                transform = target_transforms.get(head_name)
+                loss_targets = (
+                    transform.forward_jax(raw_targets) if transform is not None else raw_targets
+                )
+                head_loss = loss_fns[head_name](
+                    predictions[head_name],
+                    {
+                        "targets": loss_targets,
+                        "organism_index": batch["organism_index"],
+                    },
+                )["loss"]
+            else:
+                head_loss = jnp.asarray(0.0, dtype=jnp.float32)
             if spec.gene_supervision_path is not None:
                 gene_prediction = _gene_expression_prediction(
                     predictions[head_name], batch, head_name

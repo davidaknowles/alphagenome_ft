@@ -1063,7 +1063,16 @@ class BigWigDataModule:
             raise ValueError(f"target_workers must be non-negative, got {target_workers}.")
         if window_workers < 0:
             raise ValueError(f"window_workers must be non-negative, got {window_workers}.")
-        filtered_intervals = self._filter_intervals_by_bigwig_chromosomes(intervals, head_specs)
+        self._coverage_head_specs = tuple(
+            spec
+            for spec in head_specs
+            if spec.gene_supervision_path is None or spec.coverage_loss_weight > 0
+        )
+        filtered_intervals = (
+            self._filter_intervals_by_bigwig_chromosomes(intervals, self._coverage_head_specs)
+            if self._coverage_head_specs
+            else {split: list(values) for split, values in intervals.items()}
+        )
         if not filtered_intervals.get("train"):
             raise ValueError(
                 "No training intervals remain after filtering to chromosomes present in all BigWigs."
@@ -1093,10 +1102,10 @@ class BigWigDataModule:
             WindowedTargetCache(
                 target_cache_dir,
                 intervals=self._intervals,
-                head_specs=self._head_specs,
+                head_specs=self._coverage_head_specs,
                 dtype=target_cache_dtype,
             )
-            if target_cache_dir is not None
+            if target_cache_dir is not None and self._coverage_head_specs
             else None
         )
 
@@ -1184,7 +1193,7 @@ class BigWigDataModule:
             )
             head_handles: dict[str, list[pyBigWig.pyBigWig]] = {}
             if target_cache_arrays is None:
-                for spec in self._head_specs:
+                for spec in self._coverage_head_specs:
                     handles = []
                     for track in spec.tracks:
                         handles.append(stack.enter_context(pyBigWig.open(str(track.path))))
@@ -1264,7 +1273,9 @@ class BigWigDataModule:
         target_cache_arrays: Mapping[str, np.ndarray] | None = None,
     ) -> dict[str, np.ndarray]:
         sequences = []
-        targets: dict[str, list[np.ndarray]] = {spec.head_id: [] for spec in self._head_specs}
+        targets: dict[str, list[np.ndarray]] = {
+            spec.head_id: [] for spec in self._coverage_head_specs
+        }
 
         for idx in batch_indices:
             window = windows[idx]
@@ -1273,7 +1284,7 @@ class BigWigDataModule:
             sequences.append(encoded)
 
             seq_len = encoded.shape[0]
-            for spec in self._head_specs:
+            for spec in self._coverage_head_specs:
                 if target_cache_arrays is not None:
                     channel_arrays = target_cache_arrays[spec.head_id][idx]
                     targets[spec.head_id].append(np.asarray(channel_arrays))
@@ -1350,8 +1361,10 @@ class BigWigDataModule:
 
         sequences = list(window_executor.map(build_sequence, batch_indices))
         sequence_length = sequences[0].shape[0]
-        targets: dict[str, list[np.ndarray]] = {spec.head_id: [] for spec in self._head_specs}
-        for spec in self._head_specs:
+        targets: dict[str, list[np.ndarray]] = {
+            spec.head_id: [] for spec in self._coverage_head_specs
+        }
+        for spec in self._coverage_head_specs:
             if target_cache_arrays is not None:
                 targets[spec.head_id] = [
                     np.asarray(target_cache_arrays[spec.head_id][idx]) for idx in batch_indices
