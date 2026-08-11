@@ -45,6 +45,17 @@ def test_double_centered_correlation_loss_ignores_masked_rows():
     np.testing.assert_allclose(loss, 0.0, atol=1e-6)
 
 
+def test_double_centered_correlation_loss_has_finite_gradient_without_variance():
+    prediction = jnp.ones((2, 4, 3), dtype=jnp.float32)
+    targets = jnp.ones((2, 4, 3), dtype=jnp.float32)
+
+    loss, gradient = jax.value_and_grad(_double_centered_correlation_loss)(prediction, targets)
+
+    assert loss == 0
+    assert np.all(np.isfinite(gradient))
+    np.testing.assert_array_equal(gradient, np.zeros_like(gradient))
+
+
 def test_r2_stats_are_one_for_perfect_predictions():
     targets = jnp.asarray([[[1.0, 3.0], [2.0, 4.0]]])
     predictions = {"predictions_1bp": targets}

@@ -411,11 +411,12 @@ def _double_centered_correlation_loss(prediction, targets, observation_mask=None
     pred_centered = center(pred_matrix)
     target_centered = center(target_matrix)
     covariance = jnp.sum(pred_centered * target_centered)
-    denominator = jnp.sqrt(
-        jnp.sum(jnp.square(pred_centered)) * jnp.sum(jnp.square(target_centered))
-    )
-    correlation = covariance / jnp.maximum(denominator, 1e-8)
-    return jnp.where((count > 0) & (denominator > 1e-8), 1.0 - correlation, 0.0)
+    pred_sum_squares = jnp.sum(jnp.square(pred_centered))
+    target_sum_squares = jnp.sum(jnp.square(target_centered))
+    denominator = jnp.sqrt(jnp.maximum(pred_sum_squares * target_sum_squares, 1e-16))
+    correlation = covariance / denominator
+    has_variance = (pred_sum_squares > 1e-8) & (target_sum_squares > 1e-8)
+    return jnp.where((count > 0) & has_variance, 1.0 - correlation, 0.0)
 
 
 def _finalize_r2_stats(stats: Mapping[str, np.ndarray | float]) -> dict[str, float]:
