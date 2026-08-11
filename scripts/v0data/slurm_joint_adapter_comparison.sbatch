@@ -21,7 +21,11 @@ export MPLCONFIGDIR="${MPLCONFIGDIR:-/tmp/matplotlib-${USER}}"
 : "${DATASET:?Set DATASET to the target dataset name}"
 STRATEGIES=(lora lora+locon)
 strategy="${STRATEGIES[$SLURM_ARRAY_TASK_ID]}"
-targets="${TARGETS_CONFIG:-outputs/v0data/${DATASET}/targets.json}"
+default_targets="outputs/v0data/${DATASET}/targets.json"
+if [[ "$DATASET" == "liu-hdma" ]]; then
+  default_targets="outputs/v0data/liu-hdma/joint/targets.json"
+fi
+targets="${TARGETS_CONFIG:-$default_targets}"
 run_name="${DATASET}_${strategy//+/_}${RUN_SUFFIX:-}"
 canonical_chroms=chr1,chr2,chr3,chr4,chr5,chr6,chr7,chr8,chr9,chr10,chr11,chr12,chr13,chr14,chr15,chr16,chr17,chr18,chr19,chr20,chr21,chr22,chrX
 test -f "$targets"

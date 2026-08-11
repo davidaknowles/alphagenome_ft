@@ -28,6 +28,8 @@ The full AlphaGenome initialization audit passed on the HDA head. All 54 head pa
 
 Final adapter comparisons are collated from each run's `metrics.jsonl`. One epoch is selected per run by the mean validation signed double-centered Pearson correlation across all heads, and every per-head validation and test value is reported from that same epoch. This preserves the joint checkpoint-selection contract and avoids selecting separate favorable epochs for ATAC and RNA.
 
+The Liu preparation keeps its target manifest with the generated exon RNA tracks and gene-level supervision under `outputs/v0data/liu-hdma/joint`. The generic joint launcher resolves this dataset-specific layout automatically; without that mapping it would look for a nonexistent parent-level manifest and fail before model construction.
+
 ## GRR prediction-target audit
 
 Excluding the Encyclopedia of DNA Elements collection, all four single-cell Genomic Resource Repository, GRR, studies contain experimentally measured targets suitable for some form of sequence-model supervision. `johansen2025Crossspecies` has released assay for transposase-accessible chromatin, ATAC, BigWigs and raw fragments, while its RNA measurements are gene-level. `liu2026Multiomics` has raw ATAC fragments and gene-level RNA; its released observed BigWig is a Model-based Analysis of ChIP-Seq version 2 significance transformation, and its other two BigWigs are ChromBPNet predictions and Deep Learning Important FeaTures attributions rather than assay targets. `zemke2023Conserved` has coordinate-resolved ATAC, RNA, high-throughput chromosome conformation capture, and methylation targets. `zemke2024Epigenetic` has coordinate-resolved ATAC and RNA targets, with missing age-by-cell-type combinations that require masks.
