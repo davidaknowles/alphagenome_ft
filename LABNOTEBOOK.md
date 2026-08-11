@@ -28,6 +28,14 @@ With signed-correlation model selection and patience 3, the 100 bp-smoothed run 
 
 A 128 bp-only output head was also exercised but not retained. It requires a coarse pooled-target metric that is not directly comparable with base-resolution fidelity, and its training path was input-bound and severalfold slower than the base-resolution setup. The run was stopped after confirming finite optimization rather than spending further compute on a dominated strategy.
 
+### Fragment-level reconstruction
+
+The managed Allen collection already contains the full human ATAC fragment export, 204 tabix-indexed five-column fragment files with per-cell whole-genome fragment-count summaries. The accompanying comprehensive H5AD contains 1,034,819 observation identifiers and their 60 `Group` assignments. Fragment barcodes join directly to the H5AD observation index, so reconstructing pseudobulks does not require downloading the source H5AD matrices.
+
+The reconstruction streams each chromosome independently and accumulates native 100 bp targets. Shifted-insertion SPMR places the two Tn5 cut sites at fragment start +4 bp and fragment end -5 bp and divides bin counts by the group's whole-genome fragments in millions. Coverage SPMR accumulates exact fragment-covered bases, including partial bins, divides by effective bin width, and then divides by whole-genome fragments in millions.
+
+The full chr8 pilot processed 1,831,505,568 records with no unmatched cell identifiers. Across eight 131 kb windows and all 60 groups, the released tracks had mean 0.0499, RMS 0.2156, and zero fraction 0.2563. Shifted-insertion SPMR had mean 0.0533, RMS 0.2013, zero fraction 0.2576, ordinary Pearson (R=0.9619), and double-centered (R=0.9610). Coverage SPMR had mean 0.0495, RMS 0.1522, zero fraction 0.2041, ordinary Pearson (R=0.6997), and double-centered (R=0.6465). The shifted-insertion definition closely recovers the released signal, while coverage represents a smoother alternative target rather than the release pipeline.
+
 ## Model and fine-tuning components
 
 AlphaGenome uses a convolutional encoder, transformer tower, decoder, and assay-specific genomic output heads. The current Allen Brain Multiome experiment trains two new heads together with LoRA adapters on linear layers and LoCon adapters on selected convolutions. Frozen backbone parameters are stored in bfloat16, while adapter and head optimization remains compatible with bfloat16 forward compute.

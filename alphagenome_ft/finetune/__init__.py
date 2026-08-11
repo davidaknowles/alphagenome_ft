@@ -34,6 +34,11 @@ from alphagenome_ft.finetune.target_transforms import (
     SpatialRebinTargetTransform,
     load_target_transform,
 )
+from alphagenome_ft.finetune.reprocessing import (
+    BinnedAtacAccumulator,
+    fragment_totals_by_group,
+    read_cell_groups,
+)
 from alphagenome_ft.finetune.rna_tracks import (
     GeneBody,
     GeneExons,
@@ -83,6 +88,10 @@ __all__ = [
     "PiecewiseLinearTargetTransform",
     "SpatialRebinTargetTransform",
     "load_target_transform",
+    # ATAC pseudobulk tracks
+    "BinnedAtacAccumulator",
+    "fragment_totals_by_group",
+    "read_cell_groups",
     # RNA pseudobulk tracks
     "GeneBody",
     "GeneExons",
