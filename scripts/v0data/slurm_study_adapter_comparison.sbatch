@@ -33,7 +33,7 @@ if [[ ! -f "${TARGETS_CONFIG}" ]]; then
 fi
 
 BEST_METRIC="valid/mean/differential_pearson_r"
-TARGET_WORKER_COUNT="${TARGET_WORKERS:-8}"
+TARGET_WORKER_COUNT="${TARGET_WORKERS:-24}"
 WINDOW_WORKER_COUNT="${WINDOW_WORKERS:-8}"
 if [[ "${DATASET}" == "hda" ]]; then
   BEST_METRIC="valid/differential_pearson_r"
