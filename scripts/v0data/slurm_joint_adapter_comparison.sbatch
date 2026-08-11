@@ -43,6 +43,9 @@ if [[ -n "${CORRELATION_LOSS_WEIGHT:-}" ]]; then
     --double-centered-correlation-loss-weight "${CORRELATION_LOSS_WEIGHT}"
   )
 fi
+if [[ -n "${RESUME_FROM:-}" ]]; then
+  EXTRA_ARGS+=(--resume-from "${RESUME_FROM}")
+fi
 
 "${HOME}/venv/jax/bin/python" scripts/run_humanbraindev_finetune.py \
   --targets-config "$targets" \

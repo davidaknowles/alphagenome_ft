@@ -55,6 +55,9 @@ if [[ -n "${WANDB_PROJECT:-}" ]]; then
   EXTRA_ARGS+=(--wandb-project "$WANDB_PROJECT" --wandb-run-name "$run_name")
   [[ -n "${WANDB_ENTITY:-}" ]] && EXTRA_ARGS+=(--wandb-entity "$WANDB_ENTITY")
 fi
+if [[ -n "${RESUME_FROM:-}" ]]; then
+  EXTRA_ARGS+=(--resume-from "${RESUME_FROM}")
+fi
 
 "${HOME}/venv/jax/bin/python" scripts/run_humanbraindev_finetune.py \
   --targets-config "$targets" \
