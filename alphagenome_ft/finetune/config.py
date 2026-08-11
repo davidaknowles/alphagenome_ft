@@ -78,6 +78,7 @@ class HeadSpec:
     gene_supervision_path: Path | None = None
     gene_loss_weight: float = 0.0
     coverage_loss_weight: float = 1.0
+    target_transform_path: Path | None = None
 
 
 def _resolve_target_path(path_value: str, base_dir: Path | None) -> str:
@@ -154,6 +155,15 @@ def _normalize_targets_config_paths(
                 str(normalized_gene_supervision["path"]), base_dir
             )
             head_dict["gene_supervision"] = normalized_gene_supervision
+        target_transform = head_dict.get("target_transform")
+        if target_transform is not None:
+            if not isinstance(target_transform, Mapping) or "path" not in target_transform:
+                raise ValueError('target_transform must be a mapping containing "path".')
+            normalized_target_transform = dict(target_transform)
+            normalized_target_transform["path"] = _resolve_target_path(
+                str(normalized_target_transform["path"]), base_dir
+            )
+            head_dict["target_transform"] = normalized_target_transform
         normalized_heads.append(head_dict)
 
     normalized_config = dict(config)
@@ -310,6 +320,16 @@ def prepare_head_specs(
             raise ValueError(f'Head "{head_id}" must include "targets".')
         tracks = _parse_targets(targets)
         gene_supervision = entry.get("gene_supervision")
+        target_transform = entry.get("target_transform")
+        target_transform_path = None
+        if target_transform is not None:
+            if not isinstance(target_transform, Mapping) or "path" not in target_transform:
+                raise ValueError('target_transform must be a mapping containing "path".')
+            target_transform_path = Path(str(target_transform["path"]))
+            if not target_transform_path.exists():
+                raise FileNotFoundError(
+                    f'Target transform for head "{head_id}" not found: {target_transform_path}'
+                )
         gene_supervision_path = None
         gene_loss_weight = 0.0
         coverage_loss_weight = 1.0
@@ -343,6 +363,7 @@ def prepare_head_specs(
                     source="custom",
                     kind=None,
                     tracks=tracks,
+                    target_transform_path=target_transform_path,
                 )
             )
         elif source == "predefined":
@@ -393,6 +414,7 @@ def prepare_head_specs(
                     gene_supervision_path=gene_supervision_path,
                     gene_loss_weight=gene_loss_weight,
                     coverage_loss_weight=coverage_loss_weight,
+                    target_transform_path=target_transform_path,
                 )
             )
         else:

@@ -2,7 +2,11 @@ from pathlib import Path
 
 from alphagenome.models import dna_client, dna_output
 
-from alphagenome_ft.finetune.config import TrackInfo, _build_track_metadata
+from alphagenome_ft.finetune.config import (
+    TrackInfo,
+    _build_track_metadata,
+    load_targets_config,
+)
 
 
 def test_track_metadata_preserves_strands(tmp_path: Path):
@@ -19,3 +23,23 @@ def test_track_metadata_preserves_strands(tmp_path: Path):
 
     assert metadata.rna_seq["strand"].tolist() == ["+", "-"]
     assert metadata.strand_reindexing[dna_output.OutputType.RNA_SEQ].tolist() == [1, 0]
+
+
+def test_load_targets_config_resolves_target_transform_path(tmp_path: Path):
+    config = load_targets_config(
+        {
+            "heads": [
+                {
+                    "id": "example",
+                    "source": "predefined",
+                    "targets": [{"path": "track.bw"}],
+                    "target_transform": {"path": "transform.json"},
+                }
+            ]
+        },
+        base_dir=tmp_path,
+    )
+
+    head = config["heads"][0]
+    assert head["targets"][0]["path"] == str(tmp_path / "track.bw")
+    assert head["target_transform"]["path"] == str(tmp_path / "transform.json")

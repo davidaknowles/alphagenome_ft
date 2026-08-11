@@ -29,6 +29,11 @@ from alphagenome_ft.finetune.metrics import (
     select_prediction_for_targets,
     r2_metrics,
 )
+from alphagenome_ft.finetune.target_transforms import (
+    PiecewiseLinearTargetTransform,
+    SpatialRebinTargetTransform,
+    load_target_transform,
+)
 from alphagenome_ft.finetune.rna_tracks import (
     GeneBody,
     GeneExons,
@@ -74,6 +79,10 @@ __all__ = [
     # metrics
     "select_prediction_for_targets",
     "r2_metrics",
+    # target transforms
+    "PiecewiseLinearTargetTransform",
+    "SpatialRebinTargetTransform",
+    "load_target_transform",
     # RNA pseudobulk tracks
     "GeneBody",
     "GeneExons",

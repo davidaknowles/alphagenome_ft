@@ -1,0 +1,40 @@
+{
+  "metric": "signed_double_centered_pearson_r",
+  "evaluation_units": "raw_allen",
+  "epochs": 1,
+  "training_examples": 20952,
+  "native_bins_bp": {
+    "allen": 10,
+    "human_brain_development": 100
+  },
+  "sampled_per_bp_moments": {
+    "allen": {
+      "mean": 0.004991990792239016,
+      "rms": 0.05557220506193696
+    },
+    "human_brain_development": {
+      "mean": 0.004796545224808726,
+      "rms": 0.05578815007456134
+    }
+  },
+  "strategies": {
+    "raw": {"valid_r": 0.17866070584394225, "test_r": 0.19859084648411038},
+    "scale4": {"valid_r": 0.16994726544210254, "test_r": 0.19038712157086152},
+    "scale10": {"valid_r": 0.16094598164940788, "test_r": 0.1803483849648888},
+    "scale20": {"valid_r": 0.15344852305694098, "test_r": 0.1721721518164399},
+    "track_mean": {"valid_r": 0.15593557359868737, "test_r": 0.17486329810384027},
+    "track_rms": {"valid_r": 0.15385351561109237, "test_r": 0.17207285026243557},
+    "quantile50": {"valid_r": 0.13089412962688154, "test_r": 0.14181095808741392},
+    "smooth100": {"valid_r": 0.18689728147239423, "test_r": 0.2045944399741424},
+    "rebin100_sum": {"valid_r": 0.1727753025987649, "test_r": 0.19367861759536306}
+  },
+  "early_stopped_smooth100": {
+    "best_epoch": 5,
+    "valid_r": 0.19481364942698623,
+    "test_r": 0.21195965114021345
+  },
+  "resolution128": {
+    "status": "stopped_after_finite_partial_epoch",
+    "reason": "coarse metric was not directly comparable and training was input-bound"
+  }
+}

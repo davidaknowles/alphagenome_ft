@@ -43,6 +43,16 @@ def test_r2_stats_track_loci_and_cell_type_axes_separately():
     assert metrics["r2_over_cell_types"] < 1.0
 
 
+def test_r2_stats_sum_pool_targets_for_lower_resolution_prediction():
+    targets = jnp.arange(512, dtype=jnp.float32).reshape(1, 256, 2)
+    prediction = {"predictions_128bp": targets.reshape(1, 2, 128, 2).sum(axis=2)}
+
+    stats = jax.tree_util.tree_map(np.asarray, _r2_stats(prediction, targets))
+    metrics = _finalize_r2_stats(stats)
+
+    assert np.isclose(metrics["r2_global"], 1.0)
+
+
 def test_masked_r2_ignores_padded_genes():
     targets = jnp.asarray([[[1.0, 3.0], [2.0, 4.0], [99.0, 99.0]]])
     predictions = jnp.asarray([[[1.0, 3.0], [2.0, 4.0], [-99.0, -99.0]]])

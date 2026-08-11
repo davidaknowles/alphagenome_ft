@@ -1,14 +1,32 @@
 # Lab Notebook
 
-## Allen and Human Brain Development ATAC scaling
+## Allen and Human Brain Development ATAC preprocessing
 
-The Allen adult basal ganglia ATAC pseudobulks and the earlier Human Brain Development ATAC tracks are not comparably scaled. Eight matched 131,072 bp windows on validation chromosome 8 were evaluated over all 60 Allen tracks and all 134 developmental tracks. Missing BigWig values were treated as zero, matching the training loader, and base-resolution values were also averaged into 128 bp bins.
+The Allen adult basal ganglia and Human Brain Development, HDA, pseudobulks were produced by different pipelines and represent different biological domains. The [HDA source study](https://www.nature.com/articles/s41586-024-07234-1) describes developmental pseudobulks downsampled to 25 million fragments followed by MACS2 signal generation with `--SPMR`. The [Allen HMBA release](https://brain-map.org/consortia/hmba/hmba-release-basal-ganglia) describes SnapATAC2 processing and supplies group-level BigWigs alongside separately called MACS3 peaks. Inspection of the released files shows a second important implementation difference, HDA BigWig values are constant on native 100 bp bins, whereas Allen values use native 10 bp bins.
 
-The developmental tracks had mean 0.480 and root mean square 5.58 across sampled bases, compared with mean 0.0499 and root mean square 0.556 for Allen. Median per-track root mean square was 4.32 for the developmental data and 0.157 for Allen. Base-resolution zero fractions were 0.327 and 0.604, respectively. At 128 bp, the developmental and Allen nonzero medians were closer, 0.0391 and 0.0325, but their 99th percentiles were 11.85 and 0.591. The datasets therefore differ in sparsity and upper-tail magnitude, and no single scalar makes their target distributions equivalent.
+This bin width explains the apparent tenfold scale difference in base-expanded values. Across eight matched 131,072 bp windows, the stored HDA and Allen means were 0.480 and 0.0499 and their root mean squares were 5.58 and 0.556. Dividing each value by its native bin width gives means of 0.00480 and 0.00499 per bp and root mean squares of 0.0558 and 0.0556 per bp. Their first two moments are therefore already closely matched when expressed in common units. Differences remain in sparsity, upper tails, cell populations, anatomical region, and developmental stage.
 
-An Allen ATAC-only baseline retains the raw Allen targets and matches the earlier best LoRA setup at 131 kb, batch size 8, learning rate \(10^{-3}\), LoRA without LoCon, float32 frozen and adapter parameters, and bfloat16 activations and compute. Training uses validation-loss early stopping with patience 2 and a 100-epoch safety ceiling, rather than assuming that five epochs is sufficient. This isolates the effect of removing joint RNA supervision and the reduced calibration schedule without introducing an arbitrary target transformation.
+An Allen ATAC-only baseline matches the earlier LoRA setup at 131 kb, batch size 8, learning rate \(10^{-3}\), LoRA without LoCon, float32 frozen and adapter parameters, and bfloat16 activations and compute. Model selection uses signed double-centered Pearson correlation, denoted differential Pearson correlation in the training logs. The raw-target baseline reached its best validation correlation at epoch 7, validation \(R=0.1894\) and test \(R=0.2100\).
 
-The full Allen ATAC-only baseline stopped after epoch 8 following two epochs without validation-loss improvement. The loss-selected epoch 6 checkpoint had validation loss 5.1267, global R2 0.0430, R2 over loci 0.5027, and differential Pearson correlation 0.1872. Its test global R2 was 0.0556, R2 over loci was 0.5254, and differential Pearson correlation was 0.2079. Epoch 7 had a slightly worse validation loss of 5.1268 but the strongest validation global R2, 0.0434, R2 over loci, 0.5065, and differential Pearson correlation, 0.1894. Removing RNA supervision and matching the earlier optimization improved the Allen ATAC metrics over the joint calibration, but did not approach the developmental dataset's global R2, supporting a dataset and target-distribution explanation for most of the gap.
+Target-transform experiments apply transforms inside the JAX loss and retain raw Allen targets in each batch. Predictions are mapped back to raw Allen units before metrics are accumulated. Spatial averaging is not invertible, so its scale factor is removed but the prediction remains locally smoothed and is compared directly with unsmoothed raw targets. Every one-epoch screen used all 20,952 training windows and the same initialization and optimization settings.
+
+| Optimization target | Validation \(R\) | Test \(R\) |
+|---|---:|---:|
+| Raw Allen baseline | 0.1787 | 0.1986 |
+| Scalar 4x | 0.1699 | 0.1904 |
+| Scalar 10x | 0.1609 | 0.1803 |
+| Scalar 20x | 0.1534 | 0.1722 |
+| Per-track mean match | 0.1559 | 0.1749 |
+| Per-track RMS match | 0.1539 | 0.1721 |
+| 50% quantile blend toward HDA | 0.1309 | 0.1418 |
+| Local 100 bp mean | 0.1869 | 0.2046 |
+| Local 100 bp mean, then 10x scale | 0.1728 | 0.1937 |
+
+Increasing target magnitude hurts monotonically, and matching each track's mean or RMS is no better. Quantile normalization is substantially worse because it forces Allen's positive-value tail toward a reference pooled across biologically unmatched HDA tracks. Local 100 bp averaging is the only helpful transform, while multiplying that average by ten removes its advantage. The smoothing result indicates that matching HDA's spatial granularity reduces high-frequency target noise; it does not support a missing normalization factor.
+
+With signed-correlation model selection and patience 3, the 100 bp-smoothed run reached its best validation result at epoch 5, validation \(R=0.1948\) and test \(R=0.2120\). This is a modest gain over the raw baseline, 0.0054 validation and 0.0020 test. It does not explain the much larger gap from the earlier HDA result near \(R=0.8\). The remaining gap is more consistent with differences in cohort, target composition, genomic signal structure, and track count than with scalar preprocessing.
+
+A 128 bp-only output head was also exercised but not retained. It requires a coarse pooled-target metric that is not directly comparable with base-resolution fidelity, and its training path was input-bound and severalfold slower than the base-resolution setup. The run was stopped after confirming finite optimization rather than spending further compute on a dominated strategy.
 
 ## Model and fine-tuning components
 

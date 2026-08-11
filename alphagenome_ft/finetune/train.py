@@ -24,6 +24,7 @@ from alphagenome_ft import parameter_utils
 from alphagenome_ft.custom_model import CustomAlphaGenomeModel
 from alphagenome_ft.finetune.config import HeadSpec
 from alphagenome_ft.finetune.data import BigWigDataModule, prepare_batch
+from alphagenome_ft.finetune.target_transforms import load_target_transform
 from alphagenome_ft.optimizer_utils import create_optimizer
 
 
@@ -247,8 +248,39 @@ def _maybe_bin_128bp_jax(value):
     return value
 
 
+def _align_prediction_and_targets(prediction, targets, observation_mask=None):
+    try:
+        return _select_prediction_for_targets(prediction, targets), targets
+    except ValueError:
+        if not isinstance(prediction, Mapping) or observation_mask is not None:
+            raise
+
+    candidates = []
+    for key, value in prediction.items():
+        if (
+            str(key).startswith("predictions_")
+            and hasattr(value, "shape")
+            and len(value.shape) == len(targets.shape) == 3
+            and value.shape[0] == targets.shape[0]
+            and value.shape[-1] == targets.shape[-1]
+            and value.shape[1] < targets.shape[1]
+            and targets.shape[1] % value.shape[1] == 0
+        ):
+            candidates.append(value)
+    if not candidates:
+        return _select_prediction_for_targets(prediction, targets), targets
+
+    selected = max(candidates, key=lambda value: value.shape[1])
+    width = targets.shape[1] // selected.shape[1]
+    pooled_targets = targets.reshape(
+        targets.shape[0], selected.shape[1], width, targets.shape[-1]
+    ).sum(axis=2, dtype=jnp.float32)
+    return selected, pooled_targets
+
+
 def _r2_stats(prediction, targets, observation_mask=None):
-    prediction = _select_prediction_for_targets(prediction, targets).astype(jnp.float32)
+    prediction, targets = _align_prediction_and_targets(prediction, targets, observation_mask)
+    prediction = prediction.astype(jnp.float32)
     targets = targets.astype(jnp.float32)
     residual = prediction - targets
 
@@ -725,6 +757,17 @@ def train(
     strand_reindexing = model._metadata[organism_enum].strand_reindexing
 
     loss_fns = {name: model.create_loss_fn_for_head(name) for name in head_names}
+    target_transforms = {
+        spec.head_id: load_target_transform(spec.target_transform_path)
+        for spec in head_specs
+        if spec.target_transform_path is not None
+    }
+
+    def inverse_prediction_for_metrics(head_name, prediction):
+        transform = target_transforms.get(head_name)
+        if transform is None:
+            return prediction
+        return transform.inverse_jax(prediction["predictions_1bp"])
 
     @functools.partial(jax.pmap, axis_name="data")
     def train_step(params, state, current_opt_state, batch):
@@ -743,6 +786,9 @@ def train(
             head_stats = {}
             for head_name in head_names:
                 targets = batch[f"targets_{head_name}"]
+                transform = target_transforms.get(head_name)
+                if transform is not None:
+                    targets = transform.forward_jax(targets)
                 head_loss_dict = loss_fns[head_name](
                     predictions[head_name],
                     {
@@ -801,10 +847,15 @@ def train(
         head_losses = {}
         head_stats = {}
         for head_name in head_names:
+            raw_targets = batch[f"targets_{head_name}"]
+            transform = target_transforms.get(head_name)
+            loss_targets = (
+                transform.forward_jax(raw_targets) if transform is not None else raw_targets
+            )
             loss_dict = loss_fns[head_name](
                 predictions[head_name],
                 {
-                    "targets": batch[f"targets_{head_name}"],
+                    "targets": loss_targets,
                     "organism_index": batch["organism_index"],
                 },
             )
@@ -824,7 +875,8 @@ def train(
                 head_stats[head_name] = _r2_stats(gene_prediction, gene_targets, gene_valid)
             else:
                 head_stats[head_name] = _r2_stats(
-                    predictions[head_name], batch[f"targets_{head_name}"]
+                    inverse_prediction_for_metrics(head_name, predictions[head_name]),
+                    raw_targets,
                 )
             head_losses[head_name] = head_loss
         head_losses = jax.tree_util.tree_map(
