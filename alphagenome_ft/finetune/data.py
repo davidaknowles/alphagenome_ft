@@ -1190,12 +1190,7 @@ class BigWigDataModule:
                         handles.append(stack.enter_context(pyBigWig.open(str(track.path))))
                     head_handles[spec.head_id] = handles
             available_cpus = _available_cpu_count()
-            effective_target_workers = self._target_workers
-            if self._window_workers > 1 and effective_target_workers > 1:
-                effective_target_workers = min(
-                    effective_target_workers,
-                    max(1, available_cpus // self._window_workers),
-                )
+            effective_target_workers = min(self._target_workers, available_cpus)
             target_executor = None
             if target_cache_arrays is None and effective_target_workers > 1:
                 target_executor = stack.enter_context(
@@ -1346,39 +1341,40 @@ class BigWigDataModule:
                 thread_local.encoder = encoder
             return encoder
 
-        def build_one(idx: int) -> tuple[np.ndarray, dict[str, np.ndarray]]:
+        def build_sequence(idx: int) -> np.ndarray:
             extractor = get_extractor()
             encoder = get_encoder()
             window = windows[idx]
             seq = extractor.extract(window)
-            encoded = encoder.encode(seq).astype(np.float32)
-            seq_len = encoded.shape[0]
-            target_arrays: dict[str, np.ndarray] = {}
-            for spec in self._head_specs:
-                if target_cache_arrays is not None:
-                    target_arrays[spec.head_id] = np.asarray(target_cache_arrays[spec.head_id][idx])
-                    continue
-                handles = head_handles[spec.head_id]
-                if target_executor is None:
-                    channel_arrays = [
-                        self._read_track(handle, window, seq_len) for handle in handles
-                    ]
-                else:
-                    channel_arrays = list(
-                        target_executor.map(
-                            lambda handle: self._read_track(handle, window, seq_len),
-                            handles,
-                        )
-                    )
-                target_arrays[spec.head_id] = np.stack(channel_arrays, axis=-1).astype(np.float32)
-            return encoded, target_arrays
+            return encoder.encode(seq).astype(np.float32)
 
-        results = list(window_executor.map(build_one, batch_indices))
-        sequences = [encoded for encoded, _ in results]
+        sequences = list(window_executor.map(build_sequence, batch_indices))
+        sequence_length = sequences[0].shape[0]
         targets: dict[str, list[np.ndarray]] = {spec.head_id: [] for spec in self._head_specs}
-        for _, target_arrays in results:
-            for head_name, array in target_arrays.items():
-                targets[head_name].append(array)
+        for spec in self._head_specs:
+            if target_cache_arrays is not None:
+                targets[spec.head_id] = [
+                    np.asarray(target_cache_arrays[spec.head_id][idx]) for idx in batch_indices
+                ]
+                continue
+
+            def read_track_batch(handle):
+                return [
+                    self._read_track(handle, windows[idx], sequence_length) for idx in batch_indices
+                ]
+
+            handles = head_handles[spec.head_id]
+            if target_executor is None:
+                arrays_by_track = [read_track_batch(handle) for handle in handles]
+            else:
+                arrays_by_track = list(target_executor.map(read_track_batch, handles))
+            targets[spec.head_id] = [
+                np.stack(
+                    [track_arrays[window_index] for track_arrays in arrays_by_track],
+                    axis=-1,
+                ).astype(np.float32)
+                for window_index in range(len(batch_indices))
+            ]
 
         batch = {
             "sequences": np.stack(sequences, axis=0),

@@ -33,8 +33,13 @@ if [[ ! -f "${TARGETS_CONFIG}" ]]; then
 fi
 
 BEST_METRIC="valid/mean/differential_pearson_r"
+TARGET_WORKER_COUNT="${TARGET_WORKERS:-8}"
+WINDOW_WORKER_COUNT="${WINDOW_WORKERS:-8}"
 if [[ "${DATASET}" == "hda" ]]; then
   BEST_METRIC="valid/differential_pearson_r"
+elif [[ "${DATASET}" == "zemke2024-all" ]]; then
+  TARGET_WORKER_COUNT="${TARGET_WORKERS:-24}"
+  WINDOW_WORKER_COUNT="${WINDOW_WORKERS:-1}"
 fi
 
 EXTRA_ARGS=()
@@ -78,8 +83,8 @@ fi
   --best-metric-mode max \
   --early-stopping-patience "${EARLY_STOPPING_PATIENCE:-5}" \
   --eval-splits valid,test \
-  --target-workers "${TARGET_WORKERS:-8}" \
-  --window-workers "${WINDOW_WORKERS:-8}" \
+  --target-workers "${TARGET_WORKER_COUNT}" \
+  --window-workers "${WINDOW_WORKER_COUNT}" \
   --prefetch-batches 2 \
   --progress-interval 100 \
   "${EXTRA_ARGS[@]}"

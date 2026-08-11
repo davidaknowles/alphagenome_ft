@@ -28,6 +28,10 @@ The full AlphaGenome initialization audit passed on the HDA head. All 54 head pa
 
 In the first full fair HDA epoch, LoRA reached validation and test signed double-centered (R=0.7715) and (R=0.7819). LoRA plus LoCon reached (R=0.7696) and (R=0.7783). The runs continued because these are epoch-one observations rather than early-stopped model selections; LoRA led validation by 0.0019 at this point.
 
+At HDA epoch 2, LoRA reached validation and test (R=0.7905) and (R=0.8024), while LoRA plus LoCon reached (R=0.7981) and (R=0.8067). LoRA plus LoCon therefore led validation by 0.0076 after starting from exactly matched shared parameters. Both runs continued under the same early-stopping rule.
+
+The first paired HDA epoch gave LoRA validation and test (R=0.7722) and (R=0.7830) for ATAC and (R=0.4361) and (R=0.5720) for gene-supervised RNA. LoRA plus LoCon gave (R=0.7729) and (R=0.7837) for ATAC and (R=0.4313) and (R=0.5713) for RNA. ATAC is close to the single-head trajectory, while RNA remains well below the target range and requires further epochs or an RNA-specific objective improvement.
+
 Final adapter comparisons are collated from each run's `metrics.jsonl`. One epoch is selected per run by the mean validation signed double-centered Pearson correlation across all heads, and every per-head validation and test value is reported from that same epoch. This preserves the joint checkpoint-selection contract and avoids selecting separate favorable epochs for ATAC and RNA.
 
 The Liu preparation keeps its target manifest with the generated exon RNA tracks and gene-level supervision under `outputs/v0data/liu-hdma/joint`. The generic joint launcher resolves this dataset-specific layout automatically; without that mapping it would look for a nonexistent parent-level manifest and fail before model construction.
@@ -35,6 +39,8 @@ The Liu preparation keeps its target manifest with the generated exon RNA tracks
 Johansen reprocessing launchers query species configurations with Python's structured JSON parser rather than assuming that the `jq` command-line executable is installed on every worker image. The query is shared by chromosome-job enumeration and FASTA lookup. Its launch-time check requires exactly 44 macaque and marmoset chromosome jobs before any fragment processing begins.
 
 Johansen fragment cell identifiers require species-specific joins. All 90 macaque fragment files contain library-local 10x barcodes; barcode overlap assigns every file to a distinct metadata library with 100% coverage and recovers 58 groups. Marmoset has 112 biological libraries stored twice, once as a full fragment file and once as an H5AD-filtered exact subset. For overlapping cells, the subset and full resource have identical whole-genome fragment counts. Reprocessing uses only the 112 filtered copies so retained cells are counted once; processing all 224 resource directories would duplicate their fragments.
+
+BigWig loading now assigns each target worker one track handle and reads that track across the batch before transposing the result to window-major layout. The earlier nested window and target pools reduced a 24-CPU allocation to three effective target readers when eight outer workers were requested, and multiple outer workers could submit reads against the same BigWig handle. Track-major loading uses all configured readers without concurrent access to one handle. This is important for the pending Johansen and Liu joint panels, which contain substantially more channels than the 40-track Zemke 2023 panel.
 
 ## GRR prediction-target audit
 
