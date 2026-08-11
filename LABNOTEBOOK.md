@@ -12,6 +12,8 @@ The Liu audit found 817,740 uniquely identified metadata cells across 76 represe
 
 Cross-species batches now carry AlphaGenome organism indices. Human, macaque, and marmoset use the human organism embedding, while mouse uses the model's mouse embedding. Previously, the shared launcher silently assigned the human index to every species. The target heads retain an identical 20-channel ATAC and 20-channel RNA layout across all four Zemke species, and joint runs pool channel-wise RNA nonzero means across species.
 
+The Zemke reference audit checks every modeled chromosome in every ATAC and RNA BigWig against its FASTA length. Published marmoset tracks use UCSC `calJac4`, including `chr1` length 217,961,735 bp. They do not match the newer `mCalJa1.2` reference used by the Johansen atlas, where `chr1` is 216,975,769 bp, or the older `calJac3` assembly, where `chr1` is 210,400,635 bp. Zemke experiments therefore materialize `calJac4` separately. Human, macaque, marmoset, and mouse training is restricted to canonical autosomes and `chrX`; `chr8` and `chr9` are held out for validation and test.
+
 The full-depth Allen ATAC baseline reached validation signed double-centered (R=0.4011), (0.4098), and (0.4129) over its first three epochs, with test (R=0.4450), (0.4507), and (0.4546). These values improve monotonically but remain below 0.8. They must not be compared directly with the earlier HDA global score near 0.8 because that score used a different statistic.
 
 ## GRR prediction-target audit
