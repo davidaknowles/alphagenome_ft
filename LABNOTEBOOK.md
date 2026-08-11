@@ -34,7 +34,11 @@ At HDA epoch 3, LoRA reached validation and test (R=0.7971) and (R=0.8081), whil
 
 The first paired HDA epoch gave LoRA validation and test (R=0.7722) and (R=0.7830) for ATAC and (R=0.4361) and (R=0.5720) for gene-supervised RNA. LoRA plus LoCon gave (R=0.7729) and (R=0.7837) for ATAC and (R=0.4313) and (R=0.5713) for RNA. ATAC is close to the single-head trajectory, while RNA remains well below the target range and requires further epochs or an RNA-specific objective improvement.
 
+At paired HDA epoch 2, LoRA reached validation and test (R=0.7892) and (R=0.7990) for ATAC and (R=0.5201) and (R=0.6182) for RNA. LoRA plus LoCon reached (R=0.7957) and (R=0.8049) for ATAC and (R=0.5241) and (R=0.6222) for RNA. LoRA plus LoCon led validation by 0.0065 for ATAC and 0.0040 for RNA. RNA is improving substantially with additional training but remains well below 0.8, motivating a full-data screen that augments the log-count objective with signed double-centered correlation loss.
+
 The first human Zemke 2023 epoch gave LoRA validation and test (R=0.6760) and (R=0.6930) for ATAC and (R=0.3963) and (R=0.3475) for RNA. LoRA plus LoCon gave (R=0.6784) and (R=0.6939) for ATAC and (R=0.3999) and (R=0.3462) for RNA. LoRA plus LoCon led both validation heads slightly, but neither RNA result is near the target range after one epoch.
+
+The first Zemke 2024 LoRA plus LoCon epoch reached validation and test (R=0.7344) and (R=0.7457) for ATAC and (R=0.3879) and (R=0.2364) for RNA. This is provisional until the matched LoRA epoch completes. As in human Zemke 2023, the RNA result is much weaker than ATAC after one epoch and provides a second test of whether optimizing transformed count likelihood alone is misaligned with the raw signed-correlation selection metric.
 
 Final adapter comparisons are collated from each run's `metrics.jsonl`. One epoch is selected per run by the mean validation signed double-centered Pearson correlation across all heads, and every per-head validation and test value is reported from that same epoch. This preserves the joint checkpoint-selection contract and avoids selecting separate favorable epochs for ATAC and RNA.
 
