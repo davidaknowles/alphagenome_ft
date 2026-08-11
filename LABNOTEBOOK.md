@@ -32,6 +32,8 @@ At HDA epoch 2, LoRA reached validation and test (R=0.7905) and (R=0.8024), whil
 
 At HDA epoch 3, LoRA reached validation and test (R=0.7971) and (R=0.8081), while LoRA plus LoCon reached (R=0.8062) and (R=0.8151). The LoRA plus LoCon validation advantage increased to 0.0091. Both runs then continued from their epoch-3 parameters under track-major target loading; optimizer moments restart symmetrically at this continuation boundary.
 
+At HDA epoch 4, LoRA reached validation and test (R=0.8053) and (R=0.8159), while LoRA plus LoCon reached (R=0.8086) and (R=0.8166). Both strategies therefore met the 0.8 validation target for ATAC. The LoRA plus LoCon validation advantage narrowed to 0.0034, and the ATAC-only runs were stopped after saving this epoch so compute could be reassigned to the weaker RNA objectives.
+
 The first paired HDA epoch gave LoRA validation and test (R=0.7722) and (R=0.7830) for ATAC and (R=0.4361) and (R=0.5720) for gene-supervised RNA. LoRA plus LoCon gave (R=0.7729) and (R=0.7837) for ATAC and (R=0.4313) and (R=0.5713) for RNA. ATAC is close to the single-head trajectory, while RNA remains well below the target range and requires further epochs or an RNA-specific objective improvement.
 
 At paired HDA epoch 2, LoRA reached validation and test (R=0.7892) and (R=0.7990) for ATAC and (R=0.5201) and (R=0.6182) for RNA. LoRA plus LoCon reached (R=0.7957) and (R=0.8049) for ATAC and (R=0.5241) and (R=0.6222) for RNA. LoRA plus LoCon led validation by 0.0065 for ATAC and 0.0040 for RNA. RNA is improving substantially with additional training but remains well below 0.8, motivating a full-data screen that augments the log-count objective with signed double-centered correlation loss.
