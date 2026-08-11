@@ -41,7 +41,9 @@ This is the strongest collection for aligned primate basal-ganglia training. The
 
 ### `liu2026Multiomics`
 
-This is a human fetal multi-organ atlas generated with simultaneous high-throughput ATAC and ribonucleic-acid expression sequencing, SHARE-seq. It contains 82 matched sample-level ATAC fragment resources and 82 cell-expression matrices spanning approximately 10 to 23 post-conception weeks.
+This is Liu et al.'s Human Development Multiomic Atlas, HDMA, a human fetal multi-organ atlas generated with simultaneous high-throughput ATAC and ribonucleic-acid expression sequencing, SHARE-seq. It contains 82 matched sample-level ATAC fragment resources and 82 cell-expression matrices spanning approximately 10 to 23 post-conception weeks.
+
+HDMA is not the earlier dataset called the Human Developmental Atlas, HDA, in this repository's fine-tuning experiments. That HDA shorthand refers to Mannens et al.'s first-trimester human brain chromatin-accessibility atlas, which covers the whole brain at 6 to 13 post-conception weeks and uses 10x Genomics single-cell ATAC and multiome assays. HDMA covers 12 fetal organs at 10 to 23 post-conception weeks and uses SHARE-seq. The similar names do not indicate shared samples or targets. The studies are described in the [HDMA article](https://www.nature.com/articles/s41586-026-10326-9) and [first-trimester brain article](https://www.nature.com/articles/s41586-024-07234-1).
 
 The repository covers adrenal gland, brain, eye, heart, liver, lung, muscle, skin, spleen, stomach, thymus, and thyroid. Its 186 organ-specific cell clusters each have three BigWig tracks, for 558 tracks total:
 
