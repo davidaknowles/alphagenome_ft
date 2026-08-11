@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import json
 from pathlib import Path
+import subprocess
 from typing import Mapping, Sequence
 
 import h5py
@@ -191,8 +193,75 @@ def fragment_totals_by_group(
     return totals, missing
 
 
+def read_fragment_histogram(path: Path) -> dict[str, int]:
+    """Read a GRR per-cell whole-genome fragment histogram."""
+    payload = json.loads(Path(path).read_text())
+    values = payload.get("values")
+    if not isinstance(values, dict) or not values:
+        raise ValueError(f"Missing per-cell fragment counts in {path}.")
+    return {str(cell): int(count) for cell, count in values.items()}
+
+
+def stream_tabix_fragments(
+    path: Path,
+    chromosome: str,
+    *,
+    cell_group_indices: Mapping[str, int],
+    accumulator: BinnedAtacAccumulator,
+    chunk_size: int = 250_000,
+    tabix: str = "tabix",
+) -> tuple[int, int]:
+    """Stream one chromosome from a tabix-indexed fragment file into an accumulator."""
+    process = subprocess.Popen(
+        [tabix, str(path), chromosome],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
+    assert process.stdout is not None
+    group_indices: list[int] = []
+    starts: list[int] = []
+    ends: list[int] = []
+    counts: list[int] = []
+    matched = 0
+    missing = 0
+
+    def add_chunk() -> None:
+        accumulator.add(group_indices, starts, ends, counts)
+        group_indices.clear()
+        starts.clear()
+        ends.clear()
+        counts.clear()
+
+    for line in process.stdout:
+        fields = line.rstrip().split("\t")
+        if len(fields) < 5:
+            process.kill()
+            raise ValueError(f"Malformed fragment row in {path}, {line[:200]!r}")
+        group_index = cell_group_indices.get(fields[3])
+        if group_index is None:
+            missing += 1
+            continue
+        group_indices.append(group_index)
+        starts.append(int(fields[1]))
+        ends.append(int(fields[2]))
+        counts.append(int(fields[4]))
+        matched += 1
+        if len(group_indices) >= chunk_size:
+            add_chunk()
+    if group_indices:
+        add_chunk()
+    stderr = process.stderr.read() if process.stderr is not None else ""
+    return_code = process.wait()
+    if return_code:
+        raise RuntimeError(f"tabix failed for {path} with code {return_code}, {stderr.strip()}")
+    return matched, missing
+
+
 __all__ = [
     "BinnedAtacAccumulator",
     "fragment_totals_by_group",
+    "read_fragment_histogram",
     "read_cell_groups",
+    "stream_tabix_fragments",
 ]

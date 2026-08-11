@@ -1428,10 +1428,19 @@ class BigWigDataModule:
 class MultiSpeciesDataModule:
     """Round-robin batches from species-specific modules with shared heads."""
 
-    def __init__(self, modules: Mapping[str, BigWigDataModule]) -> None:
+    def __init__(
+        self,
+        modules: Mapping[str, BigWigDataModule],
+        *,
+        organism_indices: Mapping[str, int] | None = None,
+    ) -> None:
         if not modules:
             raise ValueError("At least one species data module is required.")
         self._modules = dict(modules)
+        self._organism_indices = dict(organism_indices or {})
+        unknown_species = set(self._organism_indices) - set(self._modules)
+        if unknown_species:
+            raise ValueError(f"Organism indices contain unknown species: {sorted(unknown_species)}")
         drop_last_values = {module._drop_last for module in self._modules.values()}
         if len(drop_last_values) != 1:
             raise ValueError("All species data modules must use the same drop_last setting.")
@@ -1483,15 +1492,23 @@ class MultiSpeciesDataModule:
         seed: int | None = None,
         shuffle: bool | None = None,
     ) -> Iterator[dict[str, np.ndarray]]:
+        def tagged_batches(species: str, module: BigWigDataModule, species_idx: int):
+            for batch in module.iter_batches(
+                split,
+                seed=None if seed is None else seed + species_idx,
+                shuffle=shuffle,
+            ):
+                organism_index = self._organism_indices.get(species)
+                if organism_index is not None:
+                    batch = dict(batch)
+                    batch["organism_index"] = np.full(
+                        (batch["sequences"].shape[0],), organism_index, dtype=np.int32
+                    )
+                yield batch
+
         iterators = [
-            iter(
-                module.iter_batches(
-                    split,
-                    seed=None if seed is None else seed + species_idx,
-                    shuffle=shuffle,
-                )
-            )
-            for species_idx, module in enumerate(self._modules.values())
+            iter(tagged_batches(species, module, species_idx))
+            for species_idx, (species, module) in enumerate(self._modules.items())
         ]
         if split == "train":
             batch_counts = []
@@ -1589,11 +1606,16 @@ def prepare_batch(
     """
     import jax.numpy as jnp
 
+    organism_index = batch.get("organism_index")
+    if organism_index is None:
+        organism_index = np.full(
+            (batch["sequences"].shape[0],), organism_index_value, dtype=np.int32
+        )
+    elif np.asarray(organism_index).shape != (batch["sequences"].shape[0],):
+        raise ValueError("Batch organism_index must contain one value per sequence.")
     prepared = {
         "sequences": jnp.asarray(batch["sequences"]),
-        "organism_index": jnp.full(
-            (batch["sequences"].shape[0],), organism_index_value, dtype=jnp.int32
-        ),
+        "organism_index": jnp.asarray(organism_index, dtype=jnp.int32),
         "negative_strand_mask": jnp.asarray(batch["negative_strand_mask"]),
     }
     for head_name in head_names:

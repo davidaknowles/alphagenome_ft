@@ -1229,6 +1229,19 @@ def train(
                     for metric_name, metric_value in values.items():
                         valid_metrics.setdefault(metric_name, metric_value)
                         valid_metrics[f"{head}/{metric_name}"] = metric_value
+                metric_names = set.intersection(
+                    *(set(values) for values in split_metrics["valid"].values())
+                )
+                for metric_name in metric_names:
+                    values = [
+                        head_values[metric_name]
+                        for head_values in split_metrics["valid"].values()
+                    ]
+                    finite_values = [value for value in values if math.isfinite(value)]
+                    if finite_values:
+                        valid_metrics[f"mean/{metric_name}"] = float(
+                            sum(finite_values) / len(finite_values)
+                        )
 
             metric_label, metric_value = resolve_metric(best_metric, train_loss_avg, valid_metrics)
             epoch_record = {

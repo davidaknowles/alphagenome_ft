@@ -94,9 +94,7 @@ def test_expression_remap_and_gtf_attribute_aliases(tmp_path: Path):
     assert remapped.cpm.shape == (1, 1)
 
     gtf = tmp_path / "aliased.gtf"
-    gtf.write_text(
-        '1\ttest\texon\t11\t20\t.\t+\t.\tgene_id "unused"; gene "GENE1";\n'
-    )
+    gtf.write_text('1\ttest\texon\t11\t20\t.\t+\t.\tgene_id "unused"; gene "GENE1";\n')
     genes = read_gene_exons(
         gtf,
         gene_ids=remapped.gene_ids,
@@ -106,3 +104,27 @@ def test_expression_remap_and_gtf_attribute_aliases(tmp_path: Path):
     )
     assert genes["GENE1"].chromosome == "NC_1"
     assert genes["GENE1"].exons == ((10, 20),)
+
+
+def test_expression_reader_supports_h5ad_index_and_layer(tmp_path: Path):
+    h5ad = tmp_path / "layered.h5ad"
+    with h5py.File(h5ad, "w") as handle:
+        handle.create_dataset("X", data=np.zeros((1, 2), dtype=np.float32))
+        layers = handle.create_group("layers")
+        layers.create_dataset("CPM", data=np.asarray([[3.0, 7.0]], dtype=np.float32))
+        obs = handle.create_group("obs")
+        obs.attrs["_index"] = "ClusterName"
+        obs.create_dataset("ClusterName", data=np.asarray([b"cluster_a"]))
+        var = handle.create_group("var")
+        var.create_dataset("Accession", data=np.asarray([b"ENSG1.2", b"ENSG2.3"]))
+
+    expression = read_pseudobulk_expression(
+        h5ad,
+        normalize_cpm=False,
+        group_column=None,
+        gene_id_column="Accession",
+        matrix_key="layers/CPM",
+    )
+    assert expression.groups == ("cluster_a",)
+    assert expression.gene_ids == ("ENSG1.2", "ENSG2.3")
+    np.testing.assert_allclose(expression.cpm, [[3.0, 7.0]])

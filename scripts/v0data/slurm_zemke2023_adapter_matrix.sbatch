@@ -1,0 +1,81 @@
+#!/bin/bash
+#SBATCH --job-name=zemke23_adapters
+#SBATCH --partition=gpu
+#SBATCH --gres=gpu:b6k:1
+#SBATCH --cpus-per-task=24
+#SBATCH --mem=96G
+#SBATCH --time=2-00:00:00
+#SBATCH --array=0-7%4
+#SBATCH --output=logs/v0data/zemke23_adapters-%A_%a.out
+#SBATCH --error=logs/v0data/zemke23_adapters-%A_%a.err
+
+set -euo pipefail
+
+cd /gpfs/commons/home/daknowles/projects/alphagenome_fp4
+mkdir -p logs/v0data checkpoints/v0data
+export PYTHONPATH="$PWD:${PYTHONPATH:-}"
+export XLA_PYTHON_CLIENT_PREALLOCATE=false
+export MPLCONFIGDIR="${MPLCONFIGDIR:-/tmp/matplotlib-${USER}}"
+
+SPECIES=(human human macaque macaque marmoset marmoset mouse mouse)
+STRATEGIES=(lora lora+locon lora lora+locon lora lora+locon lora lora+locon)
+species="${SPECIES[$SLURM_ARRAY_TASK_ID]}"
+strategy="${STRATEGIES[$SLURM_ARRAY_TASK_ID]}"
+organism=HOMO_SAPIENS
+case "$species" in
+  human) fasta=/gpfs/commons/home/daknowles/knowles_lab/index/hg38/hg38.fa ;;
+  macaque) fasta=outputs/v0data/zemke2023-species/references/rheMac10.fa ;;
+  marmoset) fasta=outputs/allen_brain_multiome_multispecies_v1/references/marmoset.fa ;;
+  mouse)
+    fasta=outputs/v0data/zemke2023-species/references/mm10.fa
+    organism=MUS_MUSCULUS
+    ;;
+esac
+targets="outputs/v0data/zemke2023-${species}/targets.json"
+run_name="zemke2023_${species}_${strategy//+/_}${RUN_SUFFIX:-}"
+test -f "$fasta"
+test -f "$targets"
+
+EXTRA_ARGS=(--num-epochs "${NUM_EPOCHS:-100}")
+if [[ "${SMOKE:-0}" == "1" ]]; then
+  EXTRA_ARGS=(--num-epochs 1 --max-train-steps 1 --limit-train 8 --limit-valid 8 --limit-test 8)
+fi
+if [[ -n "${WANDB_PROJECT:-}" ]]; then
+  EXTRA_ARGS+=(--wandb-project "$WANDB_PROJECT" --wandb-run-name "$run_name")
+  [[ -n "${WANDB_ENTITY:-}" ]] && EXTRA_ARGS+=(--wandb-entity "$WANDB_ENTITY")
+fi
+
+"${HOME}/venv/jax/bin/python" scripts/run_humanbraindev_finetune.py \
+  --targets-config "$targets" \
+  --fasta-path "$fasta" \
+  --organism "$organism" \
+  --checkpoint-path "${CHECKPOINT_PATH:-/gpfs/commons/home/daknowles/.cache/kagglehub/models/google/alphagenome/jax/all_folds/1}" \
+  --checkpoint-dir "checkpoints/v0data/${run_name}" \
+  --split-source chromosome \
+  --window-size 131072 \
+  --stride 131072 \
+  --batch-size "${BATCH_SIZE:-8}" \
+  --learning-rate "${LEARNING_RATE:-1e-3}" \
+  --weight-decay "${WEIGHT_DECAY:-1e-4}" \
+  --backbone-lora \
+  --adapter-strategy "$strategy" \
+  --lora-rank "${LORA_RANK:-16}" \
+  --lora-alpha "${LORA_ALPHA:-16}" \
+  --locon-rank "${LOCON_RANK:-4}" \
+  --locon-alpha "${LOCON_ALPHA:-1}" \
+  --base-param-dtype float32 \
+  --lora-param-dtype float32 \
+  --locon-param-dtype float32 \
+  --activation-dtype bfloat16 \
+  --base-compute-dtype bfloat16 \
+  --lora-compute-dtype bfloat16 \
+  --locon-compute-dtype bfloat16 \
+  --best-metric valid/mean/differential_pearson_r \
+  --best-metric-mode max \
+  --early-stopping-patience "${EARLY_STOPPING_PATIENCE:-5}" \
+  --eval-splits valid,test \
+  --target-workers "${TARGET_WORKERS:-8}" \
+  --window-workers "${WINDOW_WORKERS:-8}" \
+  --prefetch-batches 2 \
+  --progress-interval 100 \
+  "${EXTRA_ARGS[@]}"

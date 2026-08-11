@@ -14,6 +14,8 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 import pandas as pd
+from alphagenome.models import dna_model as ag_dna_model
+from alphagenome_research.model import dna_model as research_dna_model
 
 from alphagenome_ft import (
     BackboneLoConConfig,
@@ -195,6 +197,12 @@ def parse_args() -> argparse.Namespace:
         help="JSON config for balanced multi-species JAX training.",
     )
     parser.add_argument("--fasta-path", type=Path, default=DEFAULT_FASTA)
+    parser.add_argument(
+        "--organism",
+        choices=("HOMO_SAPIENS", "MUS_MUSCULUS"),
+        default="HOMO_SAPIENS",
+        help="AlphaGenome organism embedding for a single-genome run.",
+    )
     parser.add_argument("--checkpoint-dir", type=Path, default=DEFAULT_CHECKPOINT_DIR)
     parser.add_argument(
         "--backend",
@@ -523,21 +531,30 @@ def main() -> None:
         raise FileNotFoundError(f"FASTA file not found: {fasta_path}")
     if args.split_source == "bed" and args.interval_bed is None:
         raise ValueError("--interval-bed is required when --split-source=bed")
-    head_specs = prepare_head_specs(targets_config, organism="HOMO_SAPIENS")
+    head_specs = prepare_head_specs(
+        targets_config,
+        organism=None if species_entries is not None else args.organism,
+    )
     validate_head_specs(head_specs)
     register_predefined_heads(head_specs)
 
     if species_entries is not None:
         species_modules = {}
+        organism_indices = {}
         expected_signature = [
             (spec.head_id, spec.kind, len(spec.tracks), tuple(track.name for track in spec.tracks))
             for spec in head_specs
         ]
         for entry in species_entries:
             species_name = str(entry["name"])
+            species_organism = str(entry.get("organism", args.organism))
+            organism_enum = getattr(ag_dna_model.Organism, species_organism)
+            organism_indices[species_name] = int(
+                research_dna_model.convert_to_organism_index(organism_enum)
+            )
             species_fasta = entry["fasta"]
             species_specs = prepare_head_specs(
-                load_targets_config(entry["targets_config"]), organism="HOMO_SAPIENS"
+                load_targets_config(entry["targets_config"]), organism=None
             )
             validate_head_specs(species_specs)
             signature = [
@@ -587,7 +604,10 @@ def main() -> None:
                     f"{split}={len(windows)}" for split, windows in species_intervals.items()
                 )
             )
-        data_module = MultiSpeciesDataModule(species_modules)
+        data_module = MultiSpeciesDataModule(
+            species_modules,
+            organism_indices=organism_indices,
+        )
         intervals = data_module._intervals
     elif args.split_source == "fold":
         intervals = prepare_intervals_from_fold(
@@ -865,7 +885,7 @@ def main() -> None:
         heads_only=True,
         train_lora=args.backbone_lora,
         checkpoint_dir=checkpoint_dir,
-        organism="HOMO_SAPIENS",
+        organism=args.organism,
         best_metric=args.best_metric,
         best_metric_mode=args.best_metric_mode,
         early_stopping_patience=args.early_stopping_patience,

@@ -1,3 +1,4 @@
+import numpy as np
 from alphagenome.data import genome
 
 from alphagenome_ft.finetune.data import MultiSpeciesDataModule
@@ -18,7 +19,12 @@ class _FakeModule:
     def iter_batches(self, split, *, seed=None, shuffle=None):
         count = self.batches if split == "train" else 1
         for batch_idx in range(count):
-            yield {"species": self.species, "batch": batch_idx, "seed": seed}
+            yield {
+                "species": self.species,
+                "batch": batch_idx,
+                "seed": seed,
+                "sequences": np.zeros((1, 4, 4), dtype=np.float32),
+            }
 
 
 def test_multispecies_batches_round_robin_and_stop_at_shortest_species():
@@ -38,3 +44,16 @@ def test_multispecies_batches_round_robin_and_stop_at_shortest_species():
     assert module._batch_size == 1
     assert batches[0]["seed"] == 10
     assert batches[1]["seed"] == 11
+
+
+def test_multispecies_batches_carry_per_species_organism_indices():
+    human = _FakeModule("human", batches=1, max_genes=1)
+    mouse = _FakeModule("mouse", batches=1, max_genes=1)
+    module = MultiSpeciesDataModule(
+        {"human": human, "mouse": mouse},
+        organism_indices={"human": 0, "mouse": 1},
+    )
+
+    batches = list(module.iter_batches("train"))
+
+    assert [int(batch["organism_index"][0]) for batch in batches] == [0, 1]

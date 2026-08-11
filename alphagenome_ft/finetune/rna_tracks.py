@@ -64,15 +64,19 @@ def read_pseudobulk_expression(
     *,
     normalize_cpm: bool = True,
     gene_id_column: str = "gene_id",
+    group_column: str | None = "Group",
+    matrix_key: str = "X",
 ) -> PseudobulkExpression:
     """Read a dense group-by-gene h5ad matrix and return CPM values."""
     path = Path(path).expanduser().resolve()
     with h5py.File(path, "r") as handle:
-        matrix_node = handle["X"]
+        matrix_node = handle[matrix_key]
         if not isinstance(matrix_node, h5py.Dataset):
-            raise ValueError(f"{path} must store a dense matrix in X.")
+            raise ValueError(f"{path} must store a dense matrix in {matrix_key}.")
         values = np.asarray(matrix_node[:], dtype=np.float32)
-        groups = _decode(_read_h5ad_column(handle["obs"], "Group"))
+        if group_column is None:
+            group_column = str(handle["obs"].attrs.get("_index", "_index"))
+        groups = _decode(_read_h5ad_column(handle["obs"], group_column))
         gene_ids = _decode(_read_h5ad_column(handle["var"], gene_id_column))
 
     if values.shape != (len(groups), len(gene_ids)):

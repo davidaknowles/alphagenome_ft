@@ -34,10 +34,16 @@ from alphagenome_ft.finetune.target_transforms import (
     SpatialRebinTargetTransform,
     load_target_transform,
 )
+from alphagenome_ft.finetune.target_manifest import (
+    bigwig_nonzero_mean,
+    build_head_config,
+)
 from alphagenome_ft.finetune.reprocessing import (
     BinnedAtacAccumulator,
     fragment_totals_by_group,
+    read_fragment_histogram,
     read_cell_groups,
+    stream_tabix_fragments,
 )
 from alphagenome_ft.finetune.rna_tracks import (
     GeneBody,
@@ -88,10 +94,15 @@ __all__ = [
     "PiecewiseLinearTargetTransform",
     "SpatialRebinTargetTransform",
     "load_target_transform",
+    # target manifests
+    "bigwig_nonzero_mean",
+    "build_head_config",
     # ATAC pseudobulk tracks
     "BinnedAtacAccumulator",
     "fragment_totals_by_group",
+    "read_fragment_histogram",
     "read_cell_groups",
+    "stream_tabix_fragments",
     # RNA pseudobulk tracks
     "GeneBody",
     "GeneExons",
