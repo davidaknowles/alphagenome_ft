@@ -19,7 +19,10 @@ export PYTHONPATH="$PWD:${PYTHONPATH:-}"
 species=(human macaque marmoset)
 species_name="${species[$SLURM_ARRAY_TASK_ID]}"
 species_config=outputs/allen_brain_multiome_multispecies_v1/species.json
-fasta="$(jq -r --arg species "$species_name" '.species[] | select(.name == $species) | .fasta' "$species_config")"
+fasta="$(python scripts/allen_atac_reprocessing/species_config_query.py \
+  --species-config "$species_config" \
+  fasta \
+  --species "$species_name")"
 if [[ "$species_name" == human ]]; then
   shard_dir=outputs/allen_atac_full_depth/shards
 else

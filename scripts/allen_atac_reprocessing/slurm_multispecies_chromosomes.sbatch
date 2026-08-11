@@ -19,18 +19,10 @@ export PYTHONPATH="$PWD:${PYTHONPATH:-}"
 
 species_config=outputs/allen_brain_multiome_multispecies_v1/species.json
 mapfile -t jobs < <(
-  jq -r '
-    .species[]
-    | select(.name == "macaque" or .name == "marmoset")
-    | .name as $species
-    | .fasta as $fasta
-    | (if (.include_chroms | length) > 0
-       then (.include_chroms | split(","))
-       else ([range(1; 23) | "chr\(.)"] + ["chrX"])
-       end)[] as $chromosome
-    | [$species, $chromosome, $fasta]
-    | @tsv
-  ' "$species_config"
+  python scripts/allen_atac_reprocessing/species_config_query.py \
+    --species-config "$species_config" \
+    chromosome-jobs \
+    --species macaque marmoset
 )
 if [[ "${#jobs[@]}" -ne 44 ]]; then
   echo "Expected 44 nonhuman primary-chromosome jobs, found ${#jobs[@]}." >&2

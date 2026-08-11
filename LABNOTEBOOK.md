@@ -30,6 +30,8 @@ Final adapter comparisons are collated from each run's `metrics.jsonl`. One epoc
 
 The Liu preparation keeps its target manifest with the generated exon RNA tracks and gene-level supervision under `outputs/v0data/liu-hdma/joint`. The generic joint launcher resolves this dataset-specific layout automatically; without that mapping it would look for a nonexistent parent-level manifest and fail before model construction.
 
+Johansen reprocessing launchers query species configurations with Python's structured JSON parser rather than assuming that the `jq` command-line executable is installed on every worker image. The query is shared by chromosome-job enumeration and FASTA lookup. Its launch-time check requires exactly 44 macaque and marmoset chromosome jobs before any fragment processing begins.
+
 ## GRR prediction-target audit
 
 Excluding the Encyclopedia of DNA Elements collection, all four single-cell Genomic Resource Repository, GRR, studies contain experimentally measured targets suitable for some form of sequence-model supervision. `johansen2025Crossspecies` has released assay for transposase-accessible chromatin, ATAC, BigWigs and raw fragments, while its RNA measurements are gene-level. `liu2026Multiomics` has raw ATAC fragments and gene-level RNA; its released observed BigWig is a Model-based Analysis of ChIP-Seq version 2 significance transformation, and its other two BigWigs are ChromBPNet predictions and Deep Learning Important FeaTures attributions rather than assay targets. `zemke2023Conserved` has coordinate-resolved ATAC, RNA, high-throughput chromosome conformation capture, and methylation targets. `zemke2024Epigenetic` has coordinate-resolved ATAC and RNA targets, with missing age-by-cell-type combinations that require masks.
