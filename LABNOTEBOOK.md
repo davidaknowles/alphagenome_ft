@@ -30,6 +30,8 @@ In the first full fair HDA epoch, LoRA reached validation and test signed double
 
 At HDA epoch 2, LoRA reached validation and test (R=0.7905) and (R=0.8024), while LoRA plus LoCon reached (R=0.7981) and (R=0.8067). LoRA plus LoCon therefore led validation by 0.0076 after starting from exactly matched shared parameters. Both runs continued under the same early-stopping rule.
 
+At HDA epoch 3, LoRA reached validation and test (R=0.7971) and (R=0.8081), while LoRA plus LoCon reached (R=0.8062) and (R=0.8151). The LoRA plus LoCon validation advantage increased to 0.0091. Both runs then continued from their epoch-3 parameters under track-major target loading; optimizer moments restart symmetrically at this continuation boundary.
+
 The first paired HDA epoch gave LoRA validation and test (R=0.7722) and (R=0.7830) for ATAC and (R=0.4361) and (R=0.5720) for gene-supervised RNA. LoRA plus LoCon gave (R=0.7729) and (R=0.7837) for ATAC and (R=0.4313) and (R=0.5713) for RNA. ATAC is close to the single-head trajectory, while RNA remains well below the target range and requires further epochs or an RNA-specific objective improvement.
 
 The first human Zemke 2023 epoch gave LoRA validation and test (R=0.6760) and (R=0.6930) for ATAC and (R=0.3963) and (R=0.3475) for RNA. LoRA plus LoCon gave (R=0.6784) and (R=0.6939) for ATAC and (R=0.3999) and (R=0.3462) for RNA. LoRA plus LoCon led both validation heads slightly, but neither RNA result is near the target range after one epoch.
