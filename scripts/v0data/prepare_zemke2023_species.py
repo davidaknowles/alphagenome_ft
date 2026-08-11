@@ -50,13 +50,19 @@ def materialize_fasta(
         return destination
     destination.parent.mkdir(parents=True, exist_ok=True)
     temporary = destination.with_name(f"{destination.name}.tmp-{os.getpid()}")
-    chromosome_pattern = re.compile(rb"\bchromosome\s+([^,\s]+)")
+    chromosome_pattern = re.compile(rb"\bchromosome\s+([^,\s]+),")
     seen: set[bytes] = set()
     with _open_binary(source) as input_handle, temporary.open("wb") as output_handle:
         for line in input_handle:
             if line.startswith(b">") and rename_ncbi_chromosomes:
                 match = chromosome_pattern.search(line)
-                if match is not None:
+                if b"mitochondrion, complete genome" in line:
+                    name = b"chrM"
+                    if name in seen:
+                        raise ValueError(f"Duplicate renamed FASTA sequence {name.decode()}.")
+                    seen.add(name)
+                    line = b">" + name + b"\n"
+                elif match is not None:
                     chromosome = match.group(1)
                     chromosome = b"M" if chromosome == b"MT" else chromosome
                     name = b"chr" + chromosome
