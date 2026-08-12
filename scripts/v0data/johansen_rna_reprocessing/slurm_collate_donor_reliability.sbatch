@@ -10,6 +10,7 @@
 set -euo pipefail
 
 cd /gpfs/commons/home/daknowles/projects/alphagenome_fp4
+export LD_LIBRARY_PATH="/nfs/sw/easybuild/software/Python/3.12.3-GCCcore-13.3.0/lib:${LD_LIBRARY_PATH:-}"
 
 "${HOME}/venv/jax/bin/python" scripts/v0data/johansen_rna_reprocessing/collate_donor_reliability.py \
   results/v0data_johansen_human_rna_donor_reliability.json \

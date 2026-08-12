@@ -13,6 +13,7 @@ set -euo pipefail
 cd /gpfs/commons/home/daknowles/projects/alphagenome_fp4
 mkdir -p logs/v0data results
 export PYTHONPATH="$PWD:${PYTHONPATH:-}"
+export LD_LIBRARY_PATH="/nfs/sw/easybuild/software/Python/3.12.3-GCCcore-13.3.0/lib:${LD_LIBRARY_PATH:-}"
 
 species_names=(human macaque marmoset)
 file_prefixes=(Human Macaque Marmoset)

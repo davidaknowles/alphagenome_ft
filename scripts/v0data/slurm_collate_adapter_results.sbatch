@@ -11,6 +11,7 @@ set -euo pipefail
 
 cd /gpfs/commons/home/daknowles/projects/alphagenome_fp4
 mkdir -p logs/v0data results
+export LD_LIBRARY_PATH="/nfs/sw/easybuild/software/Python/3.12.3-GCCcore-13.3.0/lib:${LD_LIBRARY_PATH:-}"
 
 "${HOME}/venv/torchfix/bin/python" scripts/v0data/collate_adapter_comparisons.py \
   --json-output results/v0data_adapter_comparisons.json \

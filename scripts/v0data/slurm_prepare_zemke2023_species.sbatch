@@ -13,6 +13,7 @@ cd /gpfs/commons/home/daknowles/projects/alphagenome_fp4
 mkdir -p logs/v0data outputs/v0data/zemke2023-species
 module load Python/3.12.3-GCCcore-13.3.0
 export PYTHONPATH="$PWD:${PYTHONPATH:-}"
+export LD_LIBRARY_PATH="/nfs/sw/easybuild/software/Python/3.12.3-GCCcore-13.3.0/lib:${LD_LIBRARY_PATH:-}"
 
 "${HOME}/venv/jax/bin/python" scripts/v0data/prepare_zemke2023_species.py \
   --human-fasta /gpfs/commons/home/daknowles/knowles_lab/index/hg38/hg38.fa \
