@@ -111,6 +111,27 @@
     {
       "dataset": "hda-joint",
       "strategy": "lora",
+      "variant": "geneonly_corrw1_screen",
+      "selected_epoch": 1,
+      "global_step": 2619,
+      "selection_mean_valid_r": 0.5951041420818555,
+      "heads": [
+        {
+          "head": "hda_atac",
+          "valid_r": 0.7648767754321764,
+          "test_r": 0.7786530062602757
+        },
+        {
+          "head": "hda_rna",
+          "valid_r": 0.4253315087315347,
+          "test_r": 0.6420379352603268
+        }
+      ],
+      "metrics_path": "checkpoints/v0data/hda-joint_lora_geneonly_corrw1_screen/metrics.jsonl"
+    },
+    {
+      "dataset": "hda-joint",
+      "strategy": "lora",
       "variant": "rnaw5",
       "selected_epoch": 1,
       "global_step": 2619,
