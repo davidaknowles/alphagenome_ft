@@ -154,19 +154,19 @@
     {
       "dataset": "zemke2024-all",
       "strategy": "lora",
-      "selected_epoch": 2,
-      "global_step": 5238,
-      "selection_mean_valid_r": 0.5874798713992371,
+      "selected_epoch": 3,
+      "global_step": 7857,
+      "selection_mean_valid_r": 0.6075817291712371,
       "heads": [
         {
           "head": "zemke2024_all_atac",
-          "valid_r": 0.74237982548858,
-          "test_r": 0.7487620353522902
+          "valid_r": 0.7438558356449994,
+          "test_r": 0.7547542213506439
         },
         {
           "head": "zemke2024_all_rna",
-          "valid_r": 0.43257991730989415,
-          "test_r": 0.2534670201733805
+          "valid_r": 0.47130762269747484,
+          "test_r": 0.27753998801708213
         }
       ],
       "metrics_path": "checkpoints/v0data/zemke2024-all_lora/metrics.jsonl"

@@ -18,7 +18,7 @@ Each run is selected by the mean validation signed double-centered Pearson corre
 | `zemke2023_marmoset` | `lora` | 1 | `zemke2023_rna` | 0.2771 | 0.1549 |
 | `zemke2023_marmoset` | `lora+locon` | 1 | `zemke2023_atac` | 0.5799 | 0.5527 |
 | `zemke2023_marmoset` | `lora+locon` | 1 | `zemke2023_rna` | 0.2800 | 0.1918 |
-| `zemke2024-all` | `lora` | 2 | `zemke2024_all_atac` | 0.7424 | 0.7488 |
-| `zemke2024-all` | `lora` | 2 | `zemke2024_all_rna` | 0.4326 | 0.2535 |
+| `zemke2024-all` | `lora` | 3 | `zemke2024_all_atac` | 0.7439 | 0.7548 |
+| `zemke2024-all` | `lora` | 3 | `zemke2024_all_rna` | 0.4713 | 0.2775 |
 | `zemke2024-all` | `lora+locon` | 4 | `zemke2024_all_atac` | 0.7499 | 0.7599 |
 | `zemke2024-all` | `lora+locon` | 4 | `zemke2024_all_rna` | 0.4722 | 0.2888 |
