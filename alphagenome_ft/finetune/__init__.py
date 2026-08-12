@@ -46,6 +46,14 @@ from alphagenome_ft.finetune.reprocessing import (
     read_cell_groups,
     stream_tabix_fragments,
 )
+from alphagenome_ft.finetune.reliability import (
+    balanced_library_split,
+    binomial_count_split,
+    counts_per_million,
+    double_centered_pearson,
+    spearman_brown,
+    split_half_pseudobulks,
+)
 from alphagenome_ft.finetune.rna_tracks import (
     GeneBody,
     GeneExons,
@@ -105,6 +113,13 @@ __all__ = [
     "read_fragment_histogram",
     "read_cell_groups",
     "stream_tabix_fragments",
+    # target reliability
+    "balanced_library_split",
+    "binomial_count_split",
+    "counts_per_million",
+    "double_centered_pearson",
+    "spearman_brown",
+    "split_half_pseudobulks",
     # RNA pseudobulk tracks
     "GeneBody",
     "GeneExons",

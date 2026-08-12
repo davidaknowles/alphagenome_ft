@@ -3,11 +3,27 @@ import pytest
 
 from alphagenome_ft.finetune.reliability import (
     balanced_library_split,
+    binomial_count_split,
     counts_per_million,
     double_centered_pearson,
     split_half_pseudobulks,
     spearman_brown,
 )
+
+
+def test_binomial_count_split_is_deterministic_and_conservative() -> None:
+    counts = np.asarray([[0, 1, 5], [12, 3, 2]], dtype=np.int64)
+    first, second = binomial_count_split(counts, seed=17)
+    repeated_first, repeated_second = binomial_count_split(counts, seed=17)
+
+    np.testing.assert_array_equal(first + second, counts)
+    np.testing.assert_array_equal(first, repeated_first)
+    np.testing.assert_array_equal(second, repeated_second)
+
+
+def test_binomial_count_split_rejects_fractional_counts() -> None:
+    with pytest.raises(ValueError, match="integer-valued"):
+        binomial_count_split(np.asarray([[1.5, 2.0]]), seed=0)
 
 
 def test_balanced_library_split_assigns_observed_samples_to_both_halves() -> None:

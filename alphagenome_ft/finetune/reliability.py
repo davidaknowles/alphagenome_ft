@@ -41,6 +41,28 @@ def counts_per_million(counts: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     return normalized, valid
 
 
+def binomial_count_split(
+    counts: np.ndarray,
+    *,
+    seed: int,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Randomly divide each observed molecule between two technical halves.
+
+    ``counts`` has shape ``[C, G]``, where ``C`` is the number of target cell
+    groups and ``G`` is the number of genes. The two returned integer matrices
+    have the same shape and sum exactly to the input counts.
+    """
+    counts = np.asarray(counts)
+    if counts.ndim != 2 or np.any(~np.isfinite(counts)) or np.any(counts < 0):
+        raise ValueError("counts must be a finite non-negative [groups, genes] matrix.")
+    rounded = np.rint(counts)
+    if not np.array_equal(counts, rounded):
+        raise ValueError("counts must contain integer-valued molecule counts.")
+    integer_counts = rounded.astype(np.int64, copy=False)
+    first = np.random.default_rng(seed).binomial(integer_counts, 0.5)
+    return first, integer_counts - first
+
+
 def double_centered_pearson(first: np.ndarray, second: np.ndarray) -> float:
     """Calculate signed Pearson correlation after centering both matrix axes."""
     first = np.asarray(first, dtype=np.float64)
