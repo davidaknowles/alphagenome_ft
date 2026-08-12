@@ -6,9 +6,44 @@ from scipy import sparse
 from scipy.io import mmwrite
 
 from alphagenome_ft.finetune.reprocessing import (
+    aggregate_sparse_counts_by_group,
     aggregate_matrix_market_by_group,
+    align_cpm_to_gene_supervision,
+    normalize_counts_per_million,
     read_10x_features,
 )
+
+
+def test_aggregate_sparse_counts_by_group_and_normalize():
+    counts = sparse.csr_matrix(
+        np.asarray([[1, 0, 2], [0, 3, 0], [4, 0, 1]], dtype=np.float32)
+    )
+
+    groups, aggregated, n_cells = aggregate_sparse_counts_by_group(
+        counts,
+        ("b", "a", "b"),
+    )
+
+    assert groups == ("a", "b")
+    np.testing.assert_array_equal(aggregated, [[0, 3, 0], [5, 0, 3]])
+    np.testing.assert_array_equal(n_cells, [1, 2])
+    np.testing.assert_allclose(
+        normalize_counts_per_million(aggregated),
+        [[0, 1_000_000, 0], [625_000, 0, 375_000]],
+    )
+
+
+def test_align_cpm_to_gene_supervision_reorders_maps_and_renormalizes():
+    aligned = align_cpm_to_gene_supervision(
+        template_groups=("second", "first"),
+        template_gene_ids=("native_b", "native_a"),
+        source_groups=("first", "second"),
+        source_gene_ids=("source_a", "source_b", "unused"),
+        source_cpm=np.asarray([[10, 30, 60], [20, 20, 60]], dtype=np.float32),
+        source_gene_by_template={"native_a": "source_a", "native_b": "source_b"},
+    )
+
+    np.testing.assert_allclose(aligned, [[500_000, 500_000], [750_000, 250_000]])
 
 
 def test_aggregate_matrix_market_by_group(tmp_path: Path):

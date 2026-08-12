@@ -1,0 +1,33 @@
+{
+  "definition": "Legacy matrices sum per-cell normalized expression before row CPM; corrected matrices sum raw UMI counts by group before CPM.",
+  "audits": [
+    {
+      "species": "human",
+      "groups": 60,
+      "genes": 36601,
+      "raw_cpm_double_centered_r": 0.46449188605158487,
+      "log1p_cpm_double_centered_r": 0.9223737045870012,
+      "per_group_pearson_quantiles": {
+        "0.0": 0.31551238480761046,
+        "0.05": 0.4194879873892728,
+        "0.5": 0.49423201256001414,
+        "0.95": 0.6025323460496831,
+        "1.0": 0.6487254676674457
+      }
+    },
+    {
+      "species": "macaque",
+      "groups": 58,
+      "genes": 35219,
+      "raw_cpm_double_centered_r": 0.5023202289824127,
+      "log1p_cpm_double_centered_r": 0.9417804582456303,
+      "per_group_pearson_quantiles": {
+        "0.0": 0.3790873932763672,
+        "0.05": 0.46934338061351716,
+        "0.5": 0.5714303938334383,
+        "0.95": 0.7189265919363237,
+        "1.0": 0.7937166535219203
+      }
+    }
+  ]
+}
