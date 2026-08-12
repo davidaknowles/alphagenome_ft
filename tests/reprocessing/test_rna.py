@@ -60,6 +60,20 @@ def test_chunked_sparse_aggregation_requires_all_labeled_rows():
         aggregate_sparse_count_chunks_by_group((counts[:1],), ("a", "b"))
 
 
+def test_sparse_aggregation_promotes_before_large_count_sum():
+    counts = sparse.csr_matrix(
+        np.asarray([[8_388_608], [8_388_608], [1]], dtype=np.float32)
+    )
+
+    _, full, _ = aggregate_sparse_counts_by_group(counts, ("a", "a", "a"))
+    _, chunked, _ = aggregate_sparse_count_chunks_by_group(
+        (counts[:2], counts[2:]), ("a", "a", "a")
+    )
+
+    np.testing.assert_array_equal(full, [[16_777_217]])
+    np.testing.assert_array_equal(chunked, full)
+
+
 def test_align_cpm_to_gene_supervision_reorders_maps_and_renormalizes():
     aligned = align_cpm_to_gene_supervision(
         template_groups=("second", "first"),

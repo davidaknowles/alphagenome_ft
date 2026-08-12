@@ -42,6 +42,7 @@ def aggregate_sparse_counts_by_group(
         )
     if np.any(~np.isfinite(counts.data)) or np.any(counts.data < 0):
         raise ValueError("Sparse counts must be finite and non-negative.")
+    counts = counts.astype(np.float64)
 
     cell_groups = tuple(str(group) for group in cell_groups)
     if groups is None:
@@ -62,7 +63,7 @@ def aggregate_sparse_counts_by_group(
     )
     rows = np.arange(len(cell_groups), dtype=np.int64)
     assignment = sparse.csr_matrix(
-        (np.ones(len(rows), dtype=np.float32), (rows, columns)),
+        (np.ones(len(rows), dtype=np.float64), (rows, columns)),
         shape=(len(rows), len(groups)),
     )
     aggregated = assignment.T @ counts
@@ -102,6 +103,7 @@ def aggregate_sparse_count_chunks_by_group(
         chunk = chunk.tocsr()
         if np.any(~np.isfinite(chunk.data)) or np.any(chunk.data < 0):
             raise ValueError("Sparse counts must be finite and non-negative.")
+        chunk = chunk.astype(np.float64)
         row_stop = row_offset + chunk.shape[0]
         if row_stop > len(cell_groups):
             raise ValueError("Count chunks contain more cells than cell_groups.")
@@ -113,7 +115,7 @@ def aggregate_sparse_count_chunks_by_group(
         )
         rows = np.arange(chunk.shape[0], dtype=np.int64)
         assignment = sparse.csr_matrix(
-            (np.ones(len(rows), dtype=np.float32), (rows, columns)),
+            (np.ones(len(rows), dtype=np.float64), (rows, columns)),
             shape=(chunk.shape[0], len(groups)),
         )
         chunk_aggregated = np.asarray(
