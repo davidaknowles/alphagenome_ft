@@ -10,7 +10,7 @@ def _write_screen(root: Path, suffix: str, atac: float, rna: float) -> None:
     run = root / f"hda-joint_lora_geneonly_corrw{suffix}_screen"
     run.mkdir()
     record = {
-        "epoch": 1,
+        "source_epoch": 1,
         "metrics": {
             "valid": {
                 "hda_atac": {"differential_pearson_r": atac},
@@ -18,7 +18,17 @@ def _write_screen(root: Path, suffix: str, atac: float, rna: float) -> None:
             }
         },
     }
-    (run / "metrics.jsonl").write_text(json.dumps(record) + "\n")
+    (run / "evaluation.json").write_text(json.dumps(record) + "\n")
+
+
+def test_rejects_training_metric_without_reevaluation(tmp_path: Path) -> None:
+    for screen in SCREENS:
+        run = tmp_path / f"hda-joint_lora_geneonly_corrw{screen['suffix']}_screen"
+        run.mkdir()
+        (run / "metrics.jsonl").write_text("{}\n")
+
+    with pytest.raises(FileNotFoundError):
+        select_objective(tmp_path)
 
 
 def test_selects_best_nonzero_weight_only_when_mean_improves(tmp_path: Path) -> None:

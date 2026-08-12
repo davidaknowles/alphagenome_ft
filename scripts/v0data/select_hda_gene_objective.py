@@ -17,11 +17,12 @@ SCREENS = (
 )
 
 
-def _read_score(path: Path) -> dict[str, Any]:
-    records = [json.loads(line) for line in path.read_text().splitlines() if line.strip()]
-    if len(records) != 1 or records[0].get("epoch") != 1:
-        raise ValueError(f"Expected exactly one completed epoch-one record in {path}.")
-    valid = records[0].get("metrics", {}).get("valid", {})
+def _read_score(run_dir: Path) -> dict[str, Any]:
+    path = run_dir / "evaluation.json"
+    record = json.loads(path.read_text())
+    if record.get("source_epoch") != 1:
+        raise ValueError(f"Expected an epoch-one reevaluation in {path}.")
+    valid = record.get("metrics", {}).get("valid", {})
     values = {
         head: metrics.get("differential_pearson_r") for head, metrics in valid.items()
     }
@@ -31,7 +32,7 @@ def _read_score(path: Path) -> dict[str, Any]:
     ):
         raise ValueError(f"Missing finite HDA ATAC/RNA validation correlations in {path}.")
     return {
-        "metrics_path": str(path),
+        "evaluation_path": str(path),
         "valid_r": values,
         "mean_valid_r": sum(values.values()) / len(values),
     }
@@ -52,7 +53,7 @@ def select_objective(
             {
                 **screen,
                 "run": run,
-                **_read_score(checkpoint_root / run / "metrics.jsonl"),
+                **_read_score(checkpoint_root / run),
             }
         )
     baseline = screens[0]
