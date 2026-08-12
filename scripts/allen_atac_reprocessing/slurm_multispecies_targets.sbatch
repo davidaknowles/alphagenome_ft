@@ -18,4 +18,8 @@ export PYTHONPATH="$PWD:${PYTHONPATH:-}"
 python scripts/allen_atac_reprocessing/prepare_multispecies_targets.py \
   --source-species-config outputs/allen_brain_multiome_multispecies_v1/species.json \
   --atac-root outputs/v0data/johansen-fragment-atac \
-  --output-dir outputs/v0data/johansen-fragment-joint
+  --output-dir outputs/v0data/johansen-fragment-joint-depth-filtered \
+  --fragment-shards human=outputs/allen_atac_full_depth/shards \
+  --fragment-shards macaque=outputs/v0data/johansen-fragment-atac/macaque/shards \
+  --fragment-shards marmoset=outputs/v0data/johansen-fragment-atac/marmoset/shards \
+  --minimum-fragments 500000
