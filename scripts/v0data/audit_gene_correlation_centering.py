@@ -180,7 +180,7 @@ def main() -> None:
     result = {
         "datasets": {
             label: audit_supervision(
-                path.expanduser().resolve(),
+                path.expanduser(),
                 batch_size=args.batch_size,
                 repeats=args.repeats,
                 seed=args.seed,

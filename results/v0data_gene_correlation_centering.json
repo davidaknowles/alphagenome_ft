@@ -1,7 +1,7 @@
 {
   "datasets": {
     "HDA": {
-      "gene_supervision": "/gpfs/commons/home/daknowles/projects/alphagenome_fp4/outputs/v0data/hda-joint/gene_expression_supervision.npz",
+      "gene_supervision": "outputs/v0data/hda-joint/gene_expression_supervision.npz",
       "groups": 134,
       "training_genes": 44840,
       "training_windows_with_genes": 14397,
@@ -31,7 +31,7 @@
       }
     },
     "Liu": {
-      "gene_supervision": "/gpfs/commons/home/daknowles/projects/alphagenome_fp4/outputs/v0data/liu-hdma/joint/gene_expression_supervision.npz",
+      "gene_supervision": "outputs/v0data/liu-hdma/joint/gene_expression_supervision.npz",
       "groups": 186,
       "training_genes": 25367,
       "training_windows_with_genes": 10360,
@@ -61,7 +61,7 @@
       }
     },
     "Johansen-human": {
-      "gene_supervision": "/gpfs/commons/home/daknowles/projects/alphagenome_fp4/outputs/v0data/johansen-rna-corrected/supervision/human/gene_expression_supervision.npz",
+      "gene_supervision": "outputs/v0data/johansen-rna-corrected/supervision/human/gene_expression_supervision.npz",
       "groups": 47,
       "training_genes": 7512,
       "training_windows_with_genes": 4416,
@@ -91,7 +91,7 @@
       }
     },
     "Johansen-macaque": {
-      "gene_supervision": "/gpfs/commons/home/daknowles/projects/alphagenome_fp4/outputs/v0data/johansen-rna-corrected/supervision/macaque/gene_expression_supervision.npz",
+      "gene_supervision": "outputs/v0data/johansen-rna-corrected/supervision/macaque/gene_expression_supervision.npz",
       "groups": 47,
       "training_genes": 7642,
       "training_windows_with_genes": 4520,
@@ -121,7 +121,7 @@
       }
     },
     "Johansen-marmoset": {
-      "gene_supervision": "/gpfs/commons/home/daknowles/projects/alphagenome_fp4/outputs/v0data/johansen-rna-corrected/supervision/marmoset/gene_expression_supervision.npz",
+      "gene_supervision": "outputs/v0data/johansen-rna-corrected/supervision/marmoset/gene_expression_supervision.npz",
       "groups": 47,
       "training_genes": 7574,
       "training_windows_with_genes": 4446,
