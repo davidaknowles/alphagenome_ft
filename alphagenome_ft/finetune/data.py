@@ -67,17 +67,29 @@ class GeneExpressionSupervision:
             self.exon_ends = np.asarray(data["exon_ends"], dtype=np.int64)
             self.groups = tuple(str(value) for value in data["groups"])
             self.cpm = np.asarray(data["cpm"], dtype=np.float32)
+            self.group_valid = (
+                np.asarray(data["group_valid"], dtype=bool)
+                if "group_valid" in data
+                else np.ones((len(self.groups),), dtype=bool)
+            )
         gene_count = len(self.gene_ids)
         if self.cpm.shape != (len(self.groups), gene_count):
             raise ValueError(f"Invalid gene CPM shape {self.cpm.shape} in {path}.")
-        if len(spec.tracks) != 2 * len(self.groups):
+        if self.group_valid.shape != (len(self.groups),):
+            raise ValueError(f"Invalid group-valid shape {self.group_valid.shape} in {path}.")
+        if not np.any(self.group_valid):
+            raise ValueError(f"Gene supervision has no valid groups in {path}.")
+        track_strands = tuple(track.strand for track in spec.tracks)
+        paired_strands = tuple(strand for _ in self.groups for strand in ("+", "-"))
+        if len(spec.tracks) == len(self.groups) and set(track_strands) <= {".", ""}:
+            self.stranded = False
+        elif len(spec.tracks) == 2 * len(self.groups) and track_strands == paired_strands:
+            self.stranded = True
+        else:
             raise ValueError(
-                f"Head {spec.head_id} has {len(spec.tracks)} tracks but gene supervision "
-                f"contains {len(self.groups)} groups; paired strand tracks are required."
+                f"Head {spec.head_id} must contain one unstranded track or an interleaved "
+                f"+/- track pair for each of its {len(self.groups)} gene groups."
             )
-        expected_strands = tuple(strand for _ in self.groups for strand in ("+", "-"))
-        if tuple(track.strand for track in spec.tracks) != expected_strands:
-            raise ValueError(f"Head {spec.head_id} tracks must be interleaved + and - by group.")
         self._by_chromosome: dict[str, np.ndarray] = {}
         for chromosome in np.unique(self.chromosomes):
             indices = np.flatnonzero(self.chromosomes == chromosome)
@@ -123,7 +135,11 @@ class GeneExpressionSupervision:
         weights = np.zeros((sequence_length // 128, max_genes), dtype=np.float32)
         targets = np.zeros((max_genes, len(self.groups)), dtype=np.float32)
         strands = np.zeros((max_genes,), dtype=np.int8)
-        valid = np.zeros((max_genes,), dtype=bool)
+        has_missing_groups = not np.all(self.group_valid)
+        valid = np.zeros(
+            (max_genes, len(self.groups)) if has_missing_groups else (max_genes,),
+            dtype=bool,
+        )
         for output_idx, gene_idx in enumerate(indices):
             exon_begin = self.exon_offsets[gene_idx]
             exon_end = self.exon_offsets[gene_idx + 1]
@@ -141,7 +157,7 @@ class GeneExpressionSupervision:
                     weights[bin_idx, output_idx] += overlap / 128.0
             targets[output_idx] = self.cpm[:, gene_idx]
             strands[output_idx] = 0 if self.strands[gene_idx] == "+" else 1
-            valid[output_idx] = True
+            valid[output_idx] = self.group_valid if has_missing_groups else True
         return {"weights": weights, "targets": targets, "strands": strands, "valid": valid}
 
 

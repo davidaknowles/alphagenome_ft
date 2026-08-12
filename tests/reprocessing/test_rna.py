@@ -1,11 +1,13 @@
 import gzip
 from pathlib import Path
 
+import h5py
 import numpy as np
 from scipy import sparse
 from scipy.io import mmwrite
 
 from alphagenome_ft.finetune.reprocessing import (
+    aggregate_10x_h5_columns_by_group,
     aggregate_sparse_count_chunks_by_group,
     aggregate_sparse_counts_by_group,
     aggregate_matrix_market_by_group,
@@ -13,6 +15,33 @@ from alphagenome_ft.finetune.reprocessing import (
     normalize_counts_per_million,
     read_10x_features,
 )
+
+
+def test_aggregate_selected_10x_h5_columns_by_group(tmp_path: Path):
+    path = tmp_path / "matrix.h5"
+    with h5py.File(path, "w") as handle:
+        matrix = handle.create_group("matrix")
+        matrix.create_dataset("barcodes", data=np.asarray([b"a", b"b", b"c"]))
+        matrix.create_dataset("data", data=np.asarray([1, 9, 2, 3, 4, 8]))
+        matrix.create_dataset("indices", data=np.asarray([0, 2, 1, 0, 1, 2]))
+        matrix.create_dataset("indptr", data=np.asarray([0, 2, 3, 6]))
+        matrix.create_dataset("shape", data=np.asarray([3, 3]))
+        features = matrix.create_group("features")
+        features.create_dataset("id", data=np.asarray([b"ENSG1", b"ENSG2", b"peak1"]))
+        features.create_dataset("name", data=np.asarray([b"G1", b"G2", b"peak1"]))
+        features.create_dataset(
+            "feature_type",
+            data=np.asarray([b"Gene Expression", b"Gene Expression", b"Peaks"]),
+        )
+
+    ids, names, counts, n_cells = aggregate_10x_h5_columns_by_group(
+        path, {"a": "x", "c": "x", "b": "y"}, ("x", "y")
+    )
+
+    assert ids == ("ENSG1", "ENSG2")
+    assert names == ("G1", "G2")
+    np.testing.assert_array_equal(counts, [[4, 4], [0, 2]])
+    np.testing.assert_array_equal(n_cells, [2, 1])
 
 
 def test_aggregate_sparse_counts_by_group_and_normalize():

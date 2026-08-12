@@ -7,9 +7,90 @@ import gzip
 from pathlib import Path
 from typing import Mapping, Sequence
 
+import h5py
 import numpy as np
 from scipy import sparse
 from scipy.io import mmread
+
+
+def _decode_h5_strings(values: np.ndarray) -> tuple[str, ...]:
+    return tuple(
+        value.decode() if isinstance(value, (bytes, np.bytes_)) else str(value)
+        for value in values
+    )
+
+
+def aggregate_10x_h5_columns_by_group(
+    path: Path,
+    barcode_groups: Mapping[str, str],
+    groups: Sequence[str],
+    *,
+    feature_type: str = "Gene Expression",
+) -> tuple[tuple[str, ...], tuple[str, ...], np.ndarray, np.ndarray]:
+    """Aggregate selected columns of a 10x HDF5 matrix by group.
+
+    The return values are feature identifiers, feature names, a dense
+    groups-by-features count matrix, and retained cell counts by group. Raw
+    barcodes in ``barcode_groups`` must not include a library prefix.
+    """
+    path = Path(path).expanduser().resolve()
+    groups = tuple(str(group) for group in groups)
+    if not groups or len(set(groups)) != len(groups):
+        raise ValueError("Groups must be nonempty and unique.")
+    group_index = {group: idx for idx, group in enumerate(groups)}
+    unknown_groups = sorted(set(barcode_groups.values()) - set(group_index))
+    if unknown_groups:
+        raise ValueError(f"Barcode labels contain unknown groups: {unknown_groups[:10]}")
+
+    with h5py.File(path, "r", rdcc_nbytes=64 * 1024**2) as handle:
+        matrix = handle["matrix"]
+        features = matrix["features"]
+        feature_types = _decode_h5_strings(features["feature_type"][:])
+        retained_rows = np.flatnonzero(
+            np.asarray([value == feature_type for value in feature_types], dtype=bool)
+        )
+        if len(retained_rows) == 0:
+            raise ValueError(f"{path} has no features of type {feature_type!r}.")
+        feature_ids_all = _decode_h5_strings(features["id"][:])
+        feature_names_all = _decode_h5_strings(features["name"][:])
+        feature_ids = tuple(feature_ids_all[idx] for idx in retained_rows)
+        feature_names = tuple(feature_names_all[idx] for idx in retained_rows)
+        if len(set(feature_ids)) != len(feature_ids):
+            raise ValueError(f"{path} contains duplicate retained feature identifiers.")
+
+        raw_barcodes = matrix["barcodes"][:]
+        if len(raw_barcodes) > 1 and not np.all(raw_barcodes[:-1] <= raw_barcodes[1:]):
+            raise ValueError(f"{path} barcodes must be lexicographically sorted.")
+        requested = sorted(
+            (str(barcode).encode(), group_index[str(group)])
+            for barcode, group in barcode_groups.items()
+        )
+        requested_barcodes = np.asarray([barcode for barcode, _ in requested])
+        columns = np.searchsorted(raw_barcodes, requested_barcodes)
+        in_range = columns < len(raw_barcodes)
+        matched = np.zeros(len(columns), dtype=bool)
+        matched[in_range] = raw_barcodes[columns[in_range]] == requested_barcodes[in_range]
+        if not np.all(matched):
+            missing = [requested[idx][0].decode() for idx in np.flatnonzero(~matched)[:10]]
+            raise ValueError(f"{path} lacks requested barcodes: {missing}")
+
+        row_map = np.full(len(feature_ids_all), -1, dtype=np.int64)
+        row_map[retained_rows] = np.arange(len(retained_rows), dtype=np.int64)
+        indptr = np.asarray(matrix["indptr"][:], dtype=np.int64)
+        counts = np.zeros((len(groups), len(retained_rows)), dtype=np.float64)
+        n_cells = np.zeros(len(groups), dtype=np.int64)
+        for column, (_, output_group) in zip(columns, requested, strict=True):
+            start, end = int(indptr[column]), int(indptr[column + 1])
+            source_rows = np.asarray(matrix["indices"][start:end], dtype=np.int64)
+            output_rows = row_map[source_rows]
+            keep = output_rows >= 0
+            np.add.at(
+                counts[output_group],
+                output_rows[keep],
+                np.asarray(matrix["data"][start:end], dtype=np.float64)[keep],
+            )
+            n_cells[output_group] += 1
+    return feature_ids, feature_names, counts, n_cells
 
 
 def normalize_counts_per_million(counts: np.ndarray) -> np.ndarray:

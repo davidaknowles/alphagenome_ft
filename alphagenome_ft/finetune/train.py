@@ -285,50 +285,45 @@ def _r2_stats(prediction, targets, observation_mask=None):
     targets = targets.astype(jnp.float32)
     residual = prediction - targets
 
-    if observation_mask is None:
-        mask = jnp.ones(targets.shape[:-1], dtype=jnp.float32)
-    else:
-        mask = observation_mask.astype(jnp.float32)
-        if mask.shape != targets.shape[:-1]:
-            raise ValueError(
-                f"Observation mask shape {mask.shape} does not match {targets.shape[:-1]}."
-            )
-    mask_channels = mask[..., None]
+    mask_channels = _full_observation_mask(targets, observation_mask)
 
-    count = jnp.sum(mask) * targets.shape[-1]
+    count = jnp.sum(mask_channels)
     sum_y = jnp.sum(targets * mask_channels)
     sum_y2 = jnp.sum(jnp.square(targets) * mask_channels)
     sse = jnp.sum(jnp.square(residual) * mask_channels)
 
-    loci_count = jnp.sum(mask)
-    sum_y_by_track = jnp.sum(targets * mask_channels, axis=(0, 1))
-    sum_y2_by_track = jnp.sum(jnp.square(targets) * mask_channels, axis=(0, 1))
-    sse_by_track = jnp.sum(jnp.square(residual) * mask_channels, axis=(0, 1))
-    count_by_track = jnp.ones_like(sum_y_by_track, dtype=jnp.float32) * loci_count
+    reduction_axes = tuple(range(targets.ndim - 1))
+    sum_y_by_track = jnp.sum(targets * mask_channels, axis=reduction_axes)
+    sum_y2_by_track = jnp.sum(jnp.square(targets) * mask_channels, axis=reduction_axes)
+    sse_by_track = jnp.sum(jnp.square(residual) * mask_channels, axis=reduction_axes)
+    count_by_track = jnp.sum(mask_channels, axis=reduction_axes)
 
     prediction_bins = _maybe_bin_128bp_jax(prediction)
     target_bins = _maybe_bin_128bp_jax(targets)
     pred_matrix = prediction_bins.reshape((-1, prediction_bins.shape[-1]))
     target_matrix = target_bins.reshape((-1, target_bins.shape[-1]))
-    if observation_mask is None:
-        differential_mask = jnp.ones((pred_matrix.shape[0],), dtype=jnp.float32)
-    else:
-        differential_mask = mask.reshape((-1,))
-    differential_mask_channels = differential_mask[:, None]
-    pred_matrix = pred_matrix * differential_mask_channels
-    target_matrix = target_matrix * differential_mask_channels
+    differential_mask = mask_channels.reshape((-1, mask_channels.shape[-1]))
+    pred_matrix = pred_matrix * differential_mask
+    target_matrix = target_matrix * differential_mask
     pred_row_sum = jnp.sum(pred_matrix, axis=-1)
     target_row_sum = jnp.sum(target_matrix, axis=-1)
+    row_count = jnp.sum(differential_mask, axis=-1)
     pred_track_sum = jnp.sum(pred_matrix, axis=0)
     target_track_sum = jnp.sum(target_matrix, axis=0)
-    differential_count = jnp.sum(differential_mask)
+    differential_count_by_track = jnp.sum(differential_mask, axis=0)
+    differential_entry_count = jnp.sum(differential_mask)
     differential_pred_sum = jnp.sum(pred_matrix)
     differential_target_sum = jnp.sum(target_matrix)
 
-    target_mean_by_locus = jnp.mean(targets, axis=-1, keepdims=True)
-    sst_by_locus = jnp.sum(jnp.square(targets - target_mean_by_locus), axis=-1)
-    sse_by_locus = jnp.sum(jnp.square(residual), axis=-1)
-    valid_locus = (sst_by_locus > 0) & (mask > 0)
+    channel_count_by_locus = jnp.sum(mask_channels, axis=-1, keepdims=True)
+    target_mean_by_locus = jnp.sum(targets * mask_channels, axis=-1, keepdims=True) / jnp.maximum(
+        channel_count_by_locus, 1.0
+    )
+    sst_by_locus = jnp.sum(
+        jnp.square(targets - target_mean_by_locus) * mask_channels, axis=-1
+    )
+    sse_by_locus = jnp.sum(jnp.square(residual) * mask_channels, axis=-1)
+    valid_locus = (sst_by_locus > 0) & (channel_count_by_locus[..., 0] > 0)
     r2_by_locus = 1.0 - (sse_by_locus / jnp.maximum(sst_by_locus, 1e-8))
     r2_cell_type_sum = jnp.sum(jnp.where(valid_locus, r2_by_locus, 0.0))
     r2_cell_type_count = jnp.sum(valid_locus.astype(jnp.float32))
@@ -342,15 +337,22 @@ def _r2_stats(prediction, targets, observation_mask=None):
         "sum_y_by_track": sum_y_by_track,
         "sum_y2_by_track": sum_y2_by_track,
         "sse_by_track": sse_by_track,
-        "differential_count": differential_count,
+        "differential_entry_count": differential_entry_count,
+        "differential_count_by_track": differential_count_by_track,
         "differential_pred_sum": differential_pred_sum,
         "differential_target_sum": differential_target_sum,
         "differential_pred2_sum": jnp.sum(jnp.square(pred_matrix)),
         "differential_target2_sum": jnp.sum(jnp.square(target_matrix)),
         "differential_pred_target_sum": jnp.sum(pred_matrix * target_matrix),
-        "differential_pred_row2_sum": jnp.sum(jnp.square(pred_row_sum)),
-        "differential_target_row2_sum": jnp.sum(jnp.square(target_row_sum)),
-        "differential_pred_target_row_sum": jnp.sum(pred_row_sum * target_row_sum),
+        "differential_pred_row_mean2_sum": jnp.sum(
+            jnp.square(pred_row_sum) / jnp.maximum(row_count, 1.0)
+        ),
+        "differential_target_row_mean2_sum": jnp.sum(
+            jnp.square(target_row_sum) / jnp.maximum(row_count, 1.0)
+        ),
+        "differential_pred_target_row_mean_sum": jnp.sum(
+            pred_row_sum * target_row_sum / jnp.maximum(row_count, 1.0)
+        ),
         "differential_pred_track_sum": pred_track_sum,
         "differential_target_track_sum": target_track_sum,
         "r2_cell_type_sum": r2_cell_type_sum,
@@ -359,13 +361,19 @@ def _r2_stats(prediction, targets, observation_mask=None):
 
 
 def _gene_expression_prediction(prediction, batch, head_name: str):
-    """Sum 128 bp predictions over annotated exons on each gene's strand."""
+    """Sum 128 bp predictions over annotated exons, respecting paired strands."""
     if not isinstance(prediction, Mapping) or "predictions_128bp" not in prediction:
         raise ValueError(f"Head {head_name} requires predictions_128bp for gene supervision.")
     prediction_128bp = prediction["predictions_128bp"].astype(jnp.float32)
     weights = batch[f"gene_weights_{head_name}"].astype(jnp.float32)
-    if prediction_128bp.shape[-1] % 2:
-        raise ValueError(f"Head {head_name} must have paired strand channels.")
+    group_count = batch[f"gene_targets_{head_name}"].shape[-1]
+    if prediction_128bp.shape[-1] == group_count:
+        return jnp.einsum("bsg,bsc->bgc", weights, prediction_128bp)
+    if prediction_128bp.shape[-1] != 2 * group_count:
+        raise ValueError(
+            f"Head {head_name} has {prediction_128bp.shape[-1]} prediction channels for "
+            f"{group_count} gene groups; expected one unstranded channel or a +/- pair."
+        )
     positive = jnp.einsum("bsg,bsc->bgc", weights, prediction_128bp[..., 0::2])
     negative = jnp.einsum("bsg,bsc->bgc", weights, prediction_128bp[..., 1::2])
     strands = batch[f"gene_strands_{head_name}"][..., None]
@@ -374,9 +382,24 @@ def _gene_expression_prediction(prediction, batch, head_name: str):
 
 def _gene_log_mse(prediction, targets, valid):
     residual = jnp.log1p(jnp.maximum(prediction, 0.0)) - jnp.log1p(targets.astype(jnp.float32))
-    mask = valid.astype(jnp.float32)[..., None]
+    mask = _full_observation_mask(targets, valid)
     return jnp.sum(jnp.square(residual) * mask) / jnp.maximum(
-        jnp.sum(mask) * targets.shape[-1], 1.0
+        jnp.sum(mask), 1.0
+    )
+
+
+def _full_observation_mask(targets, observation_mask):
+    """Broadcast observation- or channel-level validity to the target shape."""
+    if observation_mask is None:
+        return jnp.ones(targets.shape, dtype=jnp.float32)
+    mask = observation_mask.astype(jnp.float32)
+    if mask.shape == targets.shape[:-1]:
+        return jnp.broadcast_to(mask[..., None], targets.shape)
+    if mask.shape == targets.shape:
+        return mask
+    raise ValueError(
+        f"Observation mask shape {mask.shape} does not match "
+        f"{targets.shape[:-1]} or {targets.shape}."
     )
 
 
@@ -394,32 +417,29 @@ def _double_centered_correlation_loss(
     if observation_mask is None:
         prediction = _maybe_bin_128bp_jax(prediction)
         targets = _maybe_bin_128bp_jax(targets)
-        mask = jnp.ones(prediction.shape[:-1], dtype=jnp.float32)
+        mask = jnp.ones(prediction.shape, dtype=jnp.float32)
     else:
-        mask = observation_mask.astype(jnp.float32)
-        if mask.shape != targets.shape[:-1]:
-            raise ValueError(
-                f"Observation mask shape {mask.shape} does not match {targets.shape[:-1]}."
-            )
+        mask = _full_observation_mask(targets, observation_mask)
 
     pred_matrix = prediction.reshape((-1, prediction.shape[-1]))
     target_matrix = targets.reshape((-1, targets.shape[-1]))
-    row_mask = mask.reshape((-1, 1))
+    full_mask = mask.reshape((-1, prediction.shape[-1]))
     def global_sum(value):
         if axis_name is None:
             return value
         return jax.lax.psum(value, axis_name=axis_name)
 
-    count = global_sum(jnp.sum(row_mask))
-    num_tracks = prediction.shape[-1]
+    count = global_sum(jnp.sum(full_mask))
 
     def center(values):
-        values = values * row_mask
+        values = values * full_mask
         track_sum = global_sum(jnp.sum(values, axis=0, keepdims=True))
-        track_mean = track_sum / jnp.maximum(count, 1.0)
-        row_mean = jnp.mean(values, axis=1, keepdims=True)
-        grand_mean = jnp.sum(track_sum) / jnp.maximum(count * num_tracks, 1.0)
-        return (values - track_mean - row_mean + grand_mean) * row_mask
+        track_count = global_sum(jnp.sum(full_mask, axis=0, keepdims=True))
+        track_mean = track_sum / jnp.maximum(track_count, 1.0)
+        row_count = jnp.sum(full_mask, axis=1, keepdims=True)
+        row_mean = jnp.sum(values, axis=1, keepdims=True) / jnp.maximum(row_count, 1.0)
+        grand_mean = jnp.sum(track_sum) / jnp.maximum(count, 1.0)
+        return (values - track_mean - row_mean + grand_mean) * full_mask
 
     pred_centered = center(pred_matrix)
     target_centered = center(target_matrix)
@@ -446,26 +466,29 @@ def _row_centered_correlation_loss(
     if observation_mask is None:
         prediction = _maybe_bin_128bp_jax(prediction)
         targets = _maybe_bin_128bp_jax(targets)
-        mask = jnp.ones(prediction.shape[:-1], dtype=jnp.float32)
+        mask = jnp.ones(prediction.shape, dtype=jnp.float32)
     else:
-        mask = observation_mask.astype(jnp.float32)
-        if mask.shape != targets.shape[:-1]:
-            raise ValueError(
-                f"Observation mask shape {mask.shape} does not match {targets.shape[:-1]}."
-            )
+        mask = _full_observation_mask(targets, observation_mask)
 
-    row_mask = mask.reshape((-1, 1))
+    full_mask = mask.reshape((-1, prediction.shape[-1]))
     pred_matrix = prediction.reshape((-1, prediction.shape[-1]))
     target_matrix = targets.reshape((-1, targets.shape[-1]))
-    pred_centered = (pred_matrix - jnp.mean(pred_matrix, axis=1, keepdims=True)) * row_mask
-    target_centered = (target_matrix - jnp.mean(target_matrix, axis=1, keepdims=True)) * row_mask
+    row_count = jnp.sum(full_mask, axis=1, keepdims=True)
+    pred_mean = jnp.sum(pred_matrix * full_mask, axis=1, keepdims=True) / jnp.maximum(
+        row_count, 1.0
+    )
+    target_mean = jnp.sum(target_matrix * full_mask, axis=1, keepdims=True) / jnp.maximum(
+        row_count, 1.0
+    )
+    pred_centered = (pred_matrix - pred_mean) * full_mask
+    target_centered = (target_matrix - target_mean) * full_mask
 
     def global_sum(value):
         if axis_name is None:
             return value
         return jax.lax.psum(value, axis_name=axis_name)
 
-    count = global_sum(jnp.sum(row_mask))
+    count = global_sum(jnp.sum(full_mask))
     covariance = global_sum(jnp.sum(pred_centered * target_centered))
     pred_sum_squares = global_sum(jnp.sum(jnp.square(pred_centered)))
     target_sum_squares = global_sum(jnp.sum(jnp.square(target_centered)))
@@ -558,29 +581,48 @@ def _finalize_r2_stats(stats: Mapping[str, np.ndarray | float]) -> dict[str, flo
         r2_over_cell_types = float(np.asarray(stats["r2_cell_type_sum"]) / r2_cell_type_count)
     else:
         r2_over_cell_types = float("nan")
-    differential_count = float(np.asarray(stats["differential_count"]))
+    differential_entry_count = float(np.asarray(stats["differential_entry_count"]))
     pred_sum = float(np.asarray(stats["differential_pred_sum"]))
     target_sum = float(np.asarray(stats["differential_target_sum"]))
     pred_track_sum = np.asarray(stats["differential_pred_track_sum"], dtype=np.float64)
     target_track_sum = np.asarray(stats["differential_target_track_sum"], dtype=np.float64)
-    differential_tracks = float(pred_track_sum.shape[0])
+    differential_count_by_track = np.asarray(
+        stats["differential_count_by_track"], dtype=np.float64
+    )
+    valid_differential_tracks = differential_count_by_track > 0
     pred_ss = (
         float(np.asarray(stats["differential_pred2_sum"]))
-        - float(np.asarray(stats["differential_pred_row2_sum"])) / differential_tracks
-        - float(np.sum(np.square(pred_track_sum))) / differential_count
-        + pred_sum * pred_sum / (differential_count * differential_tracks)
+        - float(np.asarray(stats["differential_pred_row_mean2_sum"]))
+        - float(
+            np.sum(
+                np.square(pred_track_sum[valid_differential_tracks])
+                / differential_count_by_track[valid_differential_tracks]
+            )
+        )
+        + pred_sum * pred_sum / max(differential_entry_count, 1.0)
     )
     target_ss = (
         float(np.asarray(stats["differential_target2_sum"]))
-        - float(np.asarray(stats["differential_target_row2_sum"])) / differential_tracks
-        - float(np.sum(np.square(target_track_sum))) / differential_count
-        + target_sum * target_sum / (differential_count * differential_tracks)
+        - float(np.asarray(stats["differential_target_row_mean2_sum"]))
+        - float(
+            np.sum(
+                np.square(target_track_sum[valid_differential_tracks])
+                / differential_count_by_track[valid_differential_tracks]
+            )
+        )
+        + target_sum * target_sum / max(differential_entry_count, 1.0)
     )
     pred_target_cov = (
         float(np.asarray(stats["differential_pred_target_sum"]))
-        - float(np.asarray(stats["differential_pred_target_row_sum"])) / differential_tracks
-        - float(np.sum(pred_track_sum * target_track_sum)) / differential_count
-        + pred_sum * target_sum / (differential_count * differential_tracks)
+        - float(np.asarray(stats["differential_pred_target_row_mean_sum"]))
+        - float(
+            np.sum(
+                pred_track_sum[valid_differential_tracks]
+                * target_track_sum[valid_differential_tracks]
+                / differential_count_by_track[valid_differential_tracks]
+            )
+        )
+        + pred_sum * target_sum / max(differential_entry_count, 1.0)
     )
     if pred_ss <= 0 or target_ss <= 0:
         differential_pearson_r = float("nan")

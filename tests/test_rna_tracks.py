@@ -87,6 +87,53 @@ def test_gene_supervision_builds_128bp_exon_weights_and_targets(tmp_path: Path):
     np.testing.assert_allclose(arrays["targets"][1], [1.0 / 3.0 * 1_000_000])
 
 
+def test_gene_supervision_masks_unreleased_groups_by_channel(tmp_path: Path):
+    expression = _tiny_expression(tmp_path)
+    genes = _tiny_genes(tmp_path, expression)
+    expression = type(expression)(
+        groups=("broad", "unreleased"),
+        gene_ids=expression.gene_ids,
+        cpm=np.concatenate([expression.cpm, np.zeros_like(expression.cpm)], axis=0),
+    )
+    artifact = tmp_path / "partial-genes.npz"
+    write_gene_expression_supervision(
+        artifact,
+        expression,
+        genes=genes,
+        group_valid=(True, False),
+    )
+    tracks = tuple(
+        TrackInfo(f"{group} ({strand})", tmp_path / f"{group}-{strand}.bw", strand)
+        for group in expression.groups
+        for strand in ("+", "-")
+    )
+    spec = HeadSpec("rna", "predefined", "rna_seq", tracks, gene_supervision_path=artifact)
+
+    arrays = GeneExpressionSupervision(artifact, spec).arrays_for_window(
+        genome.Interval("chr1", 0, 256), sequence_length=256, max_genes=3
+    )
+
+    assert arrays["valid"].shape == (3, 2)
+    assert arrays["valid"].tolist() == [[True, False], [True, False], [False, False]]
+
+
+def test_gene_supervision_accepts_one_unstranded_track_per_group(tmp_path: Path):
+    expression = _tiny_expression(tmp_path)
+    artifact = tmp_path / "unstranded-genes.npz"
+    write_gene_expression_supervision(
+        artifact, expression, genes=_tiny_genes(tmp_path, expression)
+    )
+    spec = HeadSpec(
+        "rna",
+        "predefined",
+        "rna_seq",
+        (TrackInfo("cell type", tmp_path / "rna.bw", "."),),
+        gene_supervision_path=artifact,
+    )
+
+    assert GeneExpressionSupervision(artifact, spec).stranded is False
+
+
 def test_expression_remap_and_gtf_attribute_aliases(tmp_path: Path):
     expression = _tiny_expression(tmp_path)
     remapped = remap_expression_gene_ids(expression, {"ENSG1": "GENE1"})

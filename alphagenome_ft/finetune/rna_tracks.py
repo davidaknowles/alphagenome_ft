@@ -350,6 +350,7 @@ def write_gene_expression_supervision(
     *,
     genes: Mapping[str, GeneExons],
     strip_gene_versions: bool = True,
+    group_valid: Sequence[bool] | None = None,
 ) -> int:
     """Write exon geometry and matched group-by-gene CPM to a compact NPZ."""
     normalize_gene_id = (
@@ -376,8 +377,7 @@ def write_gene_expression_supervision(
 
     path = Path(path).expanduser().resolve()
     path.parent.mkdir(parents=True, exist_ok=True)
-    np.savez_compressed(
-        path,
+    payload = dict(
         gene_ids=np.asarray([gene.gene_id for gene in ordered]),
         chromosomes=np.asarray([gene.chromosome for gene in ordered]),
         starts=np.asarray([gene.start for gene in ordered], dtype=np.int64),
@@ -389,6 +389,17 @@ def write_gene_expression_supervision(
         groups=np.asarray(expression.groups),
         cpm=np.stack(cpm_columns, axis=1).astype(np.float32),
     )
+    if group_valid is not None:
+        group_valid_array = np.asarray(group_valid, dtype=bool)
+        if group_valid_array.shape != (len(expression.groups),):
+            raise ValueError(
+                f"group_valid has shape {group_valid_array.shape}; "
+                f"expected {(len(expression.groups),)}."
+            )
+        if not np.any(group_valid_array):
+            raise ValueError("group_valid must retain at least one expression group.")
+        payload["group_valid"] = group_valid_array
+    np.savez_compressed(path, **payload)
     return len(ordered)
 
 

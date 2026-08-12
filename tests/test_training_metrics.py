@@ -263,6 +263,20 @@ def test_double_centered_correlation_loss_ignores_masked_rows():
     np.testing.assert_allclose(loss, 0.0, atol=1e-6)
 
 
+def test_channel_masked_double_centering_matches_sliced_channels():
+    targets = jnp.square(jnp.arange(30, dtype=jnp.float32)).reshape(2, 3, 5)
+    predictions = jnp.sin(targets / 7.0)
+    valid_channels = jnp.asarray([True, False, True, True, False])
+    mask = jnp.broadcast_to(valid_channels, targets.shape)
+
+    masked_loss = _double_centered_correlation_loss(predictions, targets, mask)
+    sliced_loss = _double_centered_correlation_loss(
+        predictions[..., valid_channels], targets[..., valid_channels]
+    )
+
+    np.testing.assert_allclose(masked_loss, sliced_loss, rtol=1e-6, atol=1e-6)
+
+
 def test_double_centered_correlation_loss_has_finite_gradient_without_variance():
     prediction = jnp.ones((2, 4, 3), dtype=jnp.float32)
     targets = jnp.ones((2, 4, 3), dtype=jnp.float32)
@@ -466,12 +480,33 @@ def test_masked_r2_ignores_padded_genes():
     assert metrics["r2_over_loci"] == 1.0
 
 
+def test_channel_masked_metrics_match_sliced_channels():
+    targets = jnp.square(jnp.arange(30, dtype=jnp.float32)).reshape(2, 3, 5)
+    predictions = jnp.sin(targets / 7.0)
+    valid_channels = jnp.asarray([True, False, True, True, False])
+    mask = jnp.broadcast_to(valid_channels, targets.shape)
+
+    masked = _finalize_r2_stats(
+        jax.tree_util.tree_map(np.asarray, _r2_stats(predictions, targets, mask))
+    )
+    sliced = _finalize_r2_stats(
+        jax.tree_util.tree_map(
+            np.asarray,
+            _r2_stats(predictions[..., valid_channels], targets[..., valid_channels]),
+        )
+    )
+
+    for metric in masked:
+        np.testing.assert_allclose(masked[metric], sliced[metric], rtol=1e-6, atol=1e-6)
+
+
 def test_gene_expression_prediction_selects_strand_and_exon_fraction():
     prediction = {
         "predictions_128bp": jnp.asarray([[[8.0, 80.0, 4.0, 40.0], [16.0, 160.0, 2.0, 20.0]]])
     }
     batch = {
         "gene_weights_rna": jnp.asarray([[[0.5, 0.25], [1.0, 0.5]]]),
+        "gene_targets_rna": jnp.zeros((1, 2, 2)),
         "gene_strands_rna": jnp.asarray([[0, 1]]),
     }
 
@@ -479,3 +514,18 @@ def test_gene_expression_prediction_selects_strand_and_exon_fraction():
 
     np.testing.assert_allclose(result[0, 0], [20.0, 4.0])
     np.testing.assert_allclose(result[0, 1], [100.0, 20.0])
+
+
+def test_gene_expression_prediction_supports_unstranded_channels():
+    prediction = {
+        "predictions_128bp": jnp.asarray([[[8.0, 4.0], [16.0, 2.0]]])
+    }
+    batch = {
+        "gene_weights_rna": jnp.asarray([[[0.5, 0.25], [1.0, 0.5]]]),
+        "gene_targets_rna": jnp.zeros((1, 2, 2)),
+        "gene_strands_rna": jnp.asarray([[0, 1]]),
+    }
+
+    result = np.asarray(_gene_expression_prediction(prediction, batch, "rna"))
+
+    np.testing.assert_allclose(result, [[[20.0, 4.0], [10.0, 2.0]]])

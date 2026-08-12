@@ -10,6 +10,7 @@ from alphagenome_ft.finetune.reprocessing.atac import (
     stream_tabix_fragments,
 )
 from alphagenome_ft.finetune.reprocessing.rna import (
+    aggregate_10x_h5_columns_by_group,
     aggregate_sparse_count_chunks_by_group,
     aggregate_sparse_counts_by_group,
     aggregate_matrix_market_by_group,
@@ -27,6 +28,7 @@ __all__ = [
     "read_cell_groups",
     "read_cell_groups_by_library",
     "stream_tabix_fragments",
+    "aggregate_10x_h5_columns_by_group",
     "aggregate_sparse_count_chunks_by_group",
     "aggregate_sparse_counts_by_group",
     "aggregate_matrix_market_by_group",
