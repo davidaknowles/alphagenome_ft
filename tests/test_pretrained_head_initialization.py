@@ -119,6 +119,60 @@ def test_pretrained_bootstrap_copies_consistent_output_channels(monkeypatch) -> 
     assert jnp.array_equal(actual, expected)
 
 
+def test_neural_bootstrap_copies_only_neural_source_channels(monkeypatch) -> None:
+    output_type = dna_output.OutputType.RNA_SEQ
+    source_frame = pd.DataFrame(
+        {
+            "strand": ("+", "+", "+", "-", "-", "-"),
+            "biosample_name": (
+                "brain",
+                "astrocyte",
+                "liver",
+                "brain",
+                "glutamatergic neuron",
+                "heart",
+            ),
+        }
+    )
+
+    class Metadata:
+        def __init__(self) -> None:
+            self.padding = {output_type: jnp.asarray((False,) * len(source_frame))}
+
+        def get(self, requested):
+            return source_frame if requested == output_type else None
+
+    organism = dna_model.Organism.HOMO_SAPIENS
+    monkeypatch.setattr(
+        custom_model,
+        "_resolve_user_metadata",
+        lambda **_kwargs: {organism: pd.DataFrame({"strand": ("+", "-")})},
+    )
+    source = jnp.arange(6, dtype=jnp.float32).reshape((1, 1, 6))
+    params = {
+        "alphagenome/head/rna_seq/resolution_128/multi_organism_linear": {"w": source},
+        "head/study_rna/resolution_128/multi_organism_linear": {
+            "w": jnp.zeros((1, 1, 2), dtype=jnp.float32),
+        },
+    }
+
+    result = custom_model._initialize_heads_from_pretrained_bootstrap(
+        params,
+        head_names=("study_rna",),
+        head_configs={"study_rna": SimpleNamespace(output_type=output_type)},
+        pretrained_metadata={organism: Metadata()},
+        neural_sources=True,
+    )
+
+    actual = set(
+        result["head/study_rna/resolution_128/multi_organism_linear"]["w"]
+        .reshape(-1)
+        .tolist()
+    )
+    assert actual <= {0.0, 1.0, 3.0, 4.0}
+    assert len(actual) == 2
+
+
 def test_pretrained_bootstrap_unwraps_target_output_metadata(monkeypatch) -> None:
     output_type = dna_output.OutputType.RNA_SEQ
     organism = dna_model.Organism.HOMO_SAPIENS
