@@ -26,7 +26,7 @@ submit_pair() {
   local launcher=$1
   local export_args=$2
   local smoke full
-  smoke=$(sbatch --parsable --nice=1000 --array=0-1%2 \
+  smoke=$(sbatch --parsable --nice=1000 --time=00:30:00 --array=0-1%2 \
     --export="ALL,SMOKE=1,${export_args}" "$launcher")
   full=$(sbatch --parsable --nice=1500 --array=0-1%2 \
     --dependency="afterok:${smoke}_*" --export="ALL,${export_args}" "$launcher")
