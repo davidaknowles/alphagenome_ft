@@ -20,10 +20,10 @@ The first table compares strategies at the highest epoch completed by both. The 
 | `johansen_joint` | `lora` | 1 | `allen_rna` | 0.2406 | 0.3564 |
 | `johansen_joint` | `lora+locon` | 1 | `allen_atac` | 0.5339 | 0.4926 |
 | `johansen_joint` | `lora+locon` | 1 | `allen_rna` | 0.2667 | 0.3933 |
-| `liu-hdma` | `lora` | 3 | `liu_atac` | 0.7709 | 0.7887 |
-| `liu-hdma` | `lora` | 3 | `liu_rna` | 0.6481 | 0.4886 |
-| `liu-hdma` | `lora+locon` | 3 | `liu_atac` | 0.7723 | 0.7895 |
-| `liu-hdma` | `lora+locon` | 3 | `liu_rna` | 0.5561 | 0.4700 |
+| `liu-hdma` | `lora` | 4 | `liu_atac` | 0.7702 | 0.7859 |
+| `liu-hdma` | `lora` | 4 | `liu_rna` | 0.6015 | 0.5134 |
+| `liu-hdma` | `lora+locon` | 4 | `liu_atac` | 0.7703 | 0.7863 |
+| `liu-hdma` | `lora+locon` | 4 | `liu_rna` | 0.6053 | 0.4916 |
 | `zemke2023-human` | `lora` | 4 | `zemke2023_atac` | 0.6957 | 0.7112 |
 | `zemke2023-human` | `lora` | 4 | `zemke2023_rna` | 0.4809 | 0.4051 |
 | `zemke2023-human` | `lora+locon` | 4 | `zemke2023_atac` | 0.6971 | 0.7151 |
@@ -69,8 +69,8 @@ The first table compares strategies at the highest epoch completed by both. The 
 | `johansen_joint` | `lora` | 1 | `allen_rna` | 0.2406 | 0.3564 |
 | `liu-hdma` | `lora` | 3 | `liu_atac` | 0.7709 | 0.7887 |
 | `liu-hdma` | `lora` | 3 | `liu_rna` | 0.6481 | 0.4886 |
-| `liu-hdma` | `lora+locon` | 3 | `liu_atac` | 0.7723 | 0.7895 |
-| `liu-hdma` | `lora+locon` | 3 | `liu_rna` | 0.5561 | 0.4700 |
+| `liu-hdma` | `lora+locon` | 4 | `liu_atac` | 0.7703 | 0.7863 |
+| `liu-hdma` | `lora+locon` | 4 | `liu_rna` | 0.6053 | 0.4916 |
 | `zemke2023-human` | `lora` | 4 | `zemke2023_atac` | 0.6957 | 0.7112 |
 | `zemke2023-human` | `lora` | 4 | `zemke2023_rna` | 0.4809 | 0.4051 |
 | `zemke2023-human` | `lora+locon` | 4 | `zemke2023_atac` | 0.6971 | 0.7151 |

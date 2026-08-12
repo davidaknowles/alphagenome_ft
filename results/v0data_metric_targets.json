@@ -90,12 +90,12 @@
       "modality": "ATAC",
       "threshold": 0.8,
       "status": "below target",
-      "gap_to_target": 0.027686706942610884,
-      "strategy": "lora+locon",
+      "gap_to_target": 0.029054783243829596,
+      "strategy": "lora",
       "selected_epoch": 3,
       "head": "liu_atac",
-      "valid_r": 0.7723132930573892,
-      "test_r": 0.7895397528678721
+      "valid_r": 0.7709452167561704,
+      "test_r": 0.7887116272848264
     },
     {
       "dataset": "liu-hdma",

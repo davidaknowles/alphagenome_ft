@@ -154,19 +154,19 @@
     {
       "dataset": "liu-hdma",
       "strategy": "lora",
-      "matched_epoch": 3,
-      "global_step": 7857,
-      "selection_mean_valid_r": 0.7095018803589546,
+      "matched_epoch": 4,
+      "global_step": 10476,
+      "selection_mean_valid_r": 0.6858465350147788,
       "heads": [
         {
           "head": "liu_atac",
-          "valid_r": 0.7709452167561704,
-          "test_r": 0.7887116272848264
+          "valid_r": 0.7702370466885894,
+          "test_r": 0.7858965209657647
         },
         {
           "head": "liu_rna",
-          "valid_r": 0.6480585439617386,
-          "test_r": 0.48861646443867734
+          "valid_r": 0.6014560233409681,
+          "test_r": 0.5133790999044849
         }
       ],
       "metrics_path": "checkpoints/v0data/liu-hdma_lora_geneonly_corrw1/metrics.jsonl"
@@ -174,19 +174,19 @@
     {
       "dataset": "liu-hdma",
       "strategy": "lora+locon",
-      "matched_epoch": 3,
-      "global_step": 7857,
-      "selection_mean_valid_r": 0.6642074180387534,
+      "matched_epoch": 4,
+      "global_step": 10476,
+      "selection_mean_valid_r": 0.687804627432095,
       "heads": [
         {
           "head": "liu_atac",
-          "valid_r": 0.7723132930573892,
-          "test_r": 0.7895397528678721
+          "valid_r": 0.770276408305638,
+          "test_r": 0.7862746041898573
         },
         {
           "head": "liu_rna",
-          "valid_r": 0.5561015430201176,
-          "test_r": 0.4700183116880363
+          "valid_r": 0.6053328465585521,
+          "test_r": 0.4915868730601769
         }
       ],
       "metrics_path": "checkpoints/v0data/liu-hdma_lora_locon_geneonly_corrw1/metrics.jsonl"
@@ -606,19 +606,19 @@
     {
       "dataset": "liu-hdma",
       "strategy": "lora+locon",
-      "selected_epoch": 3,
-      "global_step": 7857,
-      "selection_mean_valid_r": 0.6642074180387534,
+      "selected_epoch": 4,
+      "global_step": 10476,
+      "selection_mean_valid_r": 0.687804627432095,
       "heads": [
         {
           "head": "liu_atac",
-          "valid_r": 0.7723132930573892,
-          "test_r": 0.7895397528678721
+          "valid_r": 0.770276408305638,
+          "test_r": 0.7862746041898573
         },
         {
           "head": "liu_rna",
-          "valid_r": 0.5561015430201176,
-          "test_r": 0.4700183116880363
+          "valid_r": 0.6053328465585521,
+          "test_r": 0.4915868730601769
         }
       ],
       "metrics_path": "checkpoints/v0data/liu-hdma_lora_locon_geneonly_corrw1/metrics.jsonl"
