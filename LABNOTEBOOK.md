@@ -18,6 +18,8 @@ Final joint evaluation is defined as 20 strategy-by-native-source tasks, ten sou
 
 The final evaluation collator fails if any strategy-by-source artifact is absent, if validation and test head sets differ, if checkpoint epoch or global-step provenance is invalid, or if a signed double-centered correlation is non-finite. It reports each native head and an equally weighted mean across native source heads for each adaptation strategy. Two synthetic tests cover complete collation and required-source failure.
 
+The first L40S joint smoke request remained pending despite idle nodes because its original Blackwell launcher requested 32 CPU cores, while each L40S node has 24. Slurm exposed the impossible request as `Priority` rather than `Resources`. Pending array 19936245 and the reusable launcher now request 24 cores, two L40S GPUs, 48 GB host memory, and a two-hour limit. The corrected request has 24 CPUs in both requested resources and per-task resources and can fit an idle L40S node.
+
 ## Multi-study adapter comparison
 
 The fine-tuning comparison uses signed double-centered Pearson correlation, (R), for checkpoint selection. For a prediction matrix (Y \in \mathbb{R}^{L \times C}), (L) is the number of genomic loci and (C) is the number of target channels. Predictions and targets are centered over loci and channels before their Pearson correlation is calculated. This is not the global coefficient of determination reported by some earlier runs. Validation now records a mean of each metric across heads so joint ATAC and ribonucleic-acid, RNA, runs do not select checkpoints from only the first head.

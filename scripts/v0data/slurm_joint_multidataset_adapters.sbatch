@@ -2,7 +2,7 @@
 #SBATCH --job-name=v0_joint_all
 #SBATCH --partition=gpu
 #SBATCH --gres=gpu:b6k:2
-#SBATCH --cpus-per-task=32
+#SBATCH --cpus-per-task=24
 #SBATCH --mem=48G
 #SBATCH --time=4-00:00:00
 #SBATCH --array=0-1%2
