@@ -2,7 +2,9 @@ import json
 from pathlib import Path
 
 from scripts.v0data.collate_adapter_comparisons import (
+    _run_identity,
     _variant_run_identity,
+    canonical_run_directory,
     collate,
     collate_variants,
 )
@@ -53,6 +55,25 @@ def test_variant_identity_excludes_technical_runs() -> None:
     assert _variant_run_identity("hda-joint_lora_geneonly_smoke") is None
 
 
+def test_corrected_reconstructed_runs_are_canonical() -> None:
+    assert canonical_run_directory("liu-hdma", "lora") == (
+        "liu-hdma_lora_geneonly_corrw1"
+    )
+    assert _run_identity("liu-hdma_lora_geneonly_corrw1") == ("liu-hdma", "lora")
+    assert _run_identity("johansen_joint_lora_locon_rawcount_geneonly_corrw1") == (
+        "johansen_joint",
+        "lora+locon",
+    )
+    assert _run_identity("liu-hdma_lora") is None
+    assert _run_identity("johansen_joint_lora_locon") is None
+    assert _variant_run_identity("liu-hdma_lora_geneonly_corrw1") is None
+    assert _variant_run_identity("liu-hdma_lora") == (
+        "liu-hdma",
+        "lora",
+        "legacy_exon_plus_gene",
+    )
+
+
 def test_canonical_and_variant_collation_are_disjoint(tmp_path: Path) -> None:
     _write_metrics(tmp_path, "study_lora", 0.7, 0.6)
     _write_metrics(tmp_path, "study_lora_locon", 0.8, 0.7)
@@ -75,6 +96,19 @@ def test_superseded_johansen_checkpoint_is_excluded(tmp_path: Path) -> None:
     _write_metrics(tmp_path, "johansen_joint_lora_locon", 0.8, 0.8)
 
     assert collate(tmp_path)["runs"] == []
+
+
+def test_corrected_reconstructed_runs_enter_canonical_comparison(tmp_path: Path) -> None:
+    _write_metrics(tmp_path, "liu-hdma_lora_geneonly_corrw1", 0.7, 0.6)
+    _write_metrics(tmp_path, "liu-hdma_lora_locon_geneonly_corrw1", 0.8, 0.7)
+
+    result = collate(tmp_path)
+
+    assert {(run["dataset"], run["strategy"]) for run in result["runs"]} == {
+        ("liu-hdma", "lora"),
+        ("liu-hdma", "lora+locon"),
+    }
+    assert len(result["matched_runs"]) == 2
 
 
 def test_matched_comparison_uses_highest_common_epoch(tmp_path: Path) -> None:

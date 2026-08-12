@@ -8,6 +8,8 @@ These non-canonical runs test one change at a time. Each run is selected by mean
 | `hda-joint` | `lora` | `geneonly_corrw0_screen` | 1 | `hda_rna` | 0.4232 | 0.5714 |
 | `hda-joint` | `lora` | `rnaw5` | 1 | `hda_atac` | 0.7538 | 0.7645 |
 | `hda-joint` | `lora` | `rnaw5` | 1 | `hda_rna` | 0.4310 | 0.5976 |
+| `liu-hdma` | `lora` | `legacy_exon_plus_gene` | 1 | `liu_atac` | 0.7648 | 0.7786 |
+| `liu-hdma` | `lora` | `legacy_exon_plus_gene` | 1 | `liu_rna` | 0.4053 | 0.4390 |
 | `zemke2023-human` | `lora` | `corrw10` | 1 | `zemke2023_atac` | 0.6831 | 0.7001 |
 | `zemke2023-human` | `lora` | `corrw10` | 1 | `zemke2023_rna` | 0.4673 | 0.4079 |
 | `zemke2023-human` | `lora` | `rnaw5` | 1 | `zemke2023_atac` | 0.6637 | 0.6790 |

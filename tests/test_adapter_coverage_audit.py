@@ -35,3 +35,13 @@ def test_audit_coverage_excludes_superseded_johansen_checkpoint(tmp_path: Path) 
     result = audit_coverage(tmp_path, expected_datasets=("johansen_joint",))
 
     assert result["datasets"][0]["status"] == "missing lora, lora+locon"
+
+
+def test_audit_coverage_uses_corrected_reconstructed_run_names(tmp_path: Path) -> None:
+    _write_epoch(tmp_path, "liu-hdma_lora", 1)
+    _write_epoch(tmp_path, "liu-hdma_lora_geneonly_corrw1", 1)
+    _write_epoch(tmp_path, "liu-hdma_lora_locon_geneonly_corrw1", 1)
+
+    result = audit_coverage(tmp_path, expected_datasets=("liu-hdma",))
+
+    assert result["datasets"][0]["highest_matched_epoch"] == 1

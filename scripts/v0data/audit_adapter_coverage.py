@@ -5,8 +5,15 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 from pathlib import Path
 from typing import Any
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
+from scripts.v0data.collate_adapter_comparisons import canonical_run_directory
 
 
 EXPECTED_DATASETS = (
@@ -23,21 +30,7 @@ EXPECTED_DATASETS = (
     "zemke2024-all",
 )
 
-STRATEGY_SUFFIXES = {
-    "lora": "_lora",
-    "lora+locon": "_lora_locon",
-}
-SUPERSEDED_RUNS = frozenset(
-    {
-        # This checkpoint used summed per-cell-normalized Johansen expression.
-        "johansen_joint_lora_locon",
-    }
-)
-
-
 def _completed_epochs(path: Path) -> list[int]:
-    if path.parent.name in SUPERSEDED_RUNS:
-        return []
     if not path.exists():
         return []
     epochs = set()
@@ -63,9 +56,11 @@ def audit_coverage(
     for dataset in expected_datasets:
         strategy_epochs = {
             strategy: _completed_epochs(
-                checkpoint_root / f"{dataset}{suffix}" / "metrics.jsonl"
+                checkpoint_root
+                / canonical_run_directory(dataset, strategy)
+                / "metrics.jsonl"
             )
-            for strategy, suffix in STRATEGY_SUFFIXES.items()
+            for strategy in ("lora", "lora+locon")
         }
         common_epochs = sorted(
             set(strategy_epochs["lora"]) & set(strategy_epochs["lora+locon"])

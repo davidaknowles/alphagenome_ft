@@ -13,6 +13,22 @@ STRATEGY_SUFFIXES = (
     ("_lora_locon", "lora+locon"),
     ("_lora", "lora"),
 )
+CORRECTED_CANONICAL_RUNS = {
+    ("liu-hdma", "lora"): "liu-hdma_lora_geneonly_corrw1",
+    ("liu-hdma", "lora+locon"): "liu-hdma_lora_locon_geneonly_corrw1",
+    ("johansen-human", "lora"): "johansen-human_lora_rawcount_geneonly_corrw1",
+    ("johansen-human", "lora+locon"): (
+        "johansen-human_lora_locon_rawcount_geneonly_corrw1"
+    ),
+    ("johansen_joint", "lora"): "johansen_joint_lora_rawcount_geneonly_corrw1",
+    ("johansen_joint", "lora+locon"): (
+        "johansen_joint_lora_locon_rawcount_geneonly_corrw1"
+    ),
+}
+CORRECTED_CANONICAL_IDENTITIES = frozenset(CORRECTED_CANONICAL_RUNS)
+CORRECTED_CANONICAL_IDENTITIES_BY_RUN = {
+    run: identity for identity, run in CORRECTED_CANONICAL_RUNS.items()
+}
 STRATEGY_VARIANT_MARKERS = (
     ("_lora_locon_", "lora+locon"),
     ("_lora_", "lora"),
@@ -24,24 +40,44 @@ TECHNICAL_VARIANT_MARKERS = (
     "rngfix",
     "runtimefix",
 )
+LEGACY_VARIANT_RUNS = {
+    "liu-hdma_lora": ("liu-hdma", "lora", "legacy_exon_plus_gene"),
+}
 SUPERSEDED_RUNS = frozenset(
     {
-        # This checkpoint used summed per-cell-normalized Johansen expression.
+        # These checkpoints used summed per-cell-normalized Johansen expression.
+        "johansen_joint_lora",
         "johansen_joint_lora_locon",
     }
 )
 
 
+def canonical_run_directory(dataset: str, strategy: str) -> str:
+    """Return the one accepted canonical run directory for an experiment arm."""
+    corrected = CORRECTED_CANONICAL_RUNS.get((dataset, strategy))
+    if corrected is not None:
+        return corrected
+    suffix = next(suffix for suffix, candidate in STRATEGY_SUFFIXES if candidate == strategy)
+    return f"{dataset}{suffix}"
+
+
 def _run_identity(name: str) -> tuple[str, str] | None:
     if "smoke" in name:
         return None
+    corrected = CORRECTED_CANONICAL_IDENTITIES_BY_RUN.get(name)
+    if corrected is not None:
+        return corrected
     for suffix, strategy in STRATEGY_SUFFIXES:
         if name.endswith(suffix):
-            return name[: -len(suffix)], strategy
+            identity = (name[: -len(suffix)], strategy)
+            return None if identity in CORRECTED_CANONICAL_IDENTITIES else identity
     return None
 
 
 def _variant_run_identity(name: str) -> tuple[str, str, str] | None:
+    legacy = LEGACY_VARIANT_RUNS.get(name)
+    if legacy is not None:
+        return legacy
     if _run_identity(name) is not None:
         return None
     for marker, strategy in STRATEGY_VARIANT_MARKERS:

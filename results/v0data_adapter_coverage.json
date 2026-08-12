@@ -64,15 +64,13 @@
     {
       "dataset": "liu-hdma",
       "completed_epochs": {
-        "lora": [
-          1
-        ],
+        "lora": [],
         "lora+locon": []
       },
-      "latest_lora_epoch": 1,
+      "latest_lora_epoch": null,
       "latest_lora_locon_epoch": null,
       "highest_matched_epoch": null,
-      "status": "missing lora+locon"
+      "status": "missing lora, lora+locon"
     },
     {
       "dataset": "zemke2023-human",
