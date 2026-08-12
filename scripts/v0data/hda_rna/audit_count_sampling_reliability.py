@@ -138,7 +138,7 @@ def _write_markdown(result: dict[str, object], output: Path) -> None:
         "| Quantity | Value |\n"
         "|---|---:|\n"
         f"| Modeled cell groups | {result['groups']} |\n"
-        f"| Modeled genes | {result['genes']} |\n"
+        f"| Modeled genes | {result['genes']:,} |\n"
         f"| Raw molecules | {result['total_molecules']:,} |\n"
         f"| Repeated splits | {result['repeats']} |\n"
         f"| Raw CPM split-half double-centered R, mean | {raw['mean']:.4f} |\n"

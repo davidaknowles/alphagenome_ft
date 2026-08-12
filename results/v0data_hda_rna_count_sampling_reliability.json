@@ -1,0 +1,23 @@
+{
+  "repeats": 20,
+  "seed": 20260812,
+  "groups": 134,
+  "genes": 59310,
+  "total_molecules": 1224754432,
+  "raw_cpm_split_half_double_centered_r": {
+    "mean": 0.9993304551819333,
+    "standard_deviation": 8.077640433342264e-06,
+    "minimum": 0.9993181012869911,
+    "maximum": 0.9993519495698951
+  },
+  "raw_cpm_full_technical_reliability": 0.9996651154808694,
+  "raw_cpm_assumption_based_model_r_ceiling": 0.9998325437196318,
+  "log1p_cpm_split_half_double_centered_r": {
+    "mean": 0.8497757866407021,
+    "standard_deviation": 0.00022113087393525898,
+    "minimum": 0.8494072486533407,
+    "maximum": 0.8503025951177028
+  },
+  "log1p_cpm_full_technical_reliability": 0.9187878798910469,
+  "scope": "Repeated binomial splits of aggregate cluster counts estimate technical molecule-sampling repeatability only. The source lacks donor-resolved counts, so these values do not include biological donor or specimen variability."
+}
