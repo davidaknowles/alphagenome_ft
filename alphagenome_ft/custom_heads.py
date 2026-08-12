@@ -26,6 +26,7 @@ from jaxtyping import Array, Float, Int, PyTree
 import pandas as pd
 
 from alphagenome.models import dna_output
+from alphagenome_research.model import dna_model
 from alphagenome_research.model import embeddings as embeddings_module
 from alphagenome_research.model import heads as predefined_heads
 
@@ -386,7 +387,21 @@ def register_predefined_head(
             raise TypeError(
                 f"Expected predefined head config for '{normalized_name}', got {type(cfg)!r}."
             )
-        return predefined_heads.create_head(cfg, metadata)
+        if not metadata:
+            raise ValueError(f"Predefined head '{normalized_name}' requires organism metadata.")
+        num_organisms = 1 + max(
+            dna_model.convert_to_organism_index(organism) for organism in metadata
+        )
+        if num_organisms > _num_organisms:
+            raise ValueError(
+                f"Head '{normalized_name}' requires {num_organisms} organism rows, "
+                f"but the model supports {_num_organisms}."
+            )
+        return predefined_heads.create_head(
+            cfg,
+            metadata,
+            num_organisms=num_organisms,
+        )
 
     _HEAD_REGISTRY[normalized_name] = _predefined_factory
     _HEAD_CONFIG_REGISTRY[normalized_name] = config_with_alias_name
