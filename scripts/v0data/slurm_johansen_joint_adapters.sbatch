@@ -36,6 +36,13 @@ fi
 if [[ -n "${RESUME_FROM:-}" ]]; then
   EXTRA_ARGS+=(--resume-from "${RESUME_FROM}")
 fi
+if [[ "${EVALUATE_ONLY:-0}" == "1" ]]; then
+  EXTRA_ARGS+=(--evaluate-only)
+  [[ -n "${EVALUATE_SPECIES:-}" ]] && EXTRA_ARGS+=(--evaluate-species "${EVALUATE_SPECIES}")
+  if [[ "${EVALUATE_FROM_CANONICAL:-0}" == "1" ]]; then
+    EXTRA_ARGS+=(--resume-from "checkpoints/v0data/johansen_joint_${strategy//+/_}/best")
+  fi
+fi
 if [[ "${REPORT_HEAD_GRADIENT_NORMS:-0}" == "1" ]]; then
   EXTRA_ARGS+=(--report-head-gradient-norms)
 fi

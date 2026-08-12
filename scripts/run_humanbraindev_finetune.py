@@ -198,6 +198,11 @@ def parse_args() -> argparse.Namespace:
         default=None,
         help="JSON config for balanced multi-species JAX training.",
     )
+    parser.add_argument(
+        "--evaluate-species",
+        default=None,
+        help="With --species-config and --evaluate-only, evaluate only this species.",
+    )
     parser.add_argument("--fasta-path", type=Path, default=DEFAULT_FASTA)
     parser.add_argument(
         "--organism",
@@ -505,6 +510,10 @@ def main() -> None:
     fasta_path = args.fasta_path.expanduser().resolve()
     checkpoint_dir = args.checkpoint_dir.expanduser().resolve()
     species_entries = None
+    if args.evaluate_species is not None and not args.evaluate_only:
+        raise ValueError("--evaluate-species requires --evaluate-only.")
+    if args.evaluate_species is not None and args.species_config is None:
+        raise ValueError("--evaluate-species requires --species-config.")
     if args.species_config is not None:
         if args.targets_config is not None:
             raise ValueError("--species-config and --targets-config are mutually exclusive.")
@@ -670,10 +679,25 @@ def main() -> None:
                     f"{split}={len(windows)}" for split, windows in species_intervals.items()
                 )
             )
-        data_module = MultiSpeciesDataModule(
+        joint_data_module = MultiSpeciesDataModule(
             species_modules,
             organism_indices=organism_indices,
         )
+        if args.evaluate_species is None:
+            data_module = joint_data_module
+        else:
+            if args.evaluate_species not in species_modules:
+                raise ValueError(
+                    f"Unknown evaluation species {args.evaluate_species!r}; "
+                    f"available species are {sorted(species_modules)}."
+                )
+            data_module = MultiSpeciesDataModule(
+                {args.evaluate_species: species_modules[args.evaluate_species]},
+                organism_indices={
+                    args.evaluate_species: organism_indices[args.evaluate_species]
+                },
+            )
+            print(f"Evaluating only species: {args.evaluate_species}")
         intervals = data_module._intervals
     elif args.split_source == "fold":
         intervals = prepare_intervals_from_fold(

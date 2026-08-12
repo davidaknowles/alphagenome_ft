@@ -57,3 +57,17 @@ def test_multispecies_batches_carry_per_species_organism_indices():
     batches = list(module.iter_batches("train"))
 
     assert [int(batch["organism_index"][0]) for batch in batches] == [0, 1]
+
+
+def test_single_species_wrapper_retains_organism_index_for_evaluation():
+    mouse = _FakeModule("mouse", batches=1, max_genes=1)
+    module = MultiSpeciesDataModule(
+        {"mouse": mouse},
+        organism_indices={"mouse": 1},
+    )
+
+    batches = list(module.iter_batches("valid", shuffle=False))
+
+    assert len(batches) == 1
+    assert int(batches[0]["organism_index"][0]) == 1
+    assert module._intervals["valid"] == mouse._intervals["valid"]
