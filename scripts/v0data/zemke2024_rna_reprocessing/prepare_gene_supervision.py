@@ -12,6 +12,7 @@ from typing import Any
 
 import numpy as np
 import pandas as pd
+import h5py
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 if str(REPO_ROOT) not in sys.path:
@@ -43,6 +44,38 @@ def bare_barcodes_for_donor(values: pd.Series, donor: str) -> tuple[str, ...]:
     if any(not barcode for barcode in bare):
         raise ValueError(f"Donor {donor} contains an empty bare barcode.")
     return bare
+
+
+def retained_raw_feature_mask(
+    raw_feature_names: tuple[str, ...], retained_feature_names: tuple[str, ...]
+) -> np.ndarray:
+    """Map R-make.unique Seurat feature names back to ordered raw 10x rows."""
+    retained = set(retained_feature_names)
+    if len(retained) != len(retained_feature_names):
+        raise ValueError("Filtered Seurat feature names must be unique.")
+    used: set[str] = set()
+    unique_raw_names = []
+    for name in raw_feature_names:
+        candidate = name
+        suffix = 1
+        while candidate in used:
+            candidate = f"{name}.{suffix}"
+            suffix += 1
+        used.add(candidate)
+        unique_raw_names.append(candidate)
+    mask = np.asarray([name in retained for name in unique_raw_names], dtype=bool)
+    recovered = {name for name, keep in zip(unique_raw_names, mask) if keep}
+    missing = sorted(retained - recovered)
+    if missing:
+        raise ValueError(f"Raw 10x features lack filtered Seurat names: {missing[:10]}.")
+    return mask
+
+
+def read_filtered_seurat_features(path: Path) -> tuple[str, ...]:
+    """Read the filtered SCT assay feature order without loading its count matrix."""
+    with h5py.File(path, "r") as handle:
+        values = handle["assays/SCT/features"][:]
+    return tuple(value.decode() if isinstance(value, bytes) else str(value) for value in values)
 
 
 def _rna_head(config: dict[str, Any]) -> dict[str, Any]:
@@ -83,6 +116,7 @@ def prepare_gene_supervision(
     *,
     matrix_root: Path,
     metadata_path: Path,
+    filtered_seurat_path: Path,
     targets_path: Path,
     gtf_path: Path,
     fasta_path: Path,
@@ -95,6 +129,7 @@ def prepare_gene_supervision(
     target_groups, group_valid = target_groups_and_validity(config)
     valid_groups = tuple(group for group, valid in zip(target_groups, group_valid) if valid)
     metadata_by_donor = _metadata_by_donor(metadata_path, valid_groups)
+    retained_features = read_filtered_seurat_features(filtered_seurat_path)
     matrix_paths = {
         path.parent.name: path
         for path in matrix_root.glob("*/*_raw_feature_bc_matrix.h5")
@@ -118,6 +153,10 @@ def prepare_gene_supervision(
         ids, names, counts, n_cells = aggregate_10x_h5_columns_by_group(
             matrix_paths[donor], barcode_groups, valid_groups
         )
+        retained_mask = retained_raw_feature_mask(names, retained_features)
+        ids = tuple(value for value, keep in zip(ids, retained_mask) if keep)
+        names = tuple(value for value, keep in zip(names, retained_mask) if keep)
+        counts = counts[:, retained_mask]
         if feature_ids is None:
             feature_ids, feature_names = ids, names
             total_counts = np.zeros_like(counts)
@@ -190,6 +229,7 @@ def prepare_gene_supervision(
         "dataset": "zemke2024-all",
         "source_targets": str(targets_path.resolve()),
         "metadata": str(metadata_path.resolve()),
+        "filtered_seurat": str(filtered_seurat_path.resolve()),
         "matrix_root": str(matrix_root.resolve()),
         "donors": donor_rows,
         "published_groups": list(target_groups),
@@ -219,6 +259,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--matrix-root", required=True, type=Path)
     parser.add_argument("--metadata", required=True, type=Path)
+    parser.add_argument("--filtered-seurat", required=True, type=Path)
     parser.add_argument("--targets", required=True, type=Path)
     parser.add_argument("--gtf", required=True, type=Path)
     parser.add_argument("--fasta", required=True, type=Path)
@@ -229,6 +270,7 @@ def main() -> None:
     result = prepare_gene_supervision(
         matrix_root=args.matrix_root,
         metadata_path=args.metadata,
+        filtered_seurat_path=args.filtered_seurat,
         targets_path=args.targets,
         gtf_path=args.gtf,
         fasta_path=args.fasta,

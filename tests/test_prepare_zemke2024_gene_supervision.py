@@ -5,6 +5,7 @@ import numpy as np
 import pandas as pd
 
 from scripts.v0data.zemke2024_rna_reprocessing.prepare_gene_supervision import (
+    retained_raw_feature_mask,
     target_groups_and_validity,
 )
 from scripts.v0data.zemke2024_rna_reprocessing.smoke_donor_aggregation import (
@@ -37,6 +38,15 @@ def test_zemke2024_gene_validity_masks_only_unreleased_subtypes():
     np.testing.assert_array_equal(valid, [True, False, False, False, False, True, True])
 
 
+def test_seurat_unique_suffix_maps_duplicate_raw_gene_names():
+    mask = retained_raw_feature_mask(
+        ("A", "B", "A", "C"),
+        ("A", "A.1", "C"),
+    )
+
+    np.testing.assert_array_equal(mask, [True, False, True, True])
+
+
 def test_zemke2024_donor_smoke_recovers_metadata_molecules(tmp_path):
     matrix_path = tmp_path / "donor.h5"
     with h5py.File(matrix_path, "w") as handle:
@@ -61,6 +71,10 @@ def test_zemke2024_donor_smoke_recovers_metadata_molecules(tmp_path):
         }
     ).to_csv(metadata_path, sep="\t", index=False)
     targets_path = tmp_path / "targets.json"
+    filtered_seurat_path = tmp_path / "filtered.h5"
+    with h5py.File(filtered_seurat_path, "w") as handle:
+        features = handle.create_group("assays").create_group("SCT")
+        features.create_dataset("features", data=np.asarray([b"G1", b"G2"]))
     targets_path.write_text(
         json.dumps(
             {
@@ -84,6 +98,7 @@ def test_zemke2024_donor_smoke_recovers_metadata_molecules(tmp_path):
         donor="hc1",
         matrix_path=matrix_path,
         metadata_path=metadata_path,
+        filtered_seurat_path=filtered_seurat_path,
         targets_path=targets_path,
     )
 

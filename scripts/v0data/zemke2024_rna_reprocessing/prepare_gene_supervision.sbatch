@@ -15,6 +15,7 @@ source ~/venv/jax/bin/activate
 python scripts/v0data/zemke2024_rna_reprocessing/prepare_gene_supervision.py \
   --matrix-root /gpfs/commons/datasets/controlled/NYGC_AI_Initiative/GRRs/SC_Summaries_GRR/summary/zemke2024Epigenetic/RNAmatrix \
   --metadata outputs/v0data/zemke2024-gene-supervision/source/GSE278576_hippocampus_RNA_seurat_object_filtered_cells_metadata.tsv.gz \
+  --filtered-seurat outputs/v0data/zemke2024-gene-supervision/source/GSE278576_hippocampus_RNA_seurat_object_filtered_cells.h5 \
   --targets outputs/v0data/zemke2024-all/targets.json \
   --gtf /gpfs/commons/home/daknowles/knowles_lab/index/hg38/gencode.v38.annotation.gtf.gz \
   --fasta /gpfs/commons/home/daknowles/knowles_lab/index/hg38/hg38.fa \

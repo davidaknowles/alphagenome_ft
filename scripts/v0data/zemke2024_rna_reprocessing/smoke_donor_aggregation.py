@@ -18,6 +18,8 @@ if str(REPO_ROOT) not in sys.path:
 from alphagenome_ft.finetune.reprocessing import aggregate_10x_h5_columns_by_group
 from scripts.v0data.zemke2024_rna_reprocessing.prepare_gene_supervision import (
     bare_barcodes_for_donor,
+    read_filtered_seurat_features,
+    retained_raw_feature_mask,
     target_groups_and_validity,
 )
 
@@ -27,6 +29,7 @@ def smoke_donor(
     donor: str,
     matrix_path: Path,
     metadata_path: Path,
+    filtered_seurat_path: Path,
     targets_path: Path,
 ) -> dict[str, object]:
     """Aggregate one donor and require exact metadata count recovery."""
@@ -55,9 +58,14 @@ def smoke_donor(
     if len(barcode_groups) != len(metadata):
         raise ValueError(f"Donor {donor} contains duplicate bare barcodes.")
 
-    feature_ids, _, counts, n_cells = aggregate_10x_h5_columns_by_group(
+    feature_ids, feature_names, counts, n_cells = aggregate_10x_h5_columns_by_group(
         matrix_path, barcode_groups, valid_groups
     )
+    retained_mask = retained_raw_feature_mask(
+        feature_names, read_filtered_seurat_features(filtered_seurat_path)
+    )
+    feature_ids = tuple(value for value, keep in zip(feature_ids, retained_mask) if keep)
+    counts = counts[:, retained_mask]
     expected_cells = metadata.groupby("target_group").size().reindex(valid_groups, fill_value=0)
     expected_molecules = (
         metadata.groupby("target_group")["nCount_RNA"]
@@ -84,6 +92,7 @@ def main() -> None:
     parser.add_argument("--donor", required=True)
     parser.add_argument("--matrix", required=True, type=Path)
     parser.add_argument("--metadata", required=True, type=Path)
+    parser.add_argument("--filtered-seurat", required=True, type=Path)
     parser.add_argument("--targets", required=True, type=Path)
     parser.add_argument("--output", type=Path)
     args = parser.parse_args()
@@ -91,6 +100,7 @@ def main() -> None:
         donor=args.donor,
         matrix_path=args.matrix,
         metadata_path=args.metadata,
+        filtered_seurat_path=args.filtered_seurat,
         targets_path=args.targets,
     )
     rendered = json.dumps(result, indent=2) + "\n"
