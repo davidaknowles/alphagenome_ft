@@ -175,6 +175,8 @@ def test_hda_row_objective_supports_scheduler_dry_run() -> None:
 
     assert 'sbatch_bin="${SBATCH_BIN:-sbatch}"' in script
     assert 'smoke=$("$sbatch_bin"' in script
+    assert 'tasks="${TASKS:-0-1%2}"' in script
+    assert "BALANCE_GENE_WINDOWS=1" in script
 
 
 def test_liu_row_objective_uses_corrected_gene_only_targets() -> None:
