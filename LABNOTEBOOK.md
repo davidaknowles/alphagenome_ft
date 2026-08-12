@@ -10,6 +10,8 @@ Joint LoRA and LoRA plus LoCon smoke tasks 19936245_0 and 19936245_1 use the pro
 
 The missing matched HDA shared-unstranded LoRA plus LoCon one-epoch arm is job 19936800_1. It uses the same gene-aware ordering, zero auxiliary correlation weight, disabled synthetic RNA coverage, batch size eight, and canonical chromosome split as completed LoRA job 19895394_0. HDA shared-unstranded target selection remains provisional until this matched strategy result completes.
 
+The pending accelerator queue contained older exploratory and dependency-gated jobs ahead of the final-path smoke. User-level priority reordering was unavailable, so all other pending jobs were placed on reversible user holds. Active Liu LoRA and LoRA plus LoCon epoch-nine processes were left untouched. Joint smoke array 19936245 and matched HDA job 19936800 remain eligible; target-layout and canonical jobs will be released after the joint smoke obtains resources. No pending experiment was canceled.
+
 ## Multi-study adapter comparison
 
 The fine-tuning comparison uses signed double-centered Pearson correlation, (R), for checkpoint selection. For a prediction matrix (Y \in \mathbb{R}^{L \times C}), (L) is the number of genomic loci and (C) is the number of target channels. Predictions and targets are centered over loci and channels before their Pearson correlation is calculated. This is not the global coefficient of determination reported by some earlier runs. Validation now records a mean of each metric across heads so joint ATAC and ribonucleic-acid, RNA, runs do not select checkpoints from only the first head.
