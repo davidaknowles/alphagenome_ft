@@ -1,0 +1,16 @@
+{
+  "sampled_genes": 512,
+  "published_groups": 22,
+  "direct_gene_groups": 18,
+  "masked_gene_groups": [
+    "Astro1_all",
+    "Astro2_all",
+    "Micro1_all",
+    "Micro2_all"
+  ],
+  "raw_cpm_double_centered_r": 0.32918363460875777,
+  "log1p_double_centered_r": 0.8665574647213756,
+  "raw_cpm_nonzero_fraction": 0.8289930555555556,
+  "integrated_rpkm_nonzero_fraction": 0.8313802083333334,
+  "minimum_r": 0.7
+}

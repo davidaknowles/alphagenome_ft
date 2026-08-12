@@ -8,4 +8,4 @@ The published all-age target has 22 RNA channels. The released cell metadata ide
 
 `smoke_donor_aggregation.py` validates one donor independently. It requires exact recovery of retained cells and enforces the same one-sided raw-library audit before the longer all-donor build is trusted.
 
-After the audit passes, `../submit_zemke2024_direct_gene_screen.sh` can submit the matched one-epoch LoRA and LoRA plus LoCon screen. The launcher is intentionally dormant until the agreement artifact exists and validates all expected supported and masked groups.
+The completed audit gives raw CPM signed double-centered correlation 0.3292 and log1p correlation 0.8666 over 512 sampled genes. Raw UMI and published coverage targets therefore agree after compression but not in the raw scale used by the requested metric. `../submit_zemke2024_direct_gene_screen.sh` remains dormant because its 0.7 raw compatibility gate did not pass. A published-track-integrated gene objective may be tested after the matched Zemke 2023 human screen establishes whether that representation improves both gene and coordinate metrics.
