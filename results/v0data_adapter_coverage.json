@@ -1,0 +1,169 @@
+{
+  "datasets": [
+    {
+      "dataset": "hda",
+      "completed_epochs": {
+        "lora": [
+          1,
+          2,
+          3,
+          4
+        ],
+        "lora+locon": [
+          1,
+          2,
+          3,
+          4
+        ]
+      },
+      "latest_lora_epoch": 4,
+      "latest_lora_locon_epoch": 4,
+      "highest_matched_epoch": 4,
+      "status": "matched result available"
+    },
+    {
+      "dataset": "hda-joint",
+      "completed_epochs": {
+        "lora": [
+          1,
+          2,
+          3
+        ],
+        "lora+locon": [
+          1,
+          2
+        ]
+      },
+      "latest_lora_epoch": 3,
+      "latest_lora_locon_epoch": 2,
+      "highest_matched_epoch": 2,
+      "status": "matched result available"
+    },
+    {
+      "dataset": "johansen_joint",
+      "completed_epochs": {
+        "lora": [],
+        "lora+locon": []
+      },
+      "latest_lora_epoch": null,
+      "latest_lora_locon_epoch": null,
+      "highest_matched_epoch": null,
+      "status": "missing lora, lora+locon"
+    },
+    {
+      "dataset": "liu-hdma",
+      "completed_epochs": {
+        "lora": [],
+        "lora+locon": []
+      },
+      "latest_lora_epoch": null,
+      "latest_lora_locon_epoch": null,
+      "highest_matched_epoch": null,
+      "status": "missing lora, lora+locon"
+    },
+    {
+      "dataset": "zemke2023-human",
+      "completed_epochs": {
+        "lora": [
+          1,
+          2,
+          3,
+          4
+        ],
+        "lora+locon": [
+          1,
+          2,
+          3,
+          4
+        ]
+      },
+      "latest_lora_epoch": 4,
+      "latest_lora_locon_epoch": 4,
+      "highest_matched_epoch": 4,
+      "status": "matched result available"
+    },
+    {
+      "dataset": "zemke2023_macaque",
+      "completed_epochs": {
+        "lora": [
+          1
+        ],
+        "lora+locon": [
+          1
+        ]
+      },
+      "latest_lora_epoch": 1,
+      "latest_lora_locon_epoch": 1,
+      "highest_matched_epoch": 1,
+      "status": "matched result available"
+    },
+    {
+      "dataset": "zemke2023_marmoset",
+      "completed_epochs": {
+        "lora": [
+          1
+        ],
+        "lora+locon": [
+          1
+        ]
+      },
+      "latest_lora_epoch": 1,
+      "latest_lora_locon_epoch": 1,
+      "highest_matched_epoch": 1,
+      "status": "matched result available"
+    },
+    {
+      "dataset": "zemke2023_mouse",
+      "completed_epochs": {
+        "lora": [
+          1
+        ],
+        "lora+locon": [
+          1
+        ]
+      },
+      "latest_lora_epoch": 1,
+      "latest_lora_locon_epoch": 1,
+      "highest_matched_epoch": 1,
+      "status": "matched result available"
+    },
+    {
+      "dataset": "zemke2023_joint",
+      "completed_epochs": {
+        "lora": [
+          1
+        ],
+        "lora+locon": [
+          1
+        ]
+      },
+      "latest_lora_epoch": 1,
+      "latest_lora_locon_epoch": 1,
+      "highest_matched_epoch": 1,
+      "status": "matched result available"
+    },
+    {
+      "dataset": "zemke2024-all",
+      "completed_epochs": {
+        "lora": [
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "lora+locon": [
+          1,
+          2,
+          3,
+          4,
+          5
+        ]
+      },
+      "latest_lora_epoch": 5,
+      "latest_lora_locon_epoch": 5,
+      "highest_matched_epoch": 5,
+      "status": "matched result available"
+    }
+  ]
+}

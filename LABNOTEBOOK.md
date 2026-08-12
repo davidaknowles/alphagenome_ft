@@ -98,6 +98,8 @@ Evaluation-only runs load head and adapter parameters, execute requested splits,
 
 Final adapter comparisons are collated from each run's `metrics.jsonl`. One epoch is selected per run by the mean validation signed double-centered Pearson correlation across all heads, and every per-head validation and test value is reported from that same epoch. This preserves the joint checkpoint-selection contract and avoids selecting separate favorable epochs for ATAC and RNA.
 
+The canonical coverage audit distinguishes a matched epoch from a completed optimization trajectory. HDA ATAC-only, human, macaque, marmoset, mouse, pooled four-species Zemke 2023, and Zemke 2024 have at least one matched LoRA and LoRA plus LoCon epoch. HDA joint has a matched epoch 2 and an additional LoRA epoch 3. Filtered Johansen and Liu remain the only canonical studies without a completed epoch from either strategy; both have active or pending production processes. This audit does not label a run complete merely because one matched epoch exists.
+
 The Liu preparation keeps its target manifest with the generated exon RNA tracks and gene-level supervision under `outputs/v0data/liu-hdma/joint`. The generic joint launcher resolves this dataset-specific layout automatically; without that mapping it would look for a nonexistent parent-level manifest and fail before model construction.
 
 Johansen reprocessing launchers query species configurations with Python's structured JSON parser rather than assuming that the `jq` command-line executable is installed on every worker image. The query is shared by chromosome-job enumeration and FASTA lookup. Its launch-time check requires exactly 44 macaque and marmoset chromosome jobs before any fragment processing begins.
