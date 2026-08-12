@@ -10,8 +10,9 @@
 
 set -euo pipefail
 
-cd "$(dirname "$0")/../../.."
+cd "${SLURM_SUBMIT_DIR:-/gpfs/commons/home/daknowles/projects/alphagenome_fp4}"
 export PYTHONPATH="$PWD:${PYTHONPATH:-}"
+export LD_LIBRARY_PATH="/nfs/sw/easybuild/software/Python/3.12.3-GCCcore-13.3.0/lib:${LD_LIBRARY_PATH:-}"
 
 species=(human macaque marmoset mouse)
 assemblies=(hg38 rheMac10 calJac4 mm10)
