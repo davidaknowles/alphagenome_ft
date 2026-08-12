@@ -129,17 +129,19 @@
         "lora": [
           1,
           2,
-          3
+          3,
+          4
         ],
         "lora+locon": [
           1,
           2,
-          3
+          3,
+          4
         ]
       },
-      "latest_lora_epoch": 3,
-      "latest_lora_locon_epoch": 3,
-      "highest_matched_epoch": 3,
+      "latest_lora_epoch": 4,
+      "latest_lora_locon_epoch": 4,
+      "highest_matched_epoch": 4,
       "status": "matched result available"
     },
     {

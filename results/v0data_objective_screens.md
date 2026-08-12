@@ -6,10 +6,10 @@ These non-canonical runs test one change at a time. Paired strategies are compar
 
 | Dataset | Strategy | Variant | Epoch | Head | Validation R | Test R |
 |---|---|---|---:|---|---:|---:|
-| `zemke2023-human` | `lora` | `corrw10` | 3 | `zemke2023_atac` | 0.6942 | 0.7174 |
-| `zemke2023-human` | `lora` | `corrw10` | 3 | `zemke2023_rna` | 0.5414 | 0.4311 |
-| `zemke2023-human` | `lora+locon` | `corrw10` | 3 | `zemke2023_atac` | 0.6931 | 0.7137 |
-| `zemke2023-human` | `lora+locon` | `corrw10` | 3 | `zemke2023_rna` | 0.5430 | 0.4555 |
+| `zemke2023-human` | `lora` | `corrw10` | 4 | `zemke2023_atac` | 0.6994 | 0.7220 |
+| `zemke2023-human` | `lora` | `corrw10` | 4 | `zemke2023_rna` | 0.5704 | 0.4399 |
+| `zemke2023-human` | `lora+locon` | `corrw10` | 4 | `zemke2023_atac` | 0.6998 | 0.7217 |
+| `zemke2023-human` | `lora+locon` | `corrw10` | 4 | `zemke2023_rna` | 0.5298 | 0.4452 |
 
 ## Independently selected checkpoints
 

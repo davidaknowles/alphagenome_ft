@@ -1,0 +1,92 @@
+{
+  "selection_metric": "mean validation signed double-centered Pearson R",
+  "minimum_improvement": 0.0,
+  "baseline": {
+    "index": 0,
+    "weight": 0.0,
+    "suffix": "0",
+    "run": "hda-joint_lora_geneonly_corrw0_screen",
+    "evaluation_path": "checkpoints/v0data/hda-joint_lora_geneonly_corrw0_screen/evaluation.json",
+    "valid_r": {
+      "hda_atac": 0.7724417009607001,
+      "hda_rna": 0.4232430659074493
+    },
+    "mean_valid_r": 0.5978423834340747
+  },
+  "best_nonzero": {
+    "index": 1,
+    "weight": 0.1,
+    "suffix": "0p1",
+    "run": "hda-joint_lora_geneonly_corrw0p1_screen",
+    "evaluation_path": "checkpoints/v0data/hda-joint_lora_geneonly_corrw0p1_screen/evaluation.json",
+    "valid_r": {
+      "hda_atac": 0.7709692674261852,
+      "hda_rna": 0.42936510842456976
+    },
+    "mean_valid_r": 0.6001671879253775
+  },
+  "improvement_over_baseline": 0.00232480449130279,
+  "selected": {
+    "index": 1,
+    "weight": 0.1,
+    "suffix": "0p1",
+    "run": "hda-joint_lora_geneonly_corrw0p1_screen",
+    "evaluation_path": "checkpoints/v0data/hda-joint_lora_geneonly_corrw0p1_screen/evaluation.json",
+    "valid_r": {
+      "hda_atac": 0.7709692674261852,
+      "hda_rna": 0.42936510842456976
+    },
+    "mean_valid_r": 0.6001671879253775
+  },
+  "status": "selected nonzero objective",
+  "screens": [
+    {
+      "index": 0,
+      "weight": 0.0,
+      "suffix": "0",
+      "run": "hda-joint_lora_geneonly_corrw0_screen",
+      "evaluation_path": "checkpoints/v0data/hda-joint_lora_geneonly_corrw0_screen/evaluation.json",
+      "valid_r": {
+        "hda_atac": 0.7724417009607001,
+        "hda_rna": 0.4232430659074493
+      },
+      "mean_valid_r": 0.5978423834340747
+    },
+    {
+      "index": 1,
+      "weight": 0.1,
+      "suffix": "0p1",
+      "run": "hda-joint_lora_geneonly_corrw0p1_screen",
+      "evaluation_path": "checkpoints/v0data/hda-joint_lora_geneonly_corrw0p1_screen/evaluation.json",
+      "valid_r": {
+        "hda_atac": 0.7709692674261852,
+        "hda_rna": 0.42936510842456976
+      },
+      "mean_valid_r": 0.6001671879253775
+    },
+    {
+      "index": 2,
+      "weight": 1.0,
+      "suffix": "1",
+      "run": "hda-joint_lora_geneonly_corrw1_screen",
+      "evaluation_path": "checkpoints/v0data/hda-joint_lora_geneonly_corrw1_screen/evaluation.json",
+      "valid_r": {
+        "hda_atac": 0.7648767754321764,
+        "hda_rna": 0.4253315087315347
+      },
+      "mean_valid_r": 0.5951041420818555
+    },
+    {
+      "index": 3,
+      "weight": 10.0,
+      "suffix": "10",
+      "run": "hda-joint_lora_geneonly_corrw10_screen",
+      "evaluation_path": "checkpoints/v0data/hda-joint_lora_geneonly_corrw10_screen/evaluation.json",
+      "valid_r": {
+        "hda_atac": 0.7486009545932024,
+        "hda_rna": 0.38746299769266856
+      },
+      "mean_valid_r": 0.5680319761429355
+    }
+  ]
+}

@@ -12,10 +12,10 @@ The first table compares strategies at the highest epoch completed by both. The 
 | `hda-joint` | `lora` | 3 | `hda_rna` | 0.5170 | 0.6181 |
 | `hda-joint` | `lora+locon` | 3 | `hda_atac` | 0.8035 | 0.8127 |
 | `hda-joint` | `lora+locon` | 3 | `hda_rna` | 0.5190 | 0.6089 |
-| `johansen-human` | `lora` | 3 | `allen_atac` | 0.5862 | 0.6181 |
-| `johansen-human` | `lora` | 3 | `allen_rna` | 0.4908 | 0.4692 |
-| `johansen-human` | `lora+locon` | 3 | `allen_atac` | 0.5886 | 0.6218 |
-| `johansen-human` | `lora+locon` | 3 | `allen_rna` | 0.5237 | 0.4588 |
+| `johansen-human` | `lora` | 4 | `allen_atac` | 0.5904 | 0.6216 |
+| `johansen-human` | `lora` | 4 | `allen_rna` | 0.4647 | 0.4643 |
+| `johansen-human` | `lora+locon` | 4 | `allen_atac` | 0.5931 | 0.6233 |
+| `johansen-human` | `lora+locon` | 4 | `allen_rna` | 0.5067 | 0.4747 |
 | `liu-hdma` | `lora` | 1 | `liu_atac` | 0.7613 | 0.7791 |
 | `liu-hdma` | `lora` | 1 | `liu_rna` | 0.5231 | 0.4445 |
 | `liu-hdma` | `lora+locon` | 1 | `liu_atac` | 0.7629 | 0.7795 |
