@@ -1,11 +1,14 @@
 from pathlib import Path
 
+import pytest
+
 from alphagenome.models import dna_client, dna_output
 
 from alphagenome_ft.finetune.config import (
     TrackInfo,
     _build_track_metadata,
     load_targets_config,
+    prepare_head_specs,
 )
 
 
@@ -43,3 +46,41 @@ def test_load_targets_config_resolves_target_transform_path(tmp_path: Path):
     head = config["heads"][0]
     assert head["targets"][0]["path"] == str(tmp_path / "track.bw")
     assert head["target_transform"]["path"] == str(tmp_path / "transform.json")
+
+
+def test_prepare_head_specs_parses_head_loss_weight(tmp_path: Path):
+    specs = prepare_head_specs(
+        {
+            "heads": [
+                {
+                    "id": "example_atac",
+                    "source": "predefined",
+                    "kind": "atac",
+                    "loss_weight": 5.0,
+                    "targets": [{"path": str(tmp_path / "track.bw")}],
+                }
+            ]
+        },
+        organism="HOMO_SAPIENS",
+    )
+
+    assert specs[0].loss_weight == 5.0
+
+
+@pytest.mark.parametrize("weight", [0.0, -1.0, float("inf"), float("nan")])
+def test_prepare_head_specs_rejects_invalid_head_loss_weight(tmp_path: Path, weight: float):
+    with pytest.raises(ValueError, match="finite and positive"):
+        prepare_head_specs(
+            {
+                "heads": [
+                    {
+                        "id": "example_atac",
+                        "source": "predefined",
+                        "kind": "atac",
+                        "loss_weight": weight,
+                        "targets": [{"path": str(tmp_path / "track.bw")}],
+                    }
+                ]
+            },
+            organism="HOMO_SAPIENS",
+        )

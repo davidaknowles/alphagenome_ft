@@ -419,6 +419,14 @@ def _double_centered_correlation_loss(prediction, targets, observation_mask=None
     return jnp.where((count > 0) & has_variance, 1.0 - correlation, 0.0)
 
 
+def _weighted_head_loss_sum(head_losses, head_specs_by_name):
+    """Sum head objectives using configured modality weights."""
+    total_loss = 0.0
+    for head_name, head_loss in head_losses.items():
+        total_loss = total_loss + head_specs_by_name[head_name].loss_weight * head_loss
+    return total_loss
+
+
 def _finalize_r2_stats(stats: Mapping[str, np.ndarray | float]) -> dict[str, float]:
     count = float(np.asarray(stats["count"]))
     sst = float(np.asarray(stats["sum_y2"]) - np.asarray(stats["sum_y"]) ** 2 / max(count, 1.0))
@@ -852,7 +860,6 @@ def train(
                 negative_strand_mask=batch["negative_strand_mask"],
                 strand_reindexing=batch["strand_reindexing"],
             )
-            total_loss = 0.0
             head_losses = {}
             head_stats = {}
             for head_name in head_names:
@@ -903,7 +910,7 @@ def train(
                     head_stats[head_name] = _r2_stats(gene_prediction, gene_targets, gene_valid)
                 else:
                     head_stats[head_name] = _r2_stats(predictions[head_name], targets)
-                total_loss = total_loss + head_loss
+            total_loss = _weighted_head_loss_sum(head_losses, head_specs_by_name)
             return total_loss, (head_losses, head_stats)
 
         (loss_value, (head_losses, head_stats)), grads = jax.value_and_grad(loss_fn, has_aux=True)(

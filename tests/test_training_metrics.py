@@ -1,9 +1,12 @@
+from types import SimpleNamespace
+
 import numpy as np
 import jax
 import jax.numpy as jnp
 
 from alphagenome_ft.finetune.train import (
     _double_centered_correlation_loss,
+    _weighted_head_loss_sum,
     _finalize_r2_stats,
     _flatten_valid_metrics,
     _gene_expression_prediction,
@@ -22,6 +25,18 @@ def test_flatten_valid_metrics_builds_joint_selection_mean():
     assert flattened["atac"] == 3.0
     assert flattened["rna/differential_pearson_r"] == 0.6
     np.testing.assert_allclose(flattened["mean/differential_pearson_r"], 0.7)
+
+
+def test_weighted_head_loss_sum_rebalances_objective():
+    total = _weighted_head_loss_sum(
+        {"atac": jnp.asarray(3.0), "rna": jnp.asarray(2.0)},
+        {
+            "atac": SimpleNamespace(loss_weight=1.0),
+            "rna": SimpleNamespace(loss_weight=5.0),
+        },
+    )
+
+    np.testing.assert_allclose(total, 13.0)
 
 
 def test_double_centered_correlation_loss_matches_metric_invariances():

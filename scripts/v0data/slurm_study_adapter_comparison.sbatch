@@ -23,7 +23,7 @@ DATASETS=(hda hda zemke2023-human zemke2023-human zemke2024-all zemke2024-all)
 STRATEGIES=(lora lora+locon lora lora+locon lora lora+locon)
 DATASET="${DATASETS[$SLURM_ARRAY_TASK_ID]}"
 STRATEGY="${STRATEGIES[$SLURM_ARRAY_TASK_ID]}"
-TARGETS_CONFIG="outputs/v0data/${DATASET}/targets.json"
+TARGETS_CONFIG="${TARGETS_CONFIG:-outputs/v0data/${DATASET}/targets.json}"
 RUN_NAME="${DATASET}_${STRATEGY//+/_}"
 CANONICAL_CHROMS=chr1,chr2,chr3,chr4,chr5,chr6,chr7,chr8,chr9,chr10,chr11,chr12,chr13,chr14,chr15,chr16,chr17,chr18,chr19,chr20,chr21,chr22,chrX
 

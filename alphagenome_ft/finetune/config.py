@@ -29,6 +29,7 @@ from __future__ import annotations
 
 import dataclasses
 import json
+import math
 from pathlib import Path
 from typing import Any, Mapping, Sequence
 
@@ -75,6 +76,7 @@ class HeadSpec:
     metadata: Mapping[dna_client.Organism, AlphaGenomeOutputMetadata] | None = (
         None  # Optional per-organism track metadata.
     )
+    loss_weight: float = 1.0
     gene_supervision_path: Path | None = None
     gene_loss_weight: float = 0.0
     coverage_loss_weight: float = 1.0
@@ -332,6 +334,9 @@ def prepare_head_specs(
                     f'Target transform for head "{head_id}" not found: {target_transform_path}'
                 )
         gene_supervision_path = None
+        loss_weight = float(entry.get("loss_weight", 1.0))
+        if not math.isfinite(loss_weight) or loss_weight <= 0:
+            raise ValueError("Head loss weight must be finite and positive.")
         gene_loss_weight = 0.0
         coverage_loss_weight = 1.0
         double_centered_correlation_loss_weight = float(
@@ -369,6 +374,7 @@ def prepare_head_specs(
                     source="custom",
                     kind=None,
                     tracks=tracks,
+                    loss_weight=loss_weight,
                     double_centered_correlation_loss_weight=(
                         double_centered_correlation_loss_weight
                     ),
@@ -420,6 +426,7 @@ def prepare_head_specs(
                     tracks=tracks,
                     config=head_config,
                     metadata=metadata,
+                    loss_weight=loss_weight,
                     gene_supervision_path=gene_supervision_path,
                     gene_loss_weight=gene_loss_weight,
                     coverage_loss_weight=coverage_loss_weight,
@@ -446,6 +453,9 @@ def validate_head_specs(specs: Sequence[HeadSpec]) -> None:
         if spec.head_id in seen_ids:
             raise ValueError(f'Duplicate head id "{spec.head_id}" in head specs.')
         seen_ids.add(spec.head_id)
+
+        if not math.isfinite(spec.loss_weight) or spec.loss_weight <= 0:
+            raise ValueError(f'Head "{spec.head_id}" loss weight must be finite and positive.')
 
         if not spec.tracks:
             raise ValueError(f'Head "{spec.head_id}" must include at least one target track.')
