@@ -24,6 +24,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--row-correlation-loss-weight", type=float, default=0.0)
     parser.add_argument("--gene-supervision-path", type=Path)
     parser.add_argument("--output-rank", type=int)
+    parser.add_argument(
+        "--unstranded-output",
+        action="store_true",
+        help="Use one gene-expression output per group instead of independent +/- outputs.",
+    )
     return parser.parse_args()
 
 
@@ -41,13 +46,15 @@ def main() -> None:
             else None
         ),
         output_rank=args.output_rank,
+        unstranded_output=args.unstranded_output,
     )
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(config, indent=2) + "\n")
     print(
         f"Wrote gene-only {args.head} config with double-centered correlation weight "
         f"{args.correlation_loss_weight:g} and row-centered correlation weight "
-        f"{args.row_correlation_loss_weight:g} to {args.output}."
+        f"{args.row_correlation_loss_weight:g}; unstranded output is "
+        f"{args.unstranded_output} in {args.output}."
     )
 
 

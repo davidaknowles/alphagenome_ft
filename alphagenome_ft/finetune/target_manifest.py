@@ -18,6 +18,7 @@ def make_gene_only_config(
     row_correlation_loss_weight: float = 0.0,
     gene_supervision_path: str | None = None,
     output_rank: int | None = None,
+    unstranded_output: bool = False,
 ) -> dict[str, Any]:
     """Copy a target manifest and retain one RNA head's gene supervision only."""
     if not math.isfinite(correlation_loss_weight) or correlation_loss_weight < 0:
@@ -42,7 +43,35 @@ def make_gene_only_config(
     head["resolutions"] = [128]
     head["double_centered_correlation_loss_weight"] = correlation_loss_weight
     head["row_centered_correlation_loss_weight"] = row_correlation_loss_weight
+    if unstranded_output:
+        targets = head.get("targets")
+        if not isinstance(targets, list) or len(targets) % 2:
+            raise ValueError(
+                "Unstranded gene output requires an interleaved +/- target pair per group."
+            )
+        collapsed_targets = []
+        for positive, negative in zip(targets[0::2], targets[1::2], strict=True):
+            if positive.get("strand") != "+" or negative.get("strand") != "-":
+                raise ValueError(
+                    "Unstranded gene output requires interleaved + then - targets."
+                )
+            target = copy.deepcopy(positive)
+            target["strand"] = "."
+            label = str(target.get("label", ""))
+            if label.endswith(" (+)"):
+                target["label"] = label[:-4]
+            means = [
+                float(item["nonzero_mean"])
+                for item in (positive, negative)
+                if item.get("nonzero_mean") is not None
+            ]
+            if means:
+                target["nonzero_mean"] = sum(means) / len(means)
+            collapsed_targets.append(target)
+        head["targets"] = collapsed_targets
     if output_rank is not None:
+        if unstranded_output and output_rank >= len(head.get("targets", ())):
+            raise ValueError("Output rank must be smaller than the RNA track count.")
         head["output_rank"] = output_rank
     return config
 

@@ -8,10 +8,77 @@ import pytest
 from alphagenome_ft.finetune.target_manifest import (
     bigwig_nonzero_mean,
     build_head_config,
+    make_gene_only_config,
     retain_target_heads,
     set_gene_window_assignment,
     set_head_output_rank,
 )
+
+
+def test_make_gene_only_config_can_collapse_strand_pairs() -> None:
+    source = {
+        "heads": [
+            {
+                "id": "rna",
+                "kind": "rna_seq",
+                "resolutions": [1, 128],
+                "gene_supervision": {"path": "genes.npz", "coverage_loss_weight": 0.1},
+                "targets": [
+                    {
+                        "path": "group_a.plus.bw",
+                        "label": "group_a (+)",
+                        "strand": "+",
+                        "nonzero_mean": 2.0,
+                    },
+                    {
+                        "path": "group_a.minus.bw",
+                        "label": "group_a (-)",
+                        "strand": "-",
+                        "nonzero_mean": 4.0,
+                    },
+                    {"path": "group_b.plus.bw", "label": "group_b (+)", "strand": "+"},
+                    {"path": "group_b.minus.bw", "label": "group_b (-)", "strand": "-"},
+                ],
+            }
+        ]
+    }
+
+    result = make_gene_only_config(
+        source,
+        head_id="rna",
+        correlation_loss_weight=0.0,
+        unstranded_output=True,
+    )
+
+    head = result["heads"][0]
+    assert head["gene_supervision"]["coverage_loss_weight"] == 0.0
+    assert head["resolutions"] == [128]
+    assert [(target["label"], target["strand"]) for target in head["targets"]] == [
+        ("group_a", "."),
+        ("group_b", "."),
+    ]
+    assert head["targets"][0]["nonzero_mean"] == 3.0
+    assert source["heads"][0]["targets"][0]["strand"] == "+"
+
+
+def test_make_gene_only_config_rejects_nonpaired_unstranded_source() -> None:
+    source = {
+        "heads": [
+            {
+                "id": "rna",
+                "gene_supervision": {"path": "genes.npz"},
+                "targets": [{"path": "a.bw", "strand": "."}],
+            }
+        ]
+    }
+
+    with pytest.raises(ValueError, match="interleaved"):
+        make_gene_only_config(
+            source,
+            head_id="rna",
+            correlation_loss_weight=0.0,
+            unstranded_output=True,
+        )
 
 
 def test_retain_target_heads_preserves_source_order_without_mutation() -> None:
