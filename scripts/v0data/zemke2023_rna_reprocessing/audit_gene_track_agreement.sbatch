@@ -15,5 +15,6 @@ export LD_LIBRARY_PATH="/nfs/sw/easybuild/software/Python/3.12.3-GCCcore-13.3.0/
 
 "${HOME}/venv/jax/bin/python" scripts/v0data/zemke2023_rna_reprocessing/audit_gene_track_agreement.py \
   --root outputs/v0data/zemke2023-gene-supervision \
+  --minimum-r "${MINIMUM_R:-0.7}" \
   --json-output results/v0data_zemke2023_gene_target_agreement.json \
   --markdown-output results/v0data_zemke2023_gene_target_agreement.md

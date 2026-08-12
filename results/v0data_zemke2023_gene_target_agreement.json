@@ -1,0 +1,70 @@
+{
+  "definition": "signed double-centered Pearson correlation over sampled genes and subclasses",
+  "minimum_r": 0.0,
+  "species": [
+    {
+      "species": "human",
+      "sampled_genes": 512,
+      "groups": 19,
+      "unsupported_groups": [
+        "L5_IT"
+      ],
+      "raw_cpm_double_centered_r": 0.588221637244942,
+      "log1p_double_centered_r": 0.8462424634707298,
+      "raw_mean_within_gene_r": 0.7706228249805349,
+      "raw_median_within_gene_r": 0.8828473046389387,
+      "log1p_mean_within_gene_r": 0.7751668358127158,
+      "log1p_median_within_gene_r": 0.8879648965825552,
+      "raw_cpm_nonzero_fraction": 0.7815583881578947,
+      "integrated_rpkm_nonzero_fraction": 0.7391036184210527
+    },
+    {
+      "species": "macaque",
+      "sampled_genes": 512,
+      "groups": 19,
+      "unsupported_groups": [
+        "L5_IT"
+      ],
+      "raw_cpm_double_centered_r": 0.3777316162276665,
+      "log1p_double_centered_r": 0.8347166750965191,
+      "raw_mean_within_gene_r": 0.7166871371615935,
+      "raw_median_within_gene_r": 0.8359508395871615,
+      "log1p_mean_within_gene_r": 0.7120640970047252,
+      "log1p_median_within_gene_r": 0.8246222864610566,
+      "raw_cpm_nonzero_fraction": 0.8800370065789473,
+      "integrated_rpkm_nonzero_fraction": 0.8792146381578947
+    },
+    {
+      "species": "marmoset",
+      "sampled_genes": 512,
+      "groups": 19,
+      "unsupported_groups": [
+        "L5_IT"
+      ],
+      "raw_cpm_double_centered_r": 0.48137549695772114,
+      "log1p_double_centered_r": 0.8506613543165561,
+      "raw_mean_within_gene_r": 0.7326166884195654,
+      "raw_median_within_gene_r": 0.8656622294020304,
+      "log1p_mean_within_gene_r": 0.7305329019682179,
+      "log1p_median_within_gene_r": 0.8539463945981043,
+      "raw_cpm_nonzero_fraction": 0.819078947368421,
+      "integrated_rpkm_nonzero_fraction": 0.8412828947368421
+    },
+    {
+      "species": "mouse",
+      "sampled_genes": 512,
+      "groups": 19,
+      "unsupported_groups": [
+        "L5_IT"
+      ],
+      "raw_cpm_double_centered_r": 0.4376745061755394,
+      "log1p_double_centered_r": 0.8705218059787552,
+      "raw_mean_within_gene_r": 0.7312965173294343,
+      "raw_median_within_gene_r": 0.8651754335610511,
+      "log1p_mean_within_gene_r": 0.7280895990465547,
+      "log1p_median_within_gene_r": 0.8433691363537685,
+      "raw_cpm_nonzero_fraction": 0.6986019736842105,
+      "integrated_rpkm_nonzero_fraction": 0.6740337171052632
+    }
+  ]
+}

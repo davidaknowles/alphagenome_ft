@@ -29,6 +29,21 @@ def double_centered_r(left: np.ndarray, right: np.ndarray) -> float:
     return float((left @ right) / denominator)
 
 
+def row_pattern_correlations(left: np.ndarray, right: np.ndarray) -> np.ndarray:
+    """Return per-gene cell-group correlations after removing gene-specific scale."""
+    left = np.asarray(left, dtype=np.float64)
+    right = np.asarray(right, dtype=np.float64)
+    if left.shape != right.shape or left.ndim != 2:
+        raise ValueError("Inputs must be two matrices with the same shape.")
+    left = left - left.mean(axis=1, keepdims=True)
+    right = right - right.mean(axis=1, keepdims=True)
+    denominator = np.linalg.norm(left, axis=1) * np.linalg.norm(right, axis=1)
+    valid = denominator > 0
+    if not np.any(valid):
+        raise ValueError("No rows have nonzero variance in both matrices.")
+    return np.sum(left[valid] * right[valid], axis=1) / denominator[valid]
+
+
 def _integrate_track(
     path: Path,
     *,
@@ -121,6 +136,8 @@ def audit_species(
         axis=1,
     )
     direct = cpm[group_valid][:, indices].T
+    raw_patterns = row_pattern_correlations(direct, integrated)
+    log_patterns = row_pattern_correlations(np.log1p(direct), np.log1p(integrated))
     return {
         "species": species,
         "sampled_genes": len(indices),
@@ -132,6 +149,10 @@ def audit_species(
         "log1p_double_centered_r": double_centered_r(
             np.log1p(direct), np.log1p(integrated)
         ),
+        "raw_mean_within_gene_r": float(np.mean(raw_patterns)),
+        "raw_median_within_gene_r": float(np.median(raw_patterns)),
+        "log1p_mean_within_gene_r": float(np.mean(log_patterns)),
+        "log1p_median_within_gene_r": float(np.median(log_patterns)),
         "raw_cpm_nonzero_fraction": float(np.mean(direct > 0)),
         "integrated_rpkm_nonzero_fraction": float(np.mean(integrated > 0)),
     }
@@ -143,13 +164,15 @@ def render_markdown(results: dict[str, Any]) -> str:
         "",
         "Published reads-per-kilobase-per-million, RPKM, tracks are integrated over sampled union exons and divided by 1,000 to recover counts-per-million scale. Correlation is computed after centering across genes and cell subclasses.",
         "",
-        "| Species | Sampled genes | Groups | Raw CPM R | log1p R | Raw nonzero | Integrated nonzero |",
-        "|---|---:|---:|---:|---:|---:|---:|",
+        "| Species | Sampled genes | Groups | Raw CPM R | log1p R | Raw within-gene R | log1p within-gene R | Raw nonzero | Integrated nonzero |",
+        "|---|---:|---:|---:|---:|---:|---:|---:|---:|",
     ]
     for row in results["species"]:
         lines.append(
             f"| {row['species']} | {row['sampled_genes']} | {row['groups']} | "
             f"{row['raw_cpm_double_centered_r']:.4f} | {row['log1p_double_centered_r']:.4f} | "
+            f"{row['raw_mean_within_gene_r']:.4f} | "
+            f"{row['log1p_mean_within_gene_r']:.4f} | "
             f"{row['raw_cpm_nonzero_fraction']:.4f} | "
             f"{row['integrated_rpkm_nonzero_fraction']:.4f} |"
         )
