@@ -75,3 +75,13 @@ def test_hda_joint_epoch_three_matches_the_optimizer_reset_boundary() -> None:
     assert 'test "$(jq -er \'.epoch\' "$locon_source/metrics.json")" -eq 2' in script
     assert "DATASET=hda-joint" in script
     assert "NUM_EPOCHS=3" in script
+
+
+def test_zemke2024_screen_changes_only_the_rna_objective() -> None:
+    script = Path("scripts/v0data/submit_zemke2024_rna_correlation_screen.sh").read_text()
+
+    assert "prepare_head_objective_config.py" in script
+    assert "--head zemke2024_all_rna" in script
+    assert '--correlation-loss-weight "$weight"' in script
+    assert "--array=4-5%2" in script
+    assert 'dependency="afterok:${smoke}_*"' in script

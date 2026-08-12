@@ -64,4 +64,6 @@ The study, species, and joint launchers accept `CORRELATION_LOSS_WEIGHT` as an o
 
 `submit_hda_joint_matched_epoch3.sh` completes the missing LoRA plus LoCon HDA joint epoch three. It verifies that LoRA has already completed epoch three, LoRA plus LoCon is at epoch two, and the latter checkpoint has no optimizer state. The resulting AdamW restart matches the boundary used for the existing LoRA epoch-three continuation.
 
+`submit_zemke2024_rna_correlation_screen.sh` adds signed double-centered correlation only to the RNA head and leaves the ATAC likelihood unchanged. The matched one-epoch screen uses weight 10 because an outer RNA weight of five already balanced first-batch adapter-gradient norms but did not improve the mean validation score. This tests objective alignment without another modality-scale change.
+
 Each head may also define a positive `loss_weight`, which defaults to 1. This outer weight rescales the head's complete optimization objective when heads are summed; it does not change the reported per-head loss or metric. For gene-supervised RNA, the existing `gene_supervision.loss_weight` and `coverage_loss_weight` still control the relative gene and exon-coverage terms inside the RNA head. `prepare_head_loss_weight_config.py` copies a canonical manifest and sets one outer head weight so modality-balancing screens do not alter baseline manifests.
