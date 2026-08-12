@@ -16,6 +16,8 @@ Liu epoch nine regressed after the epoch-eight validation peak. LoRA validation 
 
 Final joint evaluation is defined as 20 strategy-by-native-source tasks, ten sources for each of LoRA and LoRA plus LoCon. Each task restores the complete union-head checkpoint, selects one source through host-side routing, and reports only that source's active ATAC and RNA heads on validation and test chromosomes. This preserves checkpoint parameter shapes while preventing pooled Johansen or Zemke statistics from hiding a species-specific regression. The submission launcher waits for both joint training strategies before releasing the evaluation array.
 
+The final evaluation collator fails if any strategy-by-source artifact is absent, if validation and test head sets differ, if checkpoint epoch or global-step provenance is invalid, or if a signed double-centered correlation is non-finite. It reports each native head and an equally weighted mean across native source heads for each adaptation strategy. Two synthetic tests cover complete collation and required-source failure.
+
 ## Multi-study adapter comparison
 
 The fine-tuning comparison uses signed double-centered Pearson correlation, (R), for checkpoint selection. For a prediction matrix (Y \in \mathbb{R}^{L \times C}), (L) is the number of genomic loci and (C) is the number of target channels. Predictions and targets are centered over loci and channels before their Pearson correlation is calculated. This is not the global coefficient of determination reported by some earlier runs. Validation now records a mean of each metric across heads so joint ATAC and ribonucleic-acid, RNA, runs do not select checkpoints from only the first head.
