@@ -17,6 +17,7 @@ if str(REPO_ROOT) not in sys.path:
 
 from alphagenome_ft.finetune.reprocessing import aggregate_10x_h5_columns_by_group
 from scripts.v0data.zemke2024_rna_reprocessing.prepare_gene_supervision import (
+    bare_barcodes_for_donor,
     target_groups_and_validity,
 )
 
@@ -44,12 +45,12 @@ def smoke_donor(
     unknown = sorted(set(metadata["target_group"]) - set(valid_groups))
     if unknown:
         raise ValueError(f"Donor {donor} contains unsupported groups: {unknown}.")
-    prefix = donor + "_"
-    full_barcodes = metadata["bacrode"].astype(str)
-    if not full_barcodes.str.startswith(prefix).all():
-        raise ValueError(f"Donor {donor} contains a barcode without prefix {prefix!r}.")
     barcode_groups = dict(
-        zip(full_barcodes.str[len(prefix) :], metadata["target_group"], strict=True)
+        zip(
+            bare_barcodes_for_donor(metadata["bacrode"], donor),
+            metadata["target_group"],
+            strict=True,
+        )
     )
     if len(barcode_groups) != len(metadata):
         raise ValueError(f"Donor {donor} contains duplicate bare barcodes.")

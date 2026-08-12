@@ -54,7 +54,7 @@ def test_zemke2024_donor_smoke_recovers_metadata_molecules(tmp_path):
     metadata_path = tmp_path / "metadata.tsv"
     pd.DataFrame(
         {
-            "bacrode": ["hc1_a", "hc1_b"],
+            "bacrode": ["hc1_deep_a", "hc1_deep_b"],
             "orig.ident": ["hc1", "hc1"],
             "subclass": ["Astro", "Astro"],
             "nCount_RNA": [5, 5],

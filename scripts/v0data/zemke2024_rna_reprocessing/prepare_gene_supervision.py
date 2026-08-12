@@ -33,6 +33,18 @@ UNRELEASED_SUBTYPE_TARGETS = frozenset(
 )
 
 
+def bare_barcodes_for_donor(values: pd.Series, donor: str) -> tuple[str, ...]:
+    """Remove a donor or donor-library prefix from released cell barcodes."""
+    full_barcodes = tuple(str(value) for value in values)
+    prefix = donor + "_"
+    if not all(barcode.startswith(prefix) for barcode in full_barcodes):
+        raise ValueError(f"Donor {donor} contains a barcode without prefix {prefix!r}.")
+    bare = tuple(barcode.rsplit("_", 1)[-1] for barcode in full_barcodes)
+    if any(not barcode for barcode in bare):
+        raise ValueError(f"Donor {donor} contains an empty bare barcode.")
+    return bare
+
+
 def _rna_head(config: dict[str, Any]) -> dict[str, Any]:
     heads = [head for head in config.get("heads", ()) if head.get("kind") == "rna_seq"]
     if len(heads) != 1:
@@ -99,13 +111,7 @@ def prepare_gene_supervision(
     group_index = {group: idx for idx, group in enumerate(valid_groups)}
     donor_rows = []
     for donor, metadata in metadata_by_donor.items():
-        prefix = donor + "_"
-        full_barcodes = metadata["bacrode"].astype(str)
-        if not full_barcodes.str.startswith(prefix).all():
-            raise ValueError(
-                f"Donor {donor} metadata contains a barcode without prefix {prefix!r}."
-            )
-        bare_barcodes = full_barcodes.str[len(prefix) :]
+        bare_barcodes = bare_barcodes_for_donor(metadata["bacrode"], donor)
         barcode_groups = dict(zip(bare_barcodes, metadata["target_group"], strict=True))
         if len(barcode_groups) != len(metadata):
             raise ValueError(f"Donor {donor} contains duplicate bare barcodes.")
