@@ -11,6 +11,8 @@ from alphagenome_ft.finetune.train import (
     _flatten_valid_metrics,
     _gene_expression_prediction,
     _r2_stats,
+    _restore_optimizer_state,
+    _save_optimizer_state,
 )
 
 
@@ -37,6 +39,27 @@ def test_weighted_head_loss_sum_rebalances_objective():
     )
 
     np.testing.assert_allclose(total, 13.0)
+
+
+def test_optimizer_state_roundtrip(tmp_path):
+    import optax
+
+    params = {"weight": jnp.asarray([1.0, 2.0])}
+    optimizer = optax.adamw(1e-3)
+    state = optimizer.init(params)
+    gradients = {"weight": jnp.asarray([0.25, -0.5])}
+    _, state = optimizer.update(gradients, state, params)
+    path = tmp_path / "optimizer_state"
+
+    _save_optimizer_state(path, state)
+    restored = _restore_optimizer_state(path, optimizer.init(params))
+
+    for actual, expected in zip(
+        jax.tree_util.tree_leaves(restored),
+        jax.tree_util.tree_leaves(state),
+        strict=True,
+    ):
+        np.testing.assert_array_equal(actual, expected)
 
 
 def test_double_centered_correlation_loss_matches_metric_invariances():

@@ -906,6 +906,7 @@ def main() -> None:
 
     start_epoch = 1
     initial_global_step = 0
+    initial_optimizer_state_path = None
     if args.resume_from is None:
         model = create_model_with_heads(
             args.model_version,
@@ -925,6 +926,9 @@ def main() -> None:
         resume_record = json.loads(resume_metrics_path.read_text())
         start_epoch = int(resume_record["epoch"]) + 1
         initial_global_step = int(resume_record["global_step"])
+        optimizer_state_path = resume_from / "optimizer_state"
+        if optimizer_state_path.exists():
+            initial_optimizer_state_path = optimizer_state_path
         model = load_checkpoint(
             resume_from,
             base_model_version=args.model_version,
@@ -1006,6 +1010,7 @@ def main() -> None:
         profile_host_timing=args.profile_host_timing,
         start_epoch=start_epoch,
         initial_global_step=initial_global_step,
+        initial_optimizer_state_path=initial_optimizer_state_path,
     )
 
 

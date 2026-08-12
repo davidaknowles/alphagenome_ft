@@ -16,6 +16,7 @@ import jax.numpy as jnp
 from jax.sharding import Mesh, NamedSharding, PartitionSpec as P
 import numpy as np
 import optax
+import orbax.checkpoint as ocp
 from alphagenome.models import dna_model as ag_dna_model
 from alphagenome_research.model import dna_model as research_dna_model
 
@@ -427,6 +428,17 @@ def _weighted_head_loss_sum(head_losses, head_specs_by_name):
     return total_loss
 
 
+def _save_optimizer_state(path: Path, opt_state) -> None:
+    checkpointer = ocp.StandardCheckpointer()
+    checkpointer.save(str(path), opt_state, force=True)
+    checkpointer.wait_until_finished()
+
+
+def _restore_optimizer_state(path: Path, target):
+    checkpointer = ocp.StandardCheckpointer()
+    return checkpointer.restore(str(path), target=target)
+
+
 def _finalize_r2_stats(stats: Mapping[str, np.ndarray | float]) -> dict[str, float]:
     count = float(np.asarray(stats["count"]))
     sst = float(np.asarray(stats["sum_y2"]) - np.asarray(stats["sum_y"]) ** 2 / max(count, 1.0))
@@ -670,6 +682,7 @@ def train(
     profile_host_timing: bool = False,
     start_epoch: int = 1,
     initial_global_step: int = 0,
+    initial_optimizer_state_path: Path | None = None,
 ) -> None:
     """Run fine-tuning with pmapped train/eval steps.
 
@@ -715,6 +728,8 @@ def train(
         start_epoch: One-indexed epoch at which to continue training. Values above
             one require prior metric history in ``checkpoint_dir``.
         initial_global_step: Number of optimizer updates completed before this call.
+        initial_optimizer_state_path: Optional optimizer checkpoint matching the
+            resumed model parameters. Existing parameter-only checkpoints omit it.
 
     Notes:
         Total planned steps are computed before training from train-set size and
@@ -830,6 +845,13 @@ def train(
         train_lora=train_lora,
     )
     opt_state = optimizer.init(model._params)
+    if initial_optimizer_state_path is not None:
+        initial_optimizer_state_path = Path(initial_optimizer_state_path).expanduser().resolve()
+        if not initial_optimizer_state_path.exists():
+            raise FileNotFoundError(
+                f"Optimizer state checkpoint not found: {initial_optimizer_state_path}"
+            )
+        opt_state = _restore_optimizer_state(initial_optimizer_state_path, opt_state)
 
     organism_enum = getattr(ag_dna_model.Organism, organism)
     organism_index_value = research_dna_model.convert_to_organism_index(organism_enum)
@@ -1067,9 +1089,14 @@ def train(
                     epochs_since_improvement = 0
                 else:
                     epochs_since_improvement += 1
+        optimizer_status = (
+            f"optimizer state restored from {initial_optimizer_state_path}"
+            if initial_optimizer_state_path is not None
+            else "optimizer state starts fresh"
+        )
         print(
             f"Continuing at epoch {start_epoch} and global step {initial_global_step}; "
-            "optimizer state starts fresh."
+            f"{optimizer_status}."
         )
 
     requested_eval_splits = tuple(dict.fromkeys(str(split) for split in eval_splits))
@@ -1396,6 +1423,10 @@ def train(
                             save_full_model=False,
                             save_lora_adapters=train_lora,
                         )
+                        _save_optimizer_state(
+                            checkpoint_dir / "best" / "optimizer_state",
+                            _unreplicate_tree(opt_state),
+                        )
                         _write_json(checkpoint_dir / "best" / "metrics.json", epoch_record)
                 else:
                     epochs_since_improvement += 1
@@ -1409,6 +1440,10 @@ def train(
                     checkpoint_dir / "last",
                     save_full_model=False,
                     save_lora_adapters=train_lora,
+                )
+                _save_optimizer_state(
+                    checkpoint_dir / "last" / "optimizer_state",
+                    _unreplicate_tree(opt_state),
                 )
                 _write_json(checkpoint_dir / "last" / "metrics.json", epoch_record)
 
@@ -1427,6 +1462,10 @@ def train(
             checkpoint_dir / "last",
             save_full_model=False,
             save_lora_adapters=train_lora,
+        )
+        _save_optimizer_state(
+            checkpoint_dir / "last" / "optimizer_state",
+            _unreplicate_tree(opt_state),
         )
 
     print(f"\n{'=' * 60}")
