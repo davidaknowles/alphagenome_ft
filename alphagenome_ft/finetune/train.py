@@ -551,12 +551,6 @@ def _add_stats(total: dict[str, Any] | None, update: Mapping[str, Any]) -> dict[
     return total
 
 
-def _add_device_stats(total, update):
-    if total is None:
-        return update
-    return jax.tree_util.tree_map(lambda left, right: left + right, total, update)
-
-
 def _prefetch_iterable(iterable: Iterable[Any], buffer_size: int) -> Iterator[Any]:
     if buffer_size <= 0:
         yield from iterable
@@ -1008,6 +1002,22 @@ def train(
         new_params = optax.apply_updates(params, updates)
         return new_params, new_opt_state, loss_value, head_losses, head_stats
 
+    @jax.pmap
+    def accumulate_train_stats(
+        total_loss,
+        total_head_losses,
+        total_head_stats,
+        loss_value,
+        head_losses,
+        head_stats,
+    ):
+        """Fuse all epoch-stat additions into one dispatched computation."""
+        return (
+            total_loss + loss_value,
+            jax.tree_util.tree_map(jnp.add, total_head_losses, head_losses),
+            jax.tree_util.tree_map(jnp.add, total_head_stats, head_stats),
+        )
+
     @functools.partial(jax.pmap, axis_name="data")
     def head_gradient_diagnostics(params, state, batch):
         adapter_gradients = {}
@@ -1333,8 +1343,8 @@ def train(
 
             epoch_step = 0
             train_loss_sum = None
-            train_head_loss_sums = {head_name: None for head_name in head_names}
-            train_stats_by_head = {head_name: None for head_name in head_names}
+            train_head_loss_sums = None
+            train_stats_by_head = None
             timing_stats = {
                 "batch_wait": 0.0,
                 "prepare": 0.0,
@@ -1402,22 +1412,22 @@ def train(
                 )
                 timing_stats["step_dispatch"] += time.perf_counter() - step_start
                 loss_replica = loss_value[0]
-                train_loss_sum = (
-                    loss_replica if train_loss_sum is None else train_loss_sum + loss_replica
-                )
-                for head_name in head_names:
-                    head_loss_replica = head_losses[head_name][0]
-                    train_head_loss_sums[head_name] = (
-                        head_loss_replica
-                        if train_head_loss_sums[head_name] is None
-                        else train_head_loss_sums[head_name] + head_loss_replica
-                    )
-                    train_stats_by_head[head_name] = _add_device_stats(
-                        train_stats_by_head[head_name],
-                        jax.tree_util.tree_map(
-                            lambda value: value[0],
-                            head_stats[head_name],
-                        ),
+                if train_loss_sum is None:
+                    train_loss_sum = loss_value
+                    train_head_loss_sums = head_losses
+                    train_stats_by_head = head_stats
+                else:
+                    (
+                        train_loss_sum,
+                        train_head_loss_sums,
+                        train_stats_by_head,
+                    ) = accumulate_train_stats(
+                        train_loss_sum,
+                        train_head_loss_sums,
+                        train_stats_by_head,
+                        loss_value,
+                        head_losses,
+                        head_stats,
                     )
                 epoch_step += 1
                 global_step += 1
@@ -1463,7 +1473,7 @@ def train(
 
             train_loss_avg = None
             if train_loss_sum is not None and epoch_step > 0:
-                train_loss_avg = float(np.asarray(train_loss_sum / epoch_step))
+                train_loss_avg = float(np.asarray(train_loss_sum[0] / epoch_step))
                 if not math.isfinite(train_loss_avg):
                     raise FloatingPointError(
                         "Non-finite training loss encountered "
@@ -1497,13 +1507,20 @@ def train(
                     head_loss_sum = train_head_loss_sums[head_name]
                     head_result = {
                         "loss": (
-                            float(np.asarray(head_loss_sum / epoch_step))
+                            float(np.asarray(head_loss_sum[0] / epoch_step))
                             if head_loss_sum is not None
                             else float("nan")
                         )
                     }
                     if train_stats_by_head[head_name] is not None:
-                        head_result.update(_finalize_r2_stats(train_stats_by_head[head_name]))
+                        head_result.update(
+                            _finalize_r2_stats(
+                                jax.tree_util.tree_map(
+                                    lambda value: value[0],
+                                    train_stats_by_head[head_name],
+                                )
+                            )
+                        )
                     train_metrics[head_name] = head_result
                 split_metrics["train"] = train_metrics
 

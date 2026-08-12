@@ -65,17 +65,18 @@ def test_train_reports_per_head_gradient_norms_once(capsys, tmp_path):
     class DummyDataModule:
         _batch_size = 1
         _drop_last = False
-        _intervals = {"train": [object()]}
+        _intervals = {"train": [object(), object()]}
 
         def iter_batches(self, split, seed=None, shuffle=True):
             del split, seed, shuffle
             sequence = np.arange(4, dtype=np.float32).reshape(1, 4, 1)
-            yield {
-                "sequences": sequence,
-                "negative_strand_mask": np.asarray([False]),
-                "targets_atac": 2.0 * sequence,
-                "targets_rna": 3.0 * sequence,
-            }
+            for _ in range(2):
+                yield {
+                    "sequences": sequence,
+                    "negative_strand_mask": np.asarray([False]),
+                    "targets_atac": 2.0 * sequence,
+                    "targets_rna": 3.0 * sequence,
+                }
 
     class DummyModel:
         def __init__(self):
@@ -146,7 +147,7 @@ def test_train_reports_per_head_gradient_norms_once(capsys, tmp_path):
         learning_rate=1e-3,
         weight_decay=0.0,
         num_epochs=1,
-        max_train_steps=1,
+        max_train_steps=2,
         heads_only=True,
         train_lora=True,
         eval_splits=("train",),
