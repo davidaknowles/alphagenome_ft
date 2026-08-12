@@ -32,5 +32,5 @@ export DATASET=hda-joint
 export TARGETS_CONFIG="$targets"
 export NUM_EPOCHS=1
 export RUN_SUFFIX="_geneonly_corrw${suffix}_screen"
-export SLURM_ARRAY_TASK_ID=0
+export SLURM_ARRAY_TASK_ID="${ADAPTER_TASK_ID:-0}"
 bash scripts/v0data/slurm_joint_adapter_comparison.sbatch
