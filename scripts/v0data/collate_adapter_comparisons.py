@@ -218,6 +218,9 @@ def collate(checkpoint_root: Path) -> dict[str, Any]:
 def collate_variants(checkpoint_root: Path) -> dict[str, Any]:
     """Collate scientific optimization variants separately from canonical runs."""
     runs = []
+    histories: dict[
+        tuple[str, str], dict[str, tuple[Path, list[dict[str, Any]]]]
+    ] = {}
     for metrics_path in sorted(checkpoint_root.glob("*/metrics.jsonl")):
         if metrics_path.parent.name in SUPERSEDED_RUNS:
             continue
@@ -232,6 +235,10 @@ def collate_variants(checkpoint_root: Path) -> dict[str, Any]:
         if not math.isfinite(score):
             continue
         dataset, strategy, variant = identity
+        histories.setdefault((dataset, variant), {})[strategy] = (
+            metrics_path,
+            epochs,
+        )
         split_metrics = best["metrics"]
         heads = []
         for head in sorted(
@@ -260,7 +267,57 @@ def collate_variants(checkpoint_root: Path) -> dict[str, Any]:
                 "metrics_path": str(metrics_path),
             }
         )
-    return {"selection_metric": "mean valid differential_pearson_r", "runs": runs}
+    matched_runs = []
+    for (dataset, variant), strategies in sorted(histories.items()):
+        if set(strategies) != {"lora", "lora+locon"}:
+            continue
+        epochs_by_strategy = {
+            strategy: {record.get("epoch"): record for record in history}
+            for strategy, (_, history) in strategies.items()
+        }
+        common_epochs = set.intersection(
+            *(set(records) for records in epochs_by_strategy.values())
+        )
+        common_epochs.discard(None)
+        if not common_epochs:
+            continue
+        matched_epoch = max(common_epochs)
+        for strategy in ("lora", "lora+locon"):
+            metrics_path, _ = strategies[strategy]
+            record = epochs_by_strategy[strategy][matched_epoch]
+            split_metrics = record["metrics"]
+            heads = []
+            for head in sorted(
+                set(split_metrics.get("valid", {})) | set(split_metrics.get("test", {}))
+            ):
+                heads.append(
+                    {
+                        "head": head,
+                        "valid_r": split_metrics.get("valid", {})
+                        .get(head, {})
+                        .get("differential_pearson_r"),
+                        "test_r": split_metrics.get("test", {})
+                        .get(head, {})
+                        .get("differential_pearson_r"),
+                    }
+                )
+            matched_runs.append(
+                {
+                    "dataset": dataset,
+                    "strategy": strategy,
+                    "variant": variant,
+                    "matched_epoch": matched_epoch,
+                    "global_step": record.get("global_step"),
+                    "selection_mean_valid_r": _mean_valid_r(record),
+                    "heads": heads,
+                    "metrics_path": str(metrics_path),
+                }
+            )
+    return {
+        "selection_metric": "mean valid differential_pearson_r",
+        "matched_runs": matched_runs,
+        "runs": runs,
+    }
 
 
 def _format_value(value: Any) -> str:
@@ -307,11 +364,29 @@ def render_variant_markdown(results: dict[str, Any]) -> str:
     lines = [
         "# Objective and preprocessing screens",
         "",
-        "These non-canonical runs test one change at a time. Each run is selected by mean validation signed double-centered Pearson correlation; technical smoke tests and gradient diagnostics are excluded.",
+        "These non-canonical runs test one change at a time. Paired strategies are compared at their highest common epoch. Independently selected checkpoints are reported separately and must not be used for a strategy comparison when epochs differ. Technical smoke tests and gradient diagnostics are excluded.",
+        "",
+        "## Highest matched epochs",
         "",
         "| Dataset | Strategy | Variant | Epoch | Head | Validation R | Test R |",
         "|---|---|---|---:|---|---:|---:|",
     ]
+    for run in results.get("matched_runs", []):
+        for head in run["heads"]:
+            lines.append(
+                f"| `{run['dataset']}` | `{run['strategy']}` | `{run['variant']}` | "
+                f"{run['matched_epoch']} | `{head['head']}` | "
+                f"{_format_value(head['valid_r'])} | {_format_value(head['test_r'])} |"
+            )
+    lines.extend(
+        [
+            "",
+            "## Independently selected checkpoints",
+            "",
+            "| Dataset | Strategy | Variant | Epoch | Head | Validation R | Test R |",
+            "|---|---|---|---:|---|---:|---:|",
+        ]
+    )
     for run in results["runs"]:
         for head in run["heads"]:
             lines.append(

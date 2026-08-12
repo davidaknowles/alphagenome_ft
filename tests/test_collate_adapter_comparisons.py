@@ -92,6 +92,22 @@ def test_canonical_and_variant_collation_are_disjoint(tmp_path: Path) -> None:
     ]
 
 
+def test_variant_comparison_uses_highest_common_epoch(tmp_path: Path) -> None:
+    _write_metrics(tmp_path, "study_lora_rank16_screen", 0.6, 0.5)
+    _append_metrics(tmp_path, "study_lora_rank16_screen", 2, 0.9, 0.8)
+    _write_metrics(tmp_path, "study_lora_locon_rank16_screen", 0.7, 0.6)
+
+    result = collate_variants(tmp_path)
+
+    assert {run["matched_epoch"] for run in result["matched_runs"]} == {1}
+    assert {
+        (run["strategy"], run["heads"][0]["valid_r"])
+        for run in result["matched_runs"]
+    } == {("lora", 0.6), ("lora+locon", 0.7)}
+    selected_lora = next(run for run in result["runs"] if run["strategy"] == "lora")
+    assert selected_lora["selected_epoch"] == 2
+
+
 def test_superseded_johansen_checkpoint_is_excluded(tmp_path: Path) -> None:
     _write_metrics(tmp_path, "johansen_joint_lora_locon", 0.8, 0.8)
 

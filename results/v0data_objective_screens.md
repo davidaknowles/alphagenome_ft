@@ -1,6 +1,13 @@
 # Objective and preprocessing screens
 
-These non-canonical runs test one change at a time. Each run is selected by mean validation signed double-centered Pearson correlation; technical smoke tests and gradient diagnostics are excluded.
+These non-canonical runs test one change at a time. Paired strategies are compared at their highest common epoch. Independently selected checkpoints are reported separately and must not be used for a strategy comparison when epochs differ. Technical smoke tests and gradient diagnostics are excluded.
+
+## Highest matched epochs
+
+| Dataset | Strategy | Variant | Epoch | Head | Validation R | Test R |
+|---|---|---|---:|---|---:|---:|
+
+## Independently selected checkpoints
 
 | Dataset | Strategy | Variant | Epoch | Head | Validation R | Test R |
 |---|---|---|---:|---|---:|---:|
