@@ -85,3 +85,13 @@ def test_zemke2024_screen_changes_only_the_rna_objective() -> None:
     assert '--correlation-loss-weight "$weight"' in script
     assert "--array=4-5%2" in script
     assert 'dependency="afterok:${smoke}_*"' in script
+
+
+def test_zemke2024_all_head_correlation_screen_uses_global_override() -> None:
+    script = Path("scripts/v0data/submit_zemke2024_all_correlation_screen.sh").read_text()
+
+    assert "prepare_head_objective_config.py" not in script
+    assert "CORRELATION_LOSS_WEIGHT=${weight}" in script
+    assert "RUN_SUFFIX=_all_corrw${suffix}" in script
+    assert "--array=4-5%2" in script
+    assert 'dependency="afterok:${smoke}_*"' in script
