@@ -852,6 +852,7 @@ def train(
     wandb_config: dict | None = None,
     num_devices: int = 1,
     eval_splits: Sequence[str] = ("valid",),
+    defer_test_evaluation: bool = False,
     progress_interval: int = 50,
     prefetch_batches: int = 2,
     profile_host_timing: bool = False,
@@ -898,6 +899,9 @@ def train(
         eval_splits: Data splits to evaluate after each epoch. Supported values
             are any split present in the data module, typically ``train``,
             ``valid``, and ``test``.
+        defer_test_evaluation: If True, evaluate ``test`` only at epochs where
+            the validation-selected best metric improves. Evaluate-only mode
+            always evaluates every requested split.
         progress_interval: Synchronize and report per-step loss every this many
             steps when verbose or W&B step logging is enabled. Larger values
             improve overlap between host-side data loading and GPU execution.
@@ -1021,6 +1025,7 @@ def train(
             "early_stopping_patience": early_stopping_patience,
             "seed": seed,
             "eval_splits": list(eval_splits),
+            "defer_test_evaluation": defer_test_evaluation,
             "progress_interval": progress_interval,
             "prefetch_batches": prefetch_batches,
             "report_head_gradient_norms": report_head_gradient_norms,
@@ -1509,6 +1514,40 @@ def train(
                 )
             return split_result
 
+        def report_split_metrics(
+            split: str,
+            metrics: Mapping[str, Mapping[str, float]],
+            *,
+            epoch: int | None = None,
+        ) -> None:
+            printable = []
+            for head_name, head_result in metrics.items():
+                printable.append(
+                    f"{head_name}: "
+                    f"loss={head_result['loss']:.4f}, "
+                    f"r2_global={head_result['r2_global']:.4f}, "
+                    f"r2_over_loci={head_result['r2_over_loci']:.4f}, "
+                    f"r2_over_cell_types={head_result['r2_over_cell_types']:.4f}, "
+                    f"differential_pearson_r={head_result['differential_pearson_r']:.4f}, "
+                    f"double_centered_r2={head_result['double_centered_r2']:.4f}"
+                )
+            print(f"  {split.capitalize()} metrics:", "; ".join(printable))
+            if not use_wandb or epoch is None:
+                return
+            split_log = {"epoch": epoch}
+            split_loss = float(sum(result["loss"] for result in metrics.values()))
+            split_log[f"epoch/{split}_loss"] = split_loss
+            for head_name, head_result in metrics.items():
+                for metric_name, metric_value in head_result.items():
+                    split_log[f"{split}/{head_name}/{metric_name}"] = metric_value
+                    split_log[f"epoch/{split}/{head_name}/{metric_name}"] = metric_value
+            if len(metrics) == 1:
+                head_result = next(iter(metrics.values()))
+                for metric_name, metric_value in head_result.items():
+                    split_log[f"epoch/{split}_{metric_name}"] = metric_value
+            split_log[f"{split}/loss"] = split_loss
+            wandb.log(split_log)
+
         if evaluate_only:
             evaluation = {
                 split: metrics
@@ -1516,18 +1555,7 @@ def train(
                 if (metrics := evaluate_split(split))
             }
             for split, metrics in evaluation.items():
-                printable = []
-                for head_name, head_result in metrics.items():
-                    printable.append(
-                        f"{head_name}: "
-                        f"loss={head_result['loss']:.4f}, "
-                        f"r2_global={head_result['r2_global']:.4f}, "
-                        f"r2_over_loci={head_result['r2_over_loci']:.4f}, "
-                        f"r2_over_cell_types={head_result['r2_over_cell_types']:.4f}, "
-                        f"differential_pearson_r={head_result['differential_pearson_r']:.4f}, "
-                        f"double_centered_r2={head_result['double_centered_r2']:.4f}"
-                    )
-                print(f"  {split.capitalize()} metrics:", "; ".join(printable))
+                report_split_metrics(split, metrics)
             if checkpoint_dir:
                 _write_json(
                     checkpoint_dir / "evaluation.json",
@@ -1731,43 +1759,37 @@ def train(
                     train_metrics[head_name] = head_result
                 split_metrics["train"] = train_metrics
 
-            for split in requested_eval_splits:
+            epoch_eval_splits = tuple(
+                split
+                for split in requested_eval_splits
+                if not (defer_test_evaluation and split == "test")
+            )
+            for split in epoch_eval_splits:
                 metrics = split_metrics.get(split) if split == "train" else evaluate_split(split)
                 if not metrics:
                     continue
                 split_metrics[split] = metrics
-                printable = []
-                for head_name, head_result in metrics.items():
-                    printable.append(
-                        f"{head_name}: "
-                        f"loss={head_result['loss']:.4f}, "
-                        f"r2_global={head_result['r2_global']:.4f}, "
-                        f"r2_over_loci={head_result['r2_over_loci']:.4f}, "
-                        f"r2_over_cell_types={head_result['r2_over_cell_types']:.4f}, "
-                        f"differential_pearson_r={head_result['differential_pearson_r']:.4f}, "
-                        f"double_centered_r2={head_result['double_centered_r2']:.4f}"
-                    )
-                print(f"  {split.capitalize()} metrics:", "; ".join(printable))
-                if use_wandb:
-                    split_log = {"epoch": epoch}
-                    split_loss = float(sum(head_result["loss"] for head_result in metrics.values()))
-                    split_log[f"epoch/{split}_loss"] = split_loss
-                    for head_name, head_result in metrics.items():
-                        for metric_name, metric_value in head_result.items():
-                            split_log[f"{split}/{head_name}/{metric_name}"] = metric_value
-                            split_log[f"epoch/{split}/{head_name}/{metric_name}"] = metric_value
-                    if len(metrics) == 1:
-                        head_result = next(iter(metrics.values()))
-                        for metric_name, metric_value in head_result.items():
-                            split_log[f"epoch/{split}_{metric_name}"] = metric_value
-                    split_log[f"{split}/loss"] = split_loss
-                    wandb.log(split_log)
+                report_split_metrics(split, metrics, epoch=epoch)
 
             valid_metrics: Mapping[str, float] | None = None
             if "valid" in split_metrics:
                 valid_metrics = _flatten_valid_metrics(split_metrics["valid"])
 
             metric_label, metric_value = resolve_metric(best_metric, train_loss_avg, valid_metrics)
+            metric_improved = (
+                metric_value is not None
+                and math.isfinite(metric_value)
+                and is_improved(metric_value, best_value)
+            )
+            if (
+                defer_test_evaluation
+                and "test" in requested_eval_splits
+                and metric_improved
+            ):
+                test_metrics = evaluate_split("test")
+                if test_metrics:
+                    split_metrics["test"] = test_metrics
+                    report_split_metrics("test", test_metrics, epoch=epoch)
             epoch_record = {
                 "epoch": epoch,
                 "global_step": global_step,
@@ -1777,7 +1799,7 @@ def train(
             if metrics_history_path:
                 _append_jsonl(metrics_history_path, epoch_record)
             if metric_value is not None and math.isfinite(metric_value):
-                if is_improved(metric_value, best_value):
+                if metric_improved:
                     best_value = metric_value
                     epochs_since_improvement = 0
                     if use_wandb:

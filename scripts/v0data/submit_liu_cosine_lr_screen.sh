@@ -6,7 +6,7 @@ set -euo pipefail
 cd "$(dirname "$0")/../.."
 mkdir -p logs/v0data checkpoints/v0data
 sbatch_bin="${SBATCH_BIN:-sbatch}"
-common="DATASET=liu-hdma,TARGETS_CONFIG=outputs/v0data/liu-hdma/joint/targets.json,RUN_SUFFIX=_cosine3e4_screen,LEARNING_RATE=3e-4,LEARNING_RATE_SCHEDULE=warmup_cosine,MINIMUM_LEARNING_RATE_RATIO=0.1,NUM_DEVICES=2"
+common="DATASET=liu-hdma,TARGETS_CONFIG=outputs/v0data/liu-hdma/joint/targets.json,RUN_SUFFIX=_cosine3e4_screen,LEARNING_RATE=3e-4,LEARNING_RATE_SCHEDULE=warmup_cosine,MINIMUM_LEARNING_RATE_RATIO=0.1,NUM_DEVICES=2,DEFER_TEST_EVALUATION=1"
 
 smoke=$(
   "$sbatch_bin" --parsable --nice="${NICE:-50}" --gres=gpu:l40s:2 \

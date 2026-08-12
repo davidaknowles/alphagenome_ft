@@ -67,10 +67,16 @@ def test_train_reports_per_head_gradient_norms_once(capsys, tmp_path):
     class DummyDataModule:
         _batch_size = 1
         _drop_last = False
-        _intervals = {"train": [object(), object()]}
+        _intervals = {
+            split: [object(), object()] for split in ("train", "valid", "test")
+        }
+
+        def __init__(self):
+            self.calls = {split: 0 for split in self._intervals}
 
         def iter_batches(self, split, seed=None, shuffle=True):
-            del split, seed, shuffle
+            del seed, shuffle
+            self.calls[split] += 1
             sequence = np.arange(4, dtype=np.float32).reshape(1, 4, 1)
             for _ in range(2):
                 yield {
@@ -143,9 +149,10 @@ def test_train_reports_per_head_gradient_norms_once(capsys, tmp_path):
         for head_name, weight in (("atac", 1.0), ("rna", 5.0))
     ]
 
+    training_data = DummyDataModule()
     train(
         DummyModel(),
-        DummyDataModule(),
+        training_data,
         specs,
         learning_rate=1e-3,
         weight_decay=0.0,
@@ -211,6 +218,24 @@ def test_train_reports_per_head_gradient_norms_once(capsys, tmp_path):
     ):
         np.testing.assert_array_equal(current, original)
     assert "Epoch 1/1" not in capsys.readouterr().out
+
+    deferred_data = DummyDataModule()
+    train(
+        DummyModel(),
+        deferred_data,
+        specs,
+        learning_rate=1e-30,
+        weight_decay=0.0,
+        num_epochs=3,
+        heads_only=True,
+        train_lora=True,
+        eval_splits=("valid", "test"),
+        defer_test_evaluation=True,
+        prefetch_batches=0,
+    )
+
+    assert deferred_data.calls["valid"] == 3
+    assert deferred_data.calls["test"] == 1
 
 
 def test_optimizer_state_roundtrip(tmp_path):

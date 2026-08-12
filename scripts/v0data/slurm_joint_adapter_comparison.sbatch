@@ -67,6 +67,9 @@ fi
 if [[ "${GENE_WINDOW_REPEATS:-0}" != "0" ]]; then
   EXTRA_ARGS+=(--gene-window-repeats "${GENE_WINDOW_REPEATS}")
 fi
+if [[ "${DEFER_TEST_EVALUATION:-0}" == "1" ]]; then
+  EXTRA_ARGS+=(--defer-test-evaluation)
+fi
 
 printf 'Using %s JAX device(s) with global batch size %s.\n' "$num_devices" "${BATCH_SIZE:-8}"
 

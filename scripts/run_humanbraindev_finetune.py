@@ -346,6 +346,11 @@ def parse_args() -> argparse.Namespace:
         default="train,valid,test",
         help="Comma-separated splits to evaluate after each epoch.",
     )
+    parser.add_argument(
+        "--defer-test-evaluation",
+        action="store_true",
+        help="Evaluate test only when the validation-selected metric improves.",
+    )
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--num-devices", type=int, default=1)
     parser.add_argument("--progress-interval", type=int, default=50)
@@ -1157,6 +1162,7 @@ def main() -> None:
         },
         num_devices=args.num_devices,
         eval_splits=tuple(item.strip() for item in args.eval_splits.split(",") if item.strip()),
+        defer_test_evaluation=args.defer_test_evaluation,
         progress_interval=args.progress_interval,
         prefetch_batches=args.prefetch_batches,
         profile_host_timing=args.profile_host_timing,

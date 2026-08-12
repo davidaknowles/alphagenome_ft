@@ -25,6 +25,8 @@ def test_joint_launcher_exposes_evaluate_only_with_checkpoint() -> None:
     assert '"${EVALUATE_ONLY:-0}" == "1"' in script
     assert "EVALUATE_ONLY requires RESUME_FROM" in script
     assert "EXTRA_ARGS+=(--evaluate-only)" in script
+    assert '"${DEFER_TEST_EVALUATION:-0}" == "1"' in script
+    assert "EXTRA_ARGS+=(--defer-test-evaluation)" in script
 
 
 def test_smoke_runs_use_isolated_checkpoint_names() -> None:
@@ -219,6 +221,7 @@ def test_hda_cosine_screen_is_staged_and_lower_rate() -> None:
     assert "LEARNING_RATE_SCHEDULE=warmup_cosine" in script
     assert "WARMUP_STEPS=262" in script
     assert "NUM_EPOCHS=8" in script
+    assert "DEFER_TEST_EVALUATION=1" in script
     assert "--array=0" in script
     assert 'dependency="afterok:${smoke}_*"' in script
 
@@ -231,6 +234,7 @@ def test_liu_cosine_screen_uses_corrected_targets_and_is_staged() -> None:
     assert "LEARNING_RATE=3e-4" in script
     assert "LEARNING_RATE_SCHEDULE=warmup_cosine" in script
     assert "WARMUP_STEPS=262" in script
+    assert "DEFER_TEST_EVALUATION=1" in script
     assert "--array=0" in script
     assert 'dependency="afterok:${smoke}_*"' in script
 
