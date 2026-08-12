@@ -1,0 +1,197 @@
+{
+  "support": "all_supervision_genes",
+  "samples": 76,
+  "groups": 186,
+  "genes": 38705,
+  "groups_estimable_in_both_halves": 175,
+  "raw_cpm_double_centered_r": 0.8969231078214993,
+  "raw_cpm_full_reliability_estimate": 0.9456610066304277,
+  "log1p_cpm_double_centered_r": 0.5342786841926749,
+  "log1p_cpm_full_reliability_estimate": 0.6964558521176457,
+  "log1p_per_group_pearson_quantiles": {
+    "0.0": 0.2657113613161832,
+    "0.05": 0.7140185391350203,
+    "0.25": 0.9571187242639714,
+    "0.5": 0.9836079913208942,
+    "0.75": 0.9921157964475062,
+    "0.95": 0.9968252597762733,
+    "1.0": 0.9980108718212439
+  },
+  "chromosome_reliability": {
+    "chr1": {
+      "genes": 3464,
+      "raw_cpm_double_centered_r": 0.8995473273155751,
+      "raw_cpm_full_reliability_estimate": 0.9471175730975948,
+      "log1p_cpm_double_centered_r": 0.5496998720645078,
+      "log1p_cpm_full_reliability_estimate": 0.7094275246111991
+    },
+    "chr10": {
+      "genes": 1417,
+      "raw_cpm_double_centered_r": 0.9110077666015035,
+      "raw_cpm_full_reliability_estimate": 0.9534317782722785,
+      "log1p_cpm_double_centered_r": 0.5338776638451266,
+      "log1p_cpm_full_reliability_estimate": 0.6961150506707312
+    },
+    "chr11": {
+      "genes": 2117,
+      "raw_cpm_double_centered_r": 0.9024163527747335,
+      "raw_cpm_full_reliability_estimate": 0.9487054203024813,
+      "log1p_cpm_double_centered_r": 0.5290525627374244,
+      "log1p_cpm_full_reliability_estimate": 0.6920004918474155
+    },
+    "chr12": {
+      "genes": 1972,
+      "raw_cpm_double_centered_r": 0.8886756910286746,
+      "raw_cpm_full_reliability_estimate": 0.941056948262678,
+      "log1p_cpm_double_centered_r": 0.5420269601340323,
+      "log1p_cpm_full_reliability_estimate": 0.7030058152639816
+    },
+    "chr13": {
+      "genes": 805,
+      "raw_cpm_double_centered_r": 0.8426760129430171,
+      "raw_cpm_full_reliability_estimate": 0.9146220030260697,
+      "log1p_cpm_double_centered_r": 0.5256752175317808,
+      "log1p_cpm_full_reliability_estimate": 0.6891050093639353
+    },
+    "chr14": {
+      "genes": 1507,
+      "raw_cpm_double_centered_r": 0.9018971993227419,
+      "raw_cpm_full_reliability_estimate": 0.948418452526145,
+      "log1p_cpm_double_centered_r": 0.5173359890193338,
+      "log1p_cpm_full_reliability_estimate": 0.6819003737645373
+    },
+    "chr15": {
+      "genes": 1307,
+      "raw_cpm_double_centered_r": 0.8541831276940293,
+      "raw_cpm_full_reliability_estimate": 0.9213578906376324,
+      "log1p_cpm_double_centered_r": 0.5225161447988432,
+      "log1p_cpm_full_reliability_estimate": 0.6863850299175366
+    },
+    "chr16": {
+      "genes": 1709,
+      "raw_cpm_double_centered_r": 0.9474486908568289,
+      "raw_cpm_full_reliability_estimate": 0.973015304901281,
+      "log1p_cpm_double_centered_r": 0.486355402566867,
+      "log1p_cpm_full_reliability_estimate": 0.6544267968844514
+    },
+    "chr17": {
+      "genes": 2055,
+      "raw_cpm_double_centered_r": 0.8481724849581702,
+      "raw_cpm_full_reliability_estimate": 0.9178499213263279,
+      "log1p_cpm_double_centered_r": 0.5082560115965422,
+      "log1p_cpm_full_reliability_estimate": 0.6739651726082435
+    },
+    "chr18": {
+      "genes": 787,
+      "raw_cpm_double_centered_r": 0.911951374926516,
+      "raw_cpm_full_reliability_estimate": 0.9539482927086114,
+      "log1p_cpm_double_centered_r": 0.547866592405002,
+      "log1p_cpm_full_reliability_estimate": 0.7078989818544411
+    },
+    "chr19": {
+      "genes": 2134,
+      "raw_cpm_double_centered_r": 0.7068581758553396,
+      "raw_cpm_full_reliability_estimate": 0.8282564841699508,
+      "log1p_cpm_double_centered_r": 0.47603778773022976,
+      "log1p_cpm_full_reliability_estimate": 0.6450211392788997
+    },
+    "chr2": {
+      "genes": 2577,
+      "raw_cpm_double_centered_r": 0.9019728481620354,
+      "raw_cpm_full_reliability_estimate": 0.9484602780041298,
+      "log1p_cpm_double_centered_r": 0.560920481447895,
+      "log1p_cpm_full_reliability_estimate": 0.7187047490434496
+    },
+    "chr20": {
+      "genes": 990,
+      "raw_cpm_double_centered_r": 0.8298067851164787,
+      "raw_cpm_full_reliability_estimate": 0.9069884228936842,
+      "log1p_cpm_double_centered_r": 0.5045305966265644,
+      "log1p_cpm_full_reliability_estimate": 0.6706817365599812
+    },
+    "chr21": {
+      "genes": 544,
+      "raw_cpm_double_centered_r": 0.8496353020615949,
+      "raw_cpm_full_reliability_estimate": 0.9187057590375738,
+      "log1p_cpm_double_centered_r": 0.50911562468861,
+      "log1p_cpm_full_reliability_estimate": 0.6747205003508735
+    },
+    "chr22": {
+      "genes": 930,
+      "raw_cpm_double_centered_r": 0.8460158538404013,
+      "raw_cpm_full_reliability_estimate": 0.9165856859575424,
+      "log1p_cpm_double_centered_r": 0.48206993902539735,
+      "log1p_cpm_full_reliability_estimate": 0.6505360190253969
+    },
+    "chr3": {
+      "genes": 1940,
+      "raw_cpm_double_centered_r": 0.9228361098772515,
+      "raw_cpm_full_reliability_estimate": 0.959869751911579,
+      "log1p_cpm_double_centered_r": 0.5524853982369056,
+      "log1p_cpm_full_reliability_estimate": 0.7117431170229888
+    },
+    "chr4": {
+      "genes": 1549,
+      "raw_cpm_double_centered_r": 0.9004790060876668,
+      "raw_cpm_full_reliability_estimate": 0.9476337314995089,
+      "log1p_cpm_double_centered_r": 0.5862437869390639,
+      "log1p_cpm_full_reliability_estimate": 0.7391597581230869
+    },
+    "chr5": {
+      "genes": 1831,
+      "raw_cpm_double_centered_r": 0.8664457461338703,
+      "raw_cpm_full_reliability_estimate": 0.9284446096851343,
+      "log1p_cpm_double_centered_r": 0.5542530182503577,
+      "log1p_cpm_full_reliability_estimate": 0.7132082250987517
+    },
+    "chr6": {
+      "genes": 1877,
+      "raw_cpm_double_centered_r": 0.8474677101180023,
+      "raw_cpm_full_reliability_estimate": 0.9174371010401827,
+      "log1p_cpm_double_centered_r": 0.5659746970394675,
+      "log1p_cpm_full_reliability_estimate": 0.722840155858793
+    },
+    "chr7": {
+      "genes": 1734,
+      "raw_cpm_double_centered_r": 0.8571679863239349,
+      "raw_cpm_full_reliability_estimate": 0.9230914948309087,
+      "log1p_cpm_double_centered_r": 0.5435153079347776,
+      "log1p_cpm_full_reliability_estimate": 0.7042564529690356
+    },
+    "chr8": {
+      "genes": 1525,
+      "raw_cpm_double_centered_r": 0.8860051882089256,
+      "raw_cpm_full_reliability_estimate": 0.9395575301151046,
+      "log1p_cpm_double_centered_r": 0.5595907050635793,
+      "log1p_cpm_full_reliability_estimate": 0.717612259738066
+    },
+    "chr9": {
+      "genes": 1340,
+      "raw_cpm_double_centered_r": 0.9202341640768735,
+      "raw_cpm_full_reliability_estimate": 0.958460359983506,
+      "log1p_cpm_double_centered_r": 0.5268477868986701,
+      "log1p_cpm_full_reliability_estimate": 0.6901117340174454
+    },
+    "chrM": {
+      "genes": 13,
+      "raw_cpm_double_centered_r": 0.45202584370766297,
+      "raw_cpm_full_reliability_estimate": 0.6226140473553025,
+      "log1p_cpm_double_centered_r": 0.13786852946496841,
+      "log1p_cpm_full_reliability_estimate": 0.24232769585392241
+    },
+    "chrX": {
+      "genes": 1196,
+      "raw_cpm_double_centered_r": 0.8197071986148451,
+      "raw_cpm_full_reliability_estimate": 0.9009220815731271,
+      "log1p_cpm_double_centered_r": 0.5241525360902366,
+      "log1p_cpm_full_reliability_estimate": 0.6877953796341083
+    },
+    "chrY": {
+      "genes": 110,
+      "raw_cpm_double_centered_r": 0.3357069838402681,
+      "raw_cpm_full_reliability_estimate": 0.5026656113979172,
+      "log1p_cpm_double_centered_r": 0.4576882349642413,
+      "log1p_cpm_full_reliability_estimate": 0.6279645043241622
+    }
+  }
+}

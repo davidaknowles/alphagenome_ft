@@ -1,5 +1,6 @@
 {
   "definition": "Optimal singular-value approximation after centering genes and cell groups within each chromosome.",
+  "support": "fixed_window_full_span",
   "gene_supervision": "outputs/v0data/liu-hdma/joint/gene_expression_supervision.npz",
   "chromosomes": {
     "chr8": {

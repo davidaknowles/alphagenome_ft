@@ -1,5 +1,7 @@
 # Liu RNA split-half reliability
 
+Support: `fixed_window_full_span`.
+
 Biological samples were assigned independently for each cell group to two greedily library-depth-balanced halves. Counts were summed and normalized to counts per million, CPM, within each half. The Spearman-Brown correction estimates reliability of the complete pseudobulk from equal-half correlation.
 
 | Quantity | Value |

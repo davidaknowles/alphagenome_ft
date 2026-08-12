@@ -1,6 +1,6 @@
 # Liu held-out chromosome RNA target rank
 
-Support: `fixed_window_full_span`.
+Support: `all_supervision_genes`.
 
 For each target matrix $Y\in\mathbb{R}^{G\times C}$, $G$ is genes on one chromosome and $C$ is modeled cell groups. Both axes are centered before singular-value decomposition. Rank ceilings describe target structure, not achievable sequence-model accuracy.
 
@@ -8,12 +8,12 @@ For each target matrix $Y\in\mathbb{R}^{G\times C}$, $G$ is genes on one chromos
 
 | Chromosome | Evaluated / available genes | Groups | Effective rank | Effective genes | Top-gene variance | Rank for R=0.8 | Rank-2 ceiling | Rank-8 ceiling | Rank-16 ceiling |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| chr8 | 1,067 / 1,525 | 186 | 5.32 | 4.82 | 0.4160 | 2 | 0.8631 | 0.9602 | 0.9838 |
-| chr9 | 972 / 1,340 | 186 | 12.10 | 10.78 | 0.2051 | 4 | 0.6722 | 0.9186 | 0.9661 |
+| chr8 | 1,525 / 1,525 | 186 | 9.22 | 7.87 | 0.3208 | 3 | 0.7736 | 0.9280 | 0.9692 |
+| chr9 | 1,340 / 1,340 | 186 | 4.99 | 2.62 | 0.6122 | 1 | 0.8568 | 0.9446 | 0.9777 |
 
 ## log1p counts per million
 
 | Chromosome | Evaluated / available genes | Groups | Effective rank | Effective genes | Top-gene variance | Rank for R=0.8 | Rank-2 ceiling | Rank-8 ceiling | Rank-16 ceiling |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| chr8 | 1,067 / 1,525 | 186 | 30.92 | 231.41 | 0.0206 | 8 | 0.5701 | 0.8056 | 0.8708 |
-| chr9 | 972 / 1,340 | 186 | 33.75 | 283.55 | 0.0146 | 9 | 0.5516 | 0.7892 | 0.8638 |
+| chr8 | 1,525 / 1,525 | 186 | 27.03 | 446.52 | 0.0105 | 7 | 0.5950 | 0.8265 | 0.8889 |
+| chr9 | 1,340 / 1,340 | 186 | 29.16 | 441.84 | 0.0102 | 8 | 0.5776 | 0.8138 | 0.8838 |

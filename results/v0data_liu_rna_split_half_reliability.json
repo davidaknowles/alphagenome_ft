@@ -1,4 +1,5 @@
 {
+  "support": "fixed_window_full_span",
   "samples": 76,
   "groups": 186,
   "genes": 38705,
