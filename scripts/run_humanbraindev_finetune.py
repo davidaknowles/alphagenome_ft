@@ -240,11 +240,12 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--pretrained-head-initialization",
-        choices=("none", "bootstrap"),
+        choices=("none", "bootstrap", "neural_bootstrap"),
         default="none",
         help=(
             "Initialize each new genomic output channel from a deterministic "
-            "same-assay pretrained channel, or retain random initialization."
+            "same-assay pretrained channel, optionally restricting sufficiently "
+            "diverse pools to neural metadata, or retain random initialization."
         ),
     )
     parser.add_argument(

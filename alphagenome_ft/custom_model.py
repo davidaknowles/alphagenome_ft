@@ -333,12 +333,76 @@ def _output_metadata_frame(metadata: Any, output_type: dna_output.OutputType):
     return metadata
 
 
+_NEURAL_METADATA_TERMS = (
+    "amygdala",
+    "astrocy",
+    "brain",
+    "cerebell",
+    "cerebral",
+    "cortex",
+    "forebrain",
+    "ganglia",
+    "glial",
+    "hippocamp",
+    "hindbrain",
+    "midbrain",
+    "neural",
+    "neuron",
+    "spinal cord",
+    "substantia nigra",
+)
+_NON_NEURAL_CORTEX_TERMS = ("kidney", "renal")
+
+
+def _neural_source_valid(
+    source_frame,
+    *,
+    source_valid: Sequence[bool],
+    target_strands: Sequence[str],
+    minimum_per_strand: int = 2,
+) -> tuple[bool, ...]:
+    """Restrict source tracks to neural metadata when the pool stays diverse."""
+    searchable_columns = tuple(
+        column
+        for column in ("name", "biosample_name", "gtex_tissue")
+        if column in source_frame
+    )
+    if not searchable_columns:
+        return tuple(source_valid)
+    searchable = source_frame.loc[:, searchable_columns].fillna("").astype(str).agg(" ".join, axis=1)
+    lowered = searchable.str.lower()
+    neural = lowered.apply(lambda value: any(term in value for term in _NEURAL_METADATA_TERMS))
+    non_neural_cortex = lowered.apply(
+        lambda value: "cortex" in value
+        and any(term in value for term in _NON_NEURAL_CORTEX_TERMS)
+    )
+    candidate = tuple(
+        bool(valid and is_neural and not excluded)
+        for valid, is_neural, excluded in zip(
+            source_valid,
+            neural,
+            non_neural_cortex,
+            strict=True,
+        )
+    )
+    source_strands = tuple(source_frame["strand"].astype(str))
+    for strand in set(map(str, target_strands)):
+        matching = sum(
+            keep and source_strand == strand
+            for keep, source_strand in zip(candidate, source_strands, strict=True)
+        )
+        if matching < minimum_per_strand:
+            return tuple(source_valid)
+    return candidate
+
+
 def _initialize_heads_from_pretrained_bootstrap(
     params: dict[str, Any],
     *,
     head_names: Sequence[str],
     head_configs: Mapping[str, custom_heads_module.HeadConfigLike],
     pretrained_metadata: Mapping[dna_model.Organism, Any],
+    neural_sources: bool = False,
 ) -> dict[str, Any]:
     """Bootstrap new genomic heads from same-assay pretrained output channels."""
     organism_order = tuple(pretrained_metadata)
@@ -411,6 +475,12 @@ def _initialize_heads_from_pretrained_bootstrap(
                         bool(value)
                         for value in ~pretrained_metadata[source_organism].padding[output_type]
                     )
+                    if neural_sources:
+                        source_valid = _neural_source_valid(
+                            source_frame,
+                            source_valid=source_valid,
+                            target_strands=target_strands,
+                        )
                     seed = zlib.crc32(
                         f"{head_name}:{source_organism.name}".encode("utf-8")
                     )
@@ -428,7 +498,8 @@ def _initialize_heads_from_pretrained_bootstrap(
         if copied_modules:
             initialized.append(head_name)
     if initialized:
-        print("Initialized heads from pretrained output channels:", initialized)
+        source_description = "neural pretrained" if neural_sources else "pretrained"
+        print(f"Initialized heads from {source_description} output channels:", initialized)
     return params
 
 
@@ -2537,7 +2608,9 @@ def create_model_with_heads(
             dtypes remain controlled by their LoRA and LoCon configurations.
         pretrained_head_initialization: ``"bootstrap"`` initializes each new
             genomic channel from a deterministic same-assay pretrained channel,
-            respecting strand metadata. ``"none"`` keeps Haiku initialization.
+            respecting strand metadata. ``"neural_bootstrap"`` restricts each
+            strand pool to neural source metadata when at least two eligible
+            channels remain. ``"none"`` keeps Haiku initialization.
 
     Returns:
         CustomAlphaGenomeModel with requested heads and pretrained backbone.
@@ -2578,9 +2651,10 @@ def create_model_with_heads(
         ```
     """
     normalized_heads = [custom_heads_module.normalize_head_name(name) for name in heads]
-    if pretrained_head_initialization not in {"none", "bootstrap"}:
+    if pretrained_head_initialization not in {"none", "bootstrap", "neural_bootstrap"}:
         raise ValueError(
-            "pretrained_head_initialization must be 'none' or 'bootstrap', got "
+            "pretrained_head_initialization must be 'none', 'bootstrap', or "
+            "'neural_bootstrap', got "
             f"{pretrained_head_initialization!r}."
         )
 
@@ -2799,12 +2873,13 @@ def create_model_with_heads(
         head_name: custom_heads_module.get_registered_head_config(head_name)
         for head_name in normalized_heads
     }
-    if pretrained_head_initialization == "bootstrap":
+    if pretrained_head_initialization in {"bootstrap", "neural_bootstrap"}:
         merged_params = _initialize_heads_from_pretrained_bootstrap(
             merged_params,
             head_names=normalized_heads,
             head_configs=registered_head_configs,
             pretrained_metadata=metadata,
+            neural_sources=pretrained_head_initialization == "neural_bootstrap",
         )
 
     print("✓ Parameters merged")

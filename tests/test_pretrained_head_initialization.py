@@ -26,6 +26,49 @@ def test_bootstrap_track_indices_pair_stranded_channels() -> None:
     assert indices[4] in {0, 1, 2, 3}
 
 
+def test_neural_source_valid_filters_metadata_and_renal_cortex() -> None:
+    source = pd.DataFrame(
+        {
+            "strand": ("+", "+", "+", "-", "-", "-", "."),
+            "biosample_name": (
+                "brain",
+                "astrocyte",
+                "kidney cortex",
+                "brain",
+                "glutamatergic neuron",
+                "renal cortex interstitium",
+                "liver",
+            ),
+        }
+    )
+
+    actual = custom_model._neural_source_valid(
+        source,
+        source_valid=(True,) * len(source),
+        target_strands=("+", "-"),
+    )
+
+    assert actual == (True, True, False, True, True, False, False)
+
+
+def test_neural_source_valid_falls_back_when_pool_lacks_diversity() -> None:
+    source = pd.DataFrame(
+        {
+            "strand": (".", ".", "."),
+            "biosample_name": ("motor neuron", "liver", "heart"),
+        }
+    )
+    valid = (True, True, False)
+
+    actual = custom_model._neural_source_valid(
+        source,
+        source_valid=valid,
+        target_strands=(".",),
+    )
+
+    assert actual == valid
+
+
 def test_pretrained_bootstrap_copies_consistent_output_channels(monkeypatch) -> None:
     output_type = dna_output.OutputType.RNA_SEQ
     source_strands = ("+", "+", "-", "-", ".", ".")
