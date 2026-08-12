@@ -1,0 +1,37 @@
+{
+  "fasta": "outputs/v0data/zemke2023-species/references/rheMac10.fa",
+  "chromosomes": [
+    {
+      "chromosome": "chr8",
+      "length": 145679320,
+      "base_counts": {
+        "A": 42946838,
+        "C": 28835765,
+        "G": 28807406,
+        "N": 2125612,
+        "T": 42963699
+      },
+      "canonical_fraction": 0.9854089653905579,
+      "gc_fraction_of_canonical": 0.40154428473557785,
+      "n_fraction": 0.014591034609442164,
+      "softmasked_fraction": 0.35567415471186986,
+      "unexpected_fraction": 0.0
+    },
+    {
+      "chromosome": "chr9",
+      "length": 134124166,
+      "base_counts": {
+        "A": 38472899,
+        "C": 27485008,
+        "G": 27502355,
+        "N": 2086086,
+        "T": 38577818
+      },
+      "canonical_fraction": 0.9844466059904522,
+      "gc_fraction_of_canonical": 0.4164507920745288,
+      "n_fraction": 0.01555339400954784,
+      "softmasked_fraction": 0.349187781715638,
+      "unexpected_fraction": 0.0
+    }
+  ]
+}
