@@ -11,6 +11,8 @@ set -euo pipefail
 
 cd "$(dirname "$0")/../../.."
 mkdir -p logs/v0data results
+export PYTHONPATH="$PWD:${PYTHONPATH:-}"
+export LD_LIBRARY_PATH="/nfs/sw/easybuild/software/Python/3.12.3-GCCcore-13.3.0/lib:${LD_LIBRARY_PATH:-}"
 
 "${HOME}/venv/jax/bin/python" scripts/v0data/hda_rna/audit_count_sampling_reliability.py \
   --rna-h5ad /gpfs/commons/home/daknowles/knowles_lab/data/multiome/humanbraindev/anndata/rna_pseudobulk.h5ad \

@@ -15,6 +15,7 @@ mkdir -p logs/v0data outputs/v0data/liu-hdma/atac_shards
 module load Python/3.12.3-GCCcore-13.3.0
 module load HTSlib/1.24-GCC-14.2.0
 export PYTHONPATH="$PWD:${PYTHONPATH:-}"
+export LD_LIBRARY_PATH="/nfs/sw/easybuild/software/Python/3.12.3-GCCcore-13.3.0/lib:${LD_LIBRARY_PATH:-}"
 
 chromosomes=(chr1 chr2 chr3 chr4 chr5 chr6 chr7 chr8 chr9 chr10 chr11 chr12 chr13 chr14 chr15 chr16 chr17 chr18 chr19 chr20 chr21 chr22 chrX chrY)
 chromosome="${chromosomes[$SLURM_ARRAY_TASK_ID]}"

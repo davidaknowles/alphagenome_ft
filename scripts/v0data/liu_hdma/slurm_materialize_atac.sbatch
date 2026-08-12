@@ -13,6 +13,7 @@ cd /gpfs/commons/home/daknowles/projects/alphagenome_fp4
 mkdir -p logs/v0data outputs/v0data/liu-hdma/atac_bigwigs
 module load Python/3.12.3-GCCcore-13.3.0
 export PYTHONPATH="$PWD:${PYTHONPATH:-}"
+export LD_LIBRARY_PATH="/nfs/sw/easybuild/software/Python/3.12.3-GCCcore-13.3.0/lib:${LD_LIBRARY_PATH:-}"
 
 "${HOME}/venv/jax/bin/python" scripts/allen_atac_reprocessing/materialize.py \
   --shard-dir outputs/v0data/liu-hdma/atac_shards \
