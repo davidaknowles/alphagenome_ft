@@ -1293,7 +1293,14 @@ def train(
                     )
                 print(f"  {split.capitalize()} metrics:", "; ".join(printable))
             if checkpoint_dir:
-                _write_json(checkpoint_dir / "evaluation.json", {"metrics": evaluation})
+                _write_json(
+                    checkpoint_dir / "evaluation.json",
+                    {
+                        "source_epoch": start_epoch - 1 if initial_global_step > 0 else None,
+                        "source_global_step": initial_global_step,
+                        "metrics": evaluation,
+                    },
+                )
             return evaluation
 
         gradient_diagnostics_reported = False

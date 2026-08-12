@@ -184,7 +184,9 @@ def test_train_reports_per_head_gradient_norms_once(capsys, tmp_path):
     )
 
     assert set(evaluation) == {"train"}
-    assert (tmp_path / "evaluation" / "evaluation.json").exists()
+    evaluation_record = json.loads((tmp_path / "evaluation" / "evaluation.json").read_text())
+    assert evaluation_record["source_epoch"] is None
+    assert evaluation_record["source_global_step"] == 0
     for original, current in zip(
         jax.tree_util.tree_leaves(original_params),
         jax.tree_util.tree_leaves(evaluation_model._params),
