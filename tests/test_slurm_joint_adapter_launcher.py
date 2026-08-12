@@ -74,6 +74,18 @@ def test_zemke_species_continuation_requires_optimizer_state_by_default() -> Non
     assert "RESUME_FROM=${source}" in script
 
 
+def test_johansen_joint_continuation_requires_corrected_state() -> None:
+    script = Path("scripts/v0data/submit_johansen_joint_continuations.sh").read_text()
+
+    assert 'tasks="${TASKS:-0;1}"' in script
+    assert "johansen-rna-corrected/geneonly-corrw1/species.json" in script
+    assert "johansen_joint_${strategy}_rawcount_geneonly_corrw1/last" in script
+    assert '"${REQUIRE_OPTIMIZER_STATE:-1}" == "1"' in script
+    assert 'test -d "$source/optimizer_state"' in script
+    assert "RESUME_FROM=${source}" in script
+    assert "RUN_SUFFIX=_rawcount_geneonly_corrw1" in script
+
+
 def test_hda_joint_epoch_three_matches_the_optimizer_reset_boundary() -> None:
     script = Path("scripts/v0data/submit_hda_joint_matched_epoch3.sh").read_text()
 
