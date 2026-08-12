@@ -569,7 +569,16 @@ def main() -> None:
         species_modules = {}
         organism_indices = {}
         expected_signature = [
-            (spec.head_id, spec.kind, len(spec.tracks), tuple(track.name for track in spec.tracks))
+            (
+                spec.head_id,
+                spec.kind,
+                len(spec.tracks),
+                tuple(track.name for track in spec.tracks),
+                spec.loss_weight,
+                spec.gene_loss_weight,
+                spec.coverage_loss_weight,
+                spec.double_centered_correlation_loss_weight,
+            )
             for spec in head_specs
         ]
         for entry in species_entries:
@@ -600,6 +609,10 @@ def main() -> None:
                     spec.kind,
                     len(spec.tracks),
                     tuple(track.name for track in spec.tracks),
+                    spec.loss_weight,
+                    spec.gene_loss_weight,
+                    spec.coverage_loss_weight,
+                    spec.double_centered_correlation_loss_weight,
                 )
                 for spec in species_specs
             ]
