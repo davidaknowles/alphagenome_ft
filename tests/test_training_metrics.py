@@ -17,6 +17,7 @@ from alphagenome_ft.finetune.train import (
     _gradient_inner_product,
     _gradient_l2_norm,
     _is_lora_path,
+    _mask_inactive_head_updates,
     _r2_stats,
     _restore_optimizer_state,
     _save_gradient_diagnostics,
@@ -48,6 +49,26 @@ def test_weighted_head_loss_sum_rebalances_objective():
     )
 
     np.testing.assert_allclose(total, 13.0)
+
+
+def test_inactive_head_updates_are_zero_but_shared_adapter_updates_remain():
+    updates = {
+        "trunk": {"lora_a": jnp.asarray(2.0)},
+        "head": {
+            "atac": {"weight": jnp.asarray(3.0)},
+            "rna": {"weight": jnp.asarray(4.0)},
+        },
+    }
+
+    masked = _mask_inactive_head_updates(
+        updates,
+        active_head_names=("atac",),
+        all_head_names=("atac", "rna"),
+    )
+
+    np.testing.assert_allclose(masked["trunk"]["lora_a"], 2.0)
+    np.testing.assert_allclose(masked["head"]["atac"]["weight"], 3.0)
+    np.testing.assert_allclose(masked["head"]["rna"]["weight"], 0.0)
 
 
 def test_gradient_norm_helpers_filter_parameter_paths():
@@ -218,6 +239,35 @@ def test_train_reports_per_head_gradient_norms_once(capsys, tmp_path):
     ):
         np.testing.assert_array_equal(current, original)
     assert "Epoch 1/1" not in capsys.readouterr().out
+
+    class ActiveHeadDataModule(DummyDataModule):
+        def iter_batches(self, split, seed=None, shuffle=True):
+            del seed, shuffle
+            self.calls[split] += 1
+            sequence = np.arange(4, dtype=np.float32).reshape(1, 4, 1)
+            for head_name, scale in (("atac", 2.0), ("rna", 3.0)):
+                yield {
+                    "sequences": sequence,
+                    "negative_strand_mask": np.asarray([False]),
+                    f"targets_{head_name}": scale * sequence,
+                    "_active_head_names": (head_name,),
+                }
+
+    active_evaluation = train(
+        DummyModel(),
+        ActiveHeadDataModule(),
+        specs,
+        learning_rate=1e-3,
+        weight_decay=0.0,
+        num_epochs=1,
+        max_train_steps=2,
+        heads_only=True,
+        train_lora=True,
+        eval_splits=("valid",),
+        prefetch_batches=0,
+    )
+
+    assert active_evaluation is None
 
     deferred_data = DummyDataModule()
     train(

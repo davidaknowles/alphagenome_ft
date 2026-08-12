@@ -10,6 +10,7 @@ from alphagenome_ft.finetune.config import (
 from alphagenome_ft.finetune.data import (
     get_fold_split,
     BigWigDataModule,
+    MultiDatasetDataModule,
     MultiSpeciesDataModule,
     WindowedTargetCache,
     build_interval,
@@ -84,6 +85,7 @@ __all__ = [
     # data
     "get_fold_split",
     "BigWigDataModule",
+    "MultiDatasetDataModule",
     "MultiSpeciesDataModule",
     "WindowedTargetCache",
     "build_interval",

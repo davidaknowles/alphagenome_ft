@@ -92,6 +92,25 @@ def _label_params_for_heads(
     return jax.tree_util.tree_map_with_path(label_fn, params)
 
 
+def _mask_inactive_head_updates(
+    updates,
+    *,
+    active_head_names: Sequence[str],
+    all_head_names: Sequence[str],
+):
+    """Zero optimizer updates for dataset heads absent from the current batch."""
+    inactive_heads = set(all_head_names) - set(active_head_names)
+    if not inactive_heads:
+        return updates
+
+    def mask_update(path, update):
+        if _is_trainable_head_path(_keypath_to_str(path), inactive_heads):
+            return jnp.zeros_like(update)
+        return update
+
+    return jax.tree_util.tree_map_with_path(mask_update, updates)
+
+
 def create_optimizer(
     params,
     trainable_head_names: Sequence[str],
@@ -1167,184 +1186,206 @@ def train(
                 head_stats[head_name] = _r2_stats(predictions[head_name], targets)
         return head_losses, head_stats
 
-    @functools.partial(jax.pmap, axis_name="data")
-    def train_step(params, state, current_opt_state, batch):
-        def loss_fn(current_params):
-            head_losses, head_stats = training_head_objectives(
-                current_params,
-                state,
-                batch,
-                head_names,
-                axis_name="data",
-            )
-            total_loss = _weighted_head_loss_sum(head_losses, head_specs_by_name)
-            return total_loss, (head_losses, head_stats)
+    train_steps = {}
+    diagnostic_steps = {}
+    eval_steps = {}
 
-        (loss_value, (head_losses, head_stats)), grads = jax.value_and_grad(loss_fn, has_aux=True)(
-            params
-        )
-        loss_value = jax.lax.pmean(loss_value, axis_name="data")
-        grads = jax.lax.pmean(grads, axis_name="data")
-        head_losses = jax.tree_util.tree_map(
-            lambda head_loss: jax.lax.pmean(head_loss, axis_name="data"),
-            head_losses,
-        )
-        head_stats = jax.tree_util.tree_map(
-            lambda value: jax.lax.psum(value, axis_name="data"),
-            head_stats,
-        )
-        updates, new_opt_state = optimizer.update(grads, current_opt_state, params)
-        new_params = optax.apply_updates(params, updates)
-        return new_params, new_opt_state, loss_value, head_losses, head_stats
+    def get_train_step(requested_head_names):
+        requested_head_names = tuple(requested_head_names)
+        if requested_head_names not in train_steps:
 
-    @jax.pmap
-    def accumulate_train_stats(
-        total_loss,
-        total_head_losses,
-        total_head_stats,
-        loss_value,
-        head_losses,
-        head_stats,
-    ):
-        """Fuse all epoch-stat additions into one dispatched computation."""
-        return (
-            total_loss + loss_value,
-            jax.tree_util.tree_map(jnp.add, total_head_losses, head_losses),
-            jax.tree_util.tree_map(jnp.add, total_head_stats, head_stats),
-        )
+            @functools.partial(jax.pmap, axis_name="data")
+            def active_train_step(params, state, current_opt_state, batch):
+                def loss_fn(current_params):
+                    head_losses, head_stats = training_head_objectives(
+                        current_params,
+                        state,
+                        batch,
+                        requested_head_names,
+                        axis_name="data",
+                    )
+                    total_loss = _weighted_head_loss_sum(head_losses, head_specs_by_name)
+                    return total_loss, (head_losses, head_stats)
 
-    @functools.partial(jax.pmap, axis_name="data")
-    def head_gradient_diagnostics(params, state, batch):
-        adapter_gradients = {}
-        results = {}
-        for head_name in head_names:
+                (loss_value, (head_losses, head_stats)), grads = jax.value_and_grad(
+                    loss_fn, has_aux=True
+                )(params)
+                loss_value = jax.lax.pmean(loss_value, axis_name="data")
+                grads = jax.lax.pmean(grads, axis_name="data")
+                head_losses = jax.tree_util.tree_map(
+                    lambda head_loss: jax.lax.pmean(head_loss, axis_name="data"),
+                    head_losses,
+                )
+                head_stats = jax.tree_util.tree_map(
+                    lambda value: jax.lax.psum(value, axis_name="data"),
+                    head_stats,
+                )
+                updates, new_opt_state = optimizer.update(grads, current_opt_state, params)
+                updates = _mask_inactive_head_updates(
+                    updates,
+                    active_head_names=requested_head_names,
+                    all_head_names=head_names,
+                )
+                new_params = optax.apply_updates(params, updates)
+                return new_params, new_opt_state, loss_value, head_losses, head_stats
 
-            def single_head_loss(current_params):
-                losses, _ = training_head_objectives(
-                    current_params,
+            train_steps[requested_head_names] = active_train_step
+        return train_steps[requested_head_names]
+
+    def get_head_gradient_diagnostics(requested_head_names):
+        requested_head_names = tuple(requested_head_names)
+        if requested_head_names not in diagnostic_steps:
+
+            @functools.partial(jax.pmap, axis_name="data")
+            def active_diagnostics(params, state, batch):
+                adapter_gradients = {}
+                results = {}
+                for head_name in requested_head_names:
+
+                    def single_head_loss(current_params):
+                        losses, _ = training_head_objectives(
+                            current_params,
+                            state,
+                            batch,
+                            (head_name,),
+                            axis_name="data",
+                        )
+                        return losses[head_name]
+
+                    loss_value, gradients = jax.value_and_grad(single_head_loss)(params)
+                    gradients = jax.lax.pmean(gradients, axis_name="data")
+                    adapter_gradients[head_name] = gradients
+                    adapter_norm = _gradient_l2_norm(gradients, _is_lora_path)
+                    head_norm = _gradient_l2_norm(
+                        gradients,
+                        lambda path: _is_trainable_head_path(path, {head_name}),
+                    )
+                    weight = head_specs_by_name[head_name].loss_weight
+                    results[head_name] = {
+                        "loss": jax.lax.pmean(loss_value, axis_name="data"),
+                        "loss_weight": jnp.asarray(weight, dtype=jnp.float32),
+                        "adapter_gradient_norm": adapter_norm,
+                        "weighted_adapter_gradient_norm": weight * adapter_norm,
+                        "head_gradient_norm": head_norm,
+                    }
+                adapter_cosines = {}
+                for first_index, first_name in enumerate(requested_head_names):
+                    for second_name in requested_head_names[first_index + 1 :]:
+                        first_gradients = adapter_gradients[first_name]
+                        second_gradients = adapter_gradients[second_name]
+                        numerator = _gradient_inner_product(
+                            first_gradients, second_gradients, _is_lora_path
+                        )
+                        denominator = _gradient_l2_norm(
+                            first_gradients, _is_lora_path
+                        ) * _gradient_l2_norm(second_gradients, _is_lora_path)
+                        adapter_cosines[f"{first_name}__{second_name}"] = jnp.where(
+                            denominator > 0, numerator / denominator, 0.0
+                        )
+                return {"heads": results, "adapter_gradient_cosines": adapter_cosines}
+
+            diagnostic_steps[requested_head_names] = active_diagnostics
+        return diagnostic_steps[requested_head_names]
+
+    def get_eval_step(requested_head_names):
+        requested_head_names = tuple(requested_head_names)
+        if requested_head_names not in eval_steps:
+
+            @functools.partial(jax.pmap, axis_name="data")
+            def active_eval_step(params, state, batch):
+                predictions = model._predict(
+                    params,
                     state,
-                    batch,
-                    (head_name,),
-                    axis_name="data",
+                    batch["sequences"],
+                    batch["organism_index"],
+                    requested_outputs=requested_head_names,
+                    negative_strand_mask=batch["negative_strand_mask"],
+                    strand_reindexing=batch["strand_reindexing"],
                 )
-                return losses[head_name]
-
-            loss_value, gradients = jax.value_and_grad(single_head_loss)(params)
-            gradients = jax.lax.pmean(gradients, axis_name="data")
-            adapter_gradients[head_name] = gradients
-            adapter_norm = _gradient_l2_norm(gradients, _is_lora_path)
-            head_norm = _gradient_l2_norm(
-                gradients,
-                lambda path: _is_trainable_head_path(path, {head_name}),
-            )
-            weight = head_specs_by_name[head_name].loss_weight
-            results[head_name] = {
-                "loss": jax.lax.pmean(loss_value, axis_name="data"),
-                "loss_weight": jnp.asarray(weight, dtype=jnp.float32),
-                "adapter_gradient_norm": adapter_norm,
-                "weighted_adapter_gradient_norm": weight * adapter_norm,
-                "head_gradient_norm": head_norm,
-            }
-        adapter_cosines = {}
-        for first_index, first_name in enumerate(head_names):
-            for second_name in head_names[first_index + 1 :]:
-                first_gradients = adapter_gradients[first_name]
-                second_gradients = adapter_gradients[second_name]
-                numerator = _gradient_inner_product(
-                    first_gradients, second_gradients, _is_lora_path
-                )
-                denominator = _gradient_l2_norm(first_gradients, _is_lora_path) * _gradient_l2_norm(
-                    second_gradients, _is_lora_path
-                )
-                adapter_cosines[f"{first_name}__{second_name}"] = jnp.where(
-                    denominator > 0, numerator / denominator, 0.0
-                )
-        return {"heads": results, "adapter_gradient_cosines": adapter_cosines}
-
-    @functools.partial(jax.pmap, axis_name="data")
-    def eval_step(params, state, batch):
-        predictions = model._predict(
-            params,
-            state,
-            batch["sequences"],
-            batch["organism_index"],
-            requested_outputs=head_names,
-            negative_strand_mask=batch["negative_strand_mask"],
-            strand_reindexing=batch["strand_reindexing"],
-        )
-        head_losses = {}
-        head_stats = {}
-        for head_name in head_names:
-            spec = head_specs_by_name[head_name]
-            uses_coverage = spec.gene_supervision_path is None or spec.coverage_loss_weight > 0
-            if uses_coverage:
-                raw_targets = batch[f"targets_{head_name}"]
-                transform = target_transforms.get(head_name)
-                loss_targets = (
-                    transform.forward_jax(raw_targets) if transform is not None else raw_targets
-                )
-                head_loss = loss_fns[head_name](
-                    predictions[head_name],
-                    {
-                        "targets": loss_targets,
-                        "organism_index": batch["organism_index"],
-                    },
-                )["loss"]
-            else:
-                head_loss = jnp.asarray(0.0, dtype=jnp.float32)
-            if spec.gene_supervision_path is not None:
-                gene_prediction = _gene_expression_prediction(
-                    predictions[head_name], batch, head_name
-                )
-                gene_targets = batch[f"gene_targets_{head_name}"]
-                gene_valid = batch[f"gene_valid_{head_name}"]
-                head_loss = (
-                    spec.coverage_loss_weight * head_loss
-                    + spec.gene_loss_weight
-                    * _gene_log_mse(gene_prediction, gene_targets, gene_valid)
-                )
-                correlation_prediction = gene_prediction
-                correlation_targets = gene_targets
-                correlation_mask = gene_valid
-                head_stats[head_name] = _r2_stats(gene_prediction, gene_targets, gene_valid)
-            else:
-                correlation_prediction = predictions[head_name]
-                correlation_targets = loss_targets
-                correlation_mask = None
-                head_stats[head_name] = _r2_stats(
-                    inverse_prediction_for_metrics(head_name, predictions[head_name]),
-                    raw_targets,
-                )
-            if spec.double_centered_correlation_loss_weight > 0:
-                head_loss = head_loss + (
-                    spec.double_centered_correlation_loss_weight
-                    * _double_centered_correlation_loss(
-                        correlation_prediction,
-                        correlation_targets,
-                        correlation_mask,
-                        axis_name="data",
+                head_losses = {}
+                head_stats = {}
+                for head_name in requested_head_names:
+                    spec = head_specs_by_name[head_name]
+                    uses_coverage = (
+                        spec.gene_supervision_path is None or spec.coverage_loss_weight > 0
                     )
+                    if uses_coverage:
+                        raw_targets = batch[f"targets_{head_name}"]
+                        transform = target_transforms.get(head_name)
+                        loss_targets = (
+                            transform.forward_jax(raw_targets)
+                            if transform is not None
+                            else raw_targets
+                        )
+                        head_loss = loss_fns[head_name](
+                            predictions[head_name],
+                            {
+                                "targets": loss_targets,
+                                "organism_index": batch["organism_index"],
+                            },
+                        )["loss"]
+                    else:
+                        head_loss = jnp.asarray(0.0, dtype=jnp.float32)
+                    if spec.gene_supervision_path is not None:
+                        gene_prediction = _gene_expression_prediction(
+                            predictions[head_name], batch, head_name
+                        )
+                        gene_targets = batch[f"gene_targets_{head_name}"]
+                        gene_valid = batch[f"gene_valid_{head_name}"]
+                        head_loss = (
+                            spec.coverage_loss_weight * head_loss
+                            + spec.gene_loss_weight
+                            * _gene_log_mse(gene_prediction, gene_targets, gene_valid)
+                        )
+                        correlation_prediction = gene_prediction
+                        correlation_targets = gene_targets
+                        correlation_mask = gene_valid
+                        head_stats[head_name] = _r2_stats(
+                            gene_prediction, gene_targets, gene_valid
+                        )
+                    else:
+                        correlation_prediction = predictions[head_name]
+                        correlation_targets = loss_targets
+                        correlation_mask = None
+                        head_stats[head_name] = _r2_stats(
+                            inverse_prediction_for_metrics(
+                                head_name, predictions[head_name]
+                            ),
+                            raw_targets,
+                        )
+                    if spec.double_centered_correlation_loss_weight > 0:
+                        head_loss = head_loss + (
+                            spec.double_centered_correlation_loss_weight
+                            * _double_centered_correlation_loss(
+                                correlation_prediction,
+                                correlation_targets,
+                                correlation_mask,
+                                axis_name="data",
+                            )
+                        )
+                    if spec.row_centered_correlation_loss_weight > 0:
+                        head_loss = head_loss + (
+                            spec.row_centered_correlation_loss_weight
+                            * _row_centered_correlation_loss(
+                                correlation_prediction,
+                                correlation_targets,
+                                correlation_mask,
+                                axis_name="data",
+                            )
+                        )
+                    head_losses[head_name] = head_loss
+                head_losses = jax.tree_util.tree_map(
+                    lambda loss_value: jax.lax.pmean(loss_value, axis_name="data"),
+                    head_losses,
                 )
-            if spec.row_centered_correlation_loss_weight > 0:
-                head_loss = head_loss + (
-                    spec.row_centered_correlation_loss_weight
-                    * _row_centered_correlation_loss(
-                        correlation_prediction,
-                        correlation_targets,
-                        correlation_mask,
-                        axis_name="data",
-                    )
+                head_stats = jax.tree_util.tree_map(
+                    lambda value: jax.lax.psum(value, axis_name="data"),
+                    head_stats,
                 )
-            head_losses[head_name] = head_loss
-        head_losses = jax.tree_util.tree_map(
-            lambda loss_value: jax.lax.pmean(loss_value, axis_name="data"),
-            head_losses,
-        )
-        head_stats = jax.tree_util.tree_map(
-            lambda value: jax.lax.psum(value, axis_name="data"),
-            head_stats,
-        )
-        return head_losses, head_stats
+                return head_losses, head_stats
+
+            eval_steps[requested_head_names] = active_eval_step
+        return eval_steps[requested_head_names]
 
     if verbose:
         print("JIT-compiling step functions (first call will be slow)...")
@@ -1436,6 +1477,17 @@ def train(
         strand_reindexing_replicated = _replicate_tree(strand_reindexing, devices)
         stop_training = False
 
+        def active_heads_for_batch(batch_np) -> tuple[str, ...]:
+            active = tuple(batch_np.get("_active_head_names", head_names))
+            if not active:
+                raise ValueError("A training batch must activate at least one target head.")
+            unknown = set(active) - set(head_names)
+            if unknown:
+                raise ValueError(f"Batch activates unknown target heads: {sorted(unknown)}")
+            if len(set(active)) != len(active):
+                raise ValueError(f"Batch contains duplicate active heads: {active}")
+            return active
+
         def evaluate_split(split: str) -> dict[str, dict[str, float]]:
             if split not in data_module._intervals or len(data_module._intervals[split]) == 0:
                 return {}
@@ -1448,16 +1500,22 @@ def train(
                 "step_dispatch": 0.0,
                 "sync": 0.0,
             }
+            evaluated_batch_count = 0
 
             def prepare_eval_batch(batch_np):
                 prep_start = time.perf_counter()
-                batch = prepare_batch(batch_np, organism_index_value, head_names)
+                active_head_names = active_heads_for_batch(batch_np)
+                batch = prepare_batch(batch_np, organism_index_value, active_head_names)
                 prepare_elapsed = time.perf_counter() - prep_start
                 shard_start = time.perf_counter()
                 batch = _shard_batch(batch, num_devices)
                 shard_elapsed = time.perf_counter() - shard_start
                 batch["strand_reindexing"] = strand_reindexing_replicated
-                return batch, {"prepare": prepare_elapsed, "shard": shard_elapsed}
+                return (
+                    batch,
+                    active_head_names,
+                    {"prepare": prepare_elapsed, "shard": shard_elapsed},
+                )
 
             batch_iter = iter(
                 _prefetch_transformed_iterable(
@@ -1469,16 +1527,19 @@ def train(
             while True:
                 wait_start = time.perf_counter()
                 try:
-                    batch, batch_timing = next(batch_iter)
+                    batch, active_head_names, batch_timing = next(batch_iter)
                 except StopIteration:
                     break
                 timing_stats["batch_wait"] += time.perf_counter() - wait_start
                 timing_stats["prepare"] += batch_timing["prepare"]
                 timing_stats["shard"] += batch_timing["shard"]
                 step_start = time.perf_counter()
-                head_losses, head_stats = eval_step(replicated_params, replicated_state, batch)
+                head_losses, head_stats = get_eval_step(active_head_names)(
+                    replicated_params, replicated_state, batch
+                )
                 timing_stats["step_dispatch"] += time.perf_counter() - step_start
-                for head_name in head_names:
+                evaluated_batch_count += 1
+                for head_name in active_head_names:
                     sync_start = time.perf_counter()
                     loss_value = float(np.asarray(head_losses[head_name])[0])
                     timing_stats["sync"] += time.perf_counter() - sync_start
@@ -1498,8 +1559,10 @@ def train(
 
             split_result: dict[str, dict[str, float]] = {}
             for head_name in head_names:
+                if not losses[head_name]:
+                    continue
                 head_result = {
-                    "loss": float(np.mean(losses[head_name])) if losses[head_name] else float("nan")
+                    "loss": float(np.mean(losses[head_name]))
                 }
                 if stats_by_head[head_name] is not None:
                     head_result.update(_finalize_r2_stats(stats_by_head[head_name]))
@@ -1509,7 +1572,7 @@ def train(
                     _format_host_timing_summary(
                         f"{split} host timing",
                         timing_stats,
-                        len(losses[head_names[0]]) if head_names else 0,
+                        evaluated_batch_count,
                     )
                 )
             return split_result
@@ -1578,8 +1641,9 @@ def train(
 
             epoch_step = 0
             train_loss_sum = None
-            train_head_loss_sums = None
-            train_stats_by_head = None
+            train_head_loss_sums = {head: None for head in head_names}
+            train_stats_by_head = {head: None for head in head_names}
+            train_head_batch_counts = {head: 0 for head in head_names}
             timing_stats = {
                 "batch_wait": 0.0,
                 "prepare": 0.0,
@@ -1590,13 +1654,18 @@ def train(
 
             def prepare_train_batch(batch_np):
                 prep_start = time.perf_counter()
-                batch = prepare_batch(batch_np, organism_index_value, head_names)
+                active_head_names = active_heads_for_batch(batch_np)
+                batch = prepare_batch(batch_np, organism_index_value, active_head_names)
                 prepare_elapsed = time.perf_counter() - prep_start
                 shard_start = time.perf_counter()
                 batch = _shard_batch(batch, num_devices)
                 shard_elapsed = time.perf_counter() - shard_start
                 batch["strand_reindexing"] = strand_reindexing_replicated
-                return batch, {"prepare": prepare_elapsed, "shard": shard_elapsed}
+                return (
+                    batch,
+                    active_head_names,
+                    {"prepare": prepare_elapsed, "shard": shard_elapsed},
+                )
 
             batch_iter = iter(
                 _prefetch_transformed_iterable(
@@ -1608,14 +1677,14 @@ def train(
             while True:
                 wait_start = time.perf_counter()
                 try:
-                    batch, batch_timing = next(batch_iter)
+                    batch, active_head_names, batch_timing = next(batch_iter)
                 except StopIteration:
                     break
                 timing_stats["batch_wait"] += time.perf_counter() - wait_start
                 timing_stats["prepare"] += batch_timing["prepare"]
                 timing_stats["shard"] += batch_timing["shard"]
                 if report_head_gradient_norms and not gradient_diagnostics_reported:
-                    raw_diagnostics = head_gradient_diagnostics(
+                    raw_diagnostics = get_head_gradient_diagnostics(active_head_names)(
                         replicated_params,
                         replicated_state,
                         batch,
@@ -1639,7 +1708,7 @@ def train(
                     loss_value,
                     head_losses,
                     head_stats,
-                ) = train_step(
+                ) = get_train_step(active_head_names)(
                     replicated_params,
                     replicated_state,
                     opt_state,
@@ -1649,21 +1718,24 @@ def train(
                 loss_replica = loss_value[0]
                 if train_loss_sum is None:
                     train_loss_sum = loss_value
-                    train_head_loss_sums = head_losses
-                    train_stats_by_head = head_stats
                 else:
-                    (
-                        train_loss_sum,
-                        train_head_loss_sums,
-                        train_stats_by_head,
-                    ) = accumulate_train_stats(
-                        train_loss_sum,
-                        train_head_loss_sums,
-                        train_stats_by_head,
-                        loss_value,
-                        head_losses,
-                        head_stats,
+                    train_loss_sum = train_loss_sum + loss_value
+                for head_name in active_head_names:
+                    train_head_loss_sums[head_name] = (
+                        head_losses[head_name]
+                        if train_head_loss_sums[head_name] is None
+                        else train_head_loss_sums[head_name] + head_losses[head_name]
                     )
+                    train_stats_by_head[head_name] = (
+                        head_stats[head_name]
+                        if train_stats_by_head[head_name] is None
+                        else jax.tree_util.tree_map(
+                            jnp.add,
+                            train_stats_by_head[head_name],
+                            head_stats[head_name],
+                        )
+                    )
+                    train_head_batch_counts[head_name] += 1
                 epoch_step += 1
                 global_step += 1
 
@@ -1740,12 +1812,11 @@ def train(
                 train_metrics: dict[str, dict[str, float]] = {}
                 for head_name in head_names:
                     head_loss_sum = train_head_loss_sums[head_name]
+                    head_batch_count = train_head_batch_counts[head_name]
+                    if head_loss_sum is None or head_batch_count == 0:
+                        continue
                     head_result = {
-                        "loss": (
-                            float(np.asarray(head_loss_sum[0] / epoch_step))
-                            if head_loss_sum is not None
-                            else float("nan")
-                        )
+                        "loss": float(np.asarray(head_loss_sum[0] / head_batch_count))
                     }
                     if train_stats_by_head[head_name] is not None:
                         head_result.update(

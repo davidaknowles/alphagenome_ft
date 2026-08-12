@@ -1844,6 +1844,178 @@ class MultiSpeciesDataModule:
             active = next_active
 
 
+class MultiDatasetDataModule:
+    """Balanced batches from heterogeneous datasets with dataset-specific heads.
+
+    Training visits every batch from the largest native source in each dataset,
+    cycles shorter sources within that dataset, and then cycles shorter datasets
+    so each dataset contributes the same number of optimizer updates. Evaluation
+    visits every source batch exactly once. Routing fields prefixed with an
+    underscore are host metadata and are not copied to a JAX device.
+    """
+
+    def __init__(
+        self,
+        datasets: Mapping[str, Mapping[str, BigWigDataModule]],
+        *,
+        organism_indices: Mapping[str, int] | None = None,
+    ) -> None:
+        if not datasets:
+            raise ValueError("At least one dataset is required.")
+        self._datasets = {
+            str(dataset): dict(sources) for dataset, sources in datasets.items()
+        }
+        if any(not sources for sources in self._datasets.values()):
+            empty = sorted(name for name, sources in self._datasets.items() if not sources)
+            raise ValueError(f"Datasets contain no sources: {empty}")
+        self._modules = {
+            source: module
+            for sources in self._datasets.values()
+            for source, module in sources.items()
+        }
+        if len(self._modules) != sum(len(sources) for sources in self._datasets.values()):
+            raise ValueError("Source names must be unique across datasets.")
+        self._organism_indices = dict(organism_indices or {})
+        unknown_sources = set(self._organism_indices) - set(self._modules)
+        if unknown_sources:
+            raise ValueError(
+                f"Organism indices contain unknown sources: {sorted(unknown_sources)}"
+            )
+
+        drop_last_values = {module._drop_last for module in self._modules.values()}
+        if len(drop_last_values) != 1:
+            raise ValueError("All dataset modules must use the same drop_last setting.")
+        self._drop_last = drop_last_values.pop()
+        batch_sizes = {module._batch_size for module in self._modules.values()}
+        if len(batch_sizes) != 1:
+            raise ValueError("All dataset modules must use the same batch size.")
+        self._batch_size = batch_sizes.pop()
+
+        head_to_modules: dict[str, list[BigWigDataModule]] = defaultdict(list)
+        for module in self._modules.values():
+            for spec in module._head_specs:
+                head_to_modules[spec.head_id].append(module)
+        for head_name, modules in head_to_modules.items():
+            max_genes = max(module._max_genes.get(head_name, 0) for module in modules)
+            for module in modules:
+                if head_name in module._max_genes:
+                    module._max_genes[head_name] = max_genes
+
+        self._intervals: dict[str, list[genome.Interval]] = {}
+        split_names = set.union(*(set(module._intervals) for module in self._modules.values()))
+        for split in split_names:
+            self._intervals[split] = [
+                interval
+                for module in self._modules.values()
+                for interval in module._intervals.get(split, ())
+            ]
+
+    @staticmethod
+    def _module_batch_count(module: BigWigDataModule, split: str) -> int:
+        return module.num_batches_per_epoch(split)
+
+    def _dataset_batch_count(self, dataset: str, split: str) -> int:
+        counts = [
+            self._module_batch_count(module, split)
+            for module in self._datasets[dataset].values()
+        ]
+        if split == "train":
+            return max(counts, default=0) * len(counts)
+        return sum(counts)
+
+    def num_batches_per_epoch(self, split: str) -> int:
+        counts = [self._dataset_batch_count(dataset, split) for dataset in self._datasets]
+        if split == "train":
+            return max(counts, default=0) * len(counts)
+        return sum(counts)
+
+    def num_examples_per_epoch(self, split: str) -> int:
+        return self.num_batches_per_epoch(split) * self._batch_size
+
+    def iter_batches(
+        self,
+        split: str,
+        *,
+        seed: int | None = None,
+        shuffle: bool | None = None,
+    ) -> Iterator[dict[str, np.ndarray]]:
+        def tagged_cycle(
+            dataset: str,
+            source: str,
+            module: BigWigDataModule,
+            source_idx: int,
+        ):
+            cycle = 0
+            while True:
+                cycle_seed = None if seed is None else seed + source_idx + cycle * 10_003
+                produced = False
+                for raw_batch in module.iter_batches(
+                    split,
+                    seed=cycle_seed,
+                    shuffle=shuffle,
+                ):
+                    produced = True
+                    batch = dict(raw_batch)
+                    organism_index = self._organism_indices.get(source)
+                    if organism_index is not None:
+                        batch["organism_index"] = np.full(
+                            (batch["sequences"].shape[0],),
+                            organism_index,
+                            dtype=np.int32,
+                        )
+                    batch["_active_head_names"] = tuple(
+                        spec.head_id for spec in module._head_specs
+                    )
+                    batch["_dataset_name"] = dataset
+                    batch["_source_name"] = source
+                    yield batch
+                if split != "train" or not produced:
+                    return
+                cycle += 1
+
+        source_index = 0
+        dataset_iterators: dict[str, list[Iterator[dict[str, np.ndarray]]]] = {}
+        for dataset, sources in self._datasets.items():
+            dataset_iterators[dataset] = []
+            for source, module in sources.items():
+                dataset_iterators[dataset].append(
+                    iter(tagged_cycle(dataset, source, module, source_index))
+                )
+                source_index += 1
+
+        if split != "train":
+            for iterators in dataset_iterators.values():
+                active = list(range(len(iterators)))
+                while active:
+                    next_active = []
+                    for index in active:
+                        try:
+                            yield next(iterators[index])
+                            next_active.append(index)
+                        except StopIteration:
+                            pass
+                    active = next_active
+            return
+
+        dataset_counts = {
+            dataset: self._dataset_batch_count(dataset, split)
+            for dataset in self._datasets
+        }
+        target_count = max(dataset_counts.values(), default=0)
+        if target_count == 0:
+            return
+        source_positions = {dataset: 0 for dataset in self._datasets}
+        produced = {dataset: 0 for dataset in self._datasets}
+        while any(count < target_count for count in produced.values()):
+            for dataset, iterators in dataset_iterators.items():
+                if produced[dataset] >= target_count:
+                    continue
+                position = source_positions[dataset] % len(iterators)
+                yield next(iterators[position])
+                source_positions[dataset] += 1
+                produced[dataset] += 1
+
+
 def build_fasta_index(fasta_path: Path) -> dict[str, int]:
     """Ensure ``<fasta>.fai`` exists and return chromosome sizes from the index.
 

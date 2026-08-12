@@ -30,6 +30,7 @@ from alphagenome_ft import (
 )
 from alphagenome_ft.finetune import (
     BigWigDataModule,
+    MultiDatasetDataModule,
     MultiSpeciesDataModule,
     PreparedRun,
     TorchBackendConfig,
@@ -206,9 +207,25 @@ def parse_args() -> argparse.Namespace:
         help="JSON config for balanced multi-species JAX training.",
     )
     parser.add_argument(
+        "--dataset-config",
+        type=Path,
+        default=None,
+        help="JSON config for balanced joint training across heterogeneous datasets.",
+    )
+    parser.add_argument(
         "--evaluate-species",
         default=None,
         help="With --species-config and --evaluate-only, evaluate only this species.",
+    )
+    parser.add_argument(
+        "--evaluate-dataset",
+        default=None,
+        help="With --dataset-config and --evaluate-only, evaluate only this dataset.",
+    )
+    parser.add_argument(
+        "--evaluate-source",
+        default=None,
+        help="With --dataset-config and --evaluate-only, evaluate only this native source.",
     )
     parser.add_argument("--fasta-path", type=Path, default=DEFAULT_FASTA)
     parser.add_argument(
@@ -218,6 +235,14 @@ def parse_args() -> argparse.Namespace:
         help="AlphaGenome organism embedding for a single-genome run.",
     )
     parser.add_argument("--checkpoint-dir", type=Path, default=DEFAULT_CHECKPOINT_DIR)
+    parser.add_argument(
+        "--validate-data-config-only",
+        action="store_true",
+        help=(
+            "Validate targets and data routing, print batch counts, and exit before "
+            "model creation."
+        ),
+    )
     parser.add_argument(
         "--backend",
         choices=("jax", "torch"),
@@ -558,13 +583,90 @@ def main() -> None:
     fasta_path = args.fasta_path.expanduser().resolve()
     checkpoint_dir = args.checkpoint_dir.expanduser().resolve()
     species_entries = None
+    dataset_entries = None
+    joint_head_specs = None
     if args.evaluate_species is not None and not args.evaluate_only:
         raise ValueError("--evaluate-species requires --evaluate-only.")
     if args.evaluate_species is not None and args.species_config is None:
         raise ValueError("--evaluate-species requires --species-config.")
-    if args.species_config is not None:
-        if args.targets_config is not None:
-            raise ValueError("--species-config and --targets-config are mutually exclusive.")
+    if (
+        args.evaluate_dataset is not None or args.evaluate_source is not None
+    ) and not args.evaluate_only:
+        raise ValueError("--evaluate-dataset and --evaluate-source require --evaluate-only.")
+    if (
+        args.evaluate_dataset is not None or args.evaluate_source is not None
+    ) and args.dataset_config is None:
+        raise ValueError("--evaluate-dataset and --evaluate-source require --dataset-config.")
+    joint_configs = sum(
+        value is not None
+        for value in (args.targets_config, args.species_config, args.dataset_config)
+    )
+    if joint_configs > 1:
+        raise ValueError(
+            "--targets-config, --species-config, and --dataset-config are mutually exclusive."
+        )
+    if args.dataset_config is not None:
+        if args.backend != "jax":
+            raise ValueError("Multi-dataset training currently requires --backend=jax.")
+        dataset_config_path = args.dataset_config.expanduser().resolve()
+        dataset_payload = json.loads(dataset_config_path.read_text())
+        raw_datasets = dataset_payload.get("datasets")
+        if not raw_datasets or len(raw_datasets) < 2:
+            raise ValueError("Dataset config must contain at least two dataset entries.")
+        config_root = dataset_config_path.parent
+        dataset_entries = []
+        joint_head_specs = []
+        seen_dataset_names = set()
+        seen_head_ids = set()
+        bigwigs = []
+        for raw_dataset in raw_datasets:
+            dataset_name = str(raw_dataset["name"])
+            if dataset_name in seen_dataset_names:
+                raise ValueError(f"Duplicate dataset name {dataset_name!r}.")
+            seen_dataset_names.add(dataset_name)
+            raw_sources = raw_dataset.get("sources")
+            if not raw_sources:
+                raise ValueError(f"Dataset {dataset_name!r} contains no native sources.")
+            normalized_sources = []
+            dataset_specs = None
+            for raw_source in raw_sources:
+                source = dict(raw_source)
+                for key in ("fasta", "targets_config"):
+                    path = Path(source[key]).expanduser()
+                    if not path.is_absolute():
+                        path = config_root / path
+                    source[key] = path.resolve()
+                source_specs = prepare_head_specs(
+                    load_targets_config(source["targets_config"]), organism=None
+                )
+                if dataset_specs is None:
+                    dataset_specs = source_specs
+                    duplicate_heads = seen_head_ids & {
+                        spec.head_id for spec in dataset_specs
+                    }
+                    if duplicate_heads:
+                        raise ValueError(
+                            "Head IDs must be unique across datasets, duplicates: "
+                            f"{sorted(duplicate_heads)}"
+                        )
+                    seen_head_ids.update(spec.head_id for spec in dataset_specs)
+                    joint_head_specs.extend(dataset_specs)
+                normalized_sources.append(source)
+            dataset_entries.append(
+                {"name": dataset_name, "sources": normalized_sources}
+            )
+        fasta_path = dataset_entries[0]["sources"][0]["fasta"]
+        targets_config_path = dataset_entries[0]["sources"][0]["targets_config"]
+        bigwig_dir = targets_config_path.parent
+        for spec in joint_head_specs:
+            bigwigs.extend(track.path for track in spec.tracks)
+        targets_config = {"heads": []}
+        print(
+            f"Loaded joint training configuration for {len(dataset_entries)} datasets, "
+            f"{sum(len(entry['sources']) for entry in dataset_entries)} native sources, "
+            f"and {len(joint_head_specs)} dataset-specific heads."
+        )
+    elif args.species_config is not None:
         if args.backend != "jax":
             raise ValueError("Multi-species training currently requires --backend=jax.")
         species_config_path = args.species_config.expanduser().resolve()
@@ -619,9 +721,13 @@ def main() -> None:
         raise FileNotFoundError(f"FASTA file not found: {fasta_path}")
     if args.split_source == "bed" and args.interval_bed is None:
         raise ValueError("--interval-bed is required when --split-source=bed")
-    head_specs = prepare_head_specs(
-        targets_config,
-        organism=None if species_entries is not None else args.organism,
+    head_specs = (
+        list(joint_head_specs)
+        if joint_head_specs is not None
+        else prepare_head_specs(
+            targets_config,
+            organism=None if species_entries is not None else args.organism,
+        )
     )
     if args.double_centered_correlation_loss_weight is not None:
         if args.double_centered_correlation_loss_weight < 0:
@@ -659,7 +765,144 @@ def main() -> None:
     )
     register_predefined_heads(head_specs)
 
-    if species_entries is not None:
+    if dataset_entries is not None:
+        dataset_modules = {}
+        organism_indices = {}
+        route_to_location = {}
+        for dataset in dataset_entries:
+            dataset_name = dataset["name"]
+            source_modules = {}
+            expected_signature = None
+            for entry in dataset["sources"]:
+                source_name = str(entry["name"])
+                route_name = f"{dataset_name}:{source_name}"
+                if route_name in route_to_location:
+                    raise ValueError(f"Duplicate native source route {route_name!r}.")
+                route_to_location[route_name] = (dataset_name, source_name)
+                source_organism = str(entry.get("organism", args.organism))
+                organism_enum = getattr(ag_dna_model.Organism, source_organism)
+                organism_indices[route_name] = int(
+                    research_dna_model.convert_to_organism_index(organism_enum)
+                )
+                source_specs = prepare_head_specs(
+                    load_targets_config(entry["targets_config"]), organism=None
+                )
+                if args.double_centered_correlation_loss_weight is not None:
+                    source_specs = [
+                        dataclasses.replace(
+                            spec,
+                            double_centered_correlation_loss_weight=(
+                                args.double_centered_correlation_loss_weight
+                            ),
+                        )
+                        for spec in source_specs
+                    ]
+                validate_head_specs(source_specs)
+                signature = [
+                    (
+                        spec.head_id,
+                        spec.kind,
+                        len(spec.tracks),
+                        tuple(track.name for track in spec.tracks),
+                        spec.loss_weight,
+                        spec.gene_loss_weight,
+                        spec.coverage_loss_weight,
+                        spec.double_centered_correlation_loss_weight,
+                        spec.row_centered_correlation_loss_weight,
+                        spec.output_rank,
+                    )
+                    for spec in source_specs
+                ]
+                if expected_signature is None:
+                    expected_signature = signature
+                elif signature != expected_signature:
+                    raise ValueError(
+                        f"Source {route_name} target heads do not match its dataset layout."
+                    )
+                source_fasta = entry["fasta"]
+                source_intervals = make_chromosome_split_intervals(
+                    source_fasta,
+                    window_size=args.window_size,
+                    stride=args.stride,
+                    valid_chroms=parse_chrom_set(str(entry["valid_chroms"])),
+                    test_chroms=parse_chrom_set(str(entry["test_chroms"])),
+                    exclude_chroms=parse_chrom_set(str(entry.get("exclude_chroms", ""))),
+                    limit_train=args.limit_train,
+                    limit_valid=args.limit_valid,
+                    limit_test=args.limit_test,
+                    include_chroms=(
+                        parse_chrom_set(str(entry.get("include_chroms", ""))) or None
+                    ),
+                )
+                source_modules[route_name] = BigWigDataModule(
+                    intervals=source_intervals,
+                    fasta_path=source_fasta,
+                    head_specs=source_specs,
+                    batch_size=args.batch_size,
+                    shuffle=not args.no_shuffle,
+                    drop_last=args.drop_last,
+                    target_workers=args.target_workers,
+                    window_workers=(
+                        args.window_workers
+                        if args.window_workers is not None
+                        else min(args.batch_size, _available_cpu_count())
+                    ),
+                    target_cache_dir=None,
+                    target_cache_dtype=args.target_cache_dtype,
+                    balance_gene_windows=args.balance_gene_windows,
+                    gene_window_repeats=args.gene_window_repeats,
+                )
+                print(
+                    f"{route_name}: "
+                    + ", ".join(
+                        f"{split}={len(windows)}"
+                        for split, windows in source_intervals.items()
+                    )
+                )
+            dataset_modules[dataset_name] = source_modules
+
+        selected_modules = dataset_modules
+        if args.evaluate_dataset is not None:
+            if args.evaluate_dataset not in dataset_modules:
+                raise ValueError(
+                    f"Unknown evaluation dataset {args.evaluate_dataset!r}; "
+                    f"available datasets are {sorted(dataset_modules)}."
+                )
+            selected_modules = {
+                args.evaluate_dataset: dataset_modules[args.evaluate_dataset]
+            }
+        if args.evaluate_source is not None:
+            matches = [
+                (dataset, route, module)
+                for dataset, sources in selected_modules.items()
+                for route, module in sources.items()
+                if route == args.evaluate_source
+                or route.partition(":")[2] == args.evaluate_source
+            ]
+            if len(matches) != 1:
+                raise ValueError(
+                    f"Expected one evaluation source matching {args.evaluate_source!r}, "
+                    f"found {[route for _, route, _ in matches]}."
+                )
+            dataset, route, module = matches[0]
+            selected_modules = {dataset: {route: module}}
+        data_module = MultiDatasetDataModule(
+            selected_modules,
+            organism_indices={
+                route: organism_indices[route]
+                for sources in selected_modules.values()
+                for route in sources
+            },
+        )
+        if args.evaluate_dataset is not None or args.evaluate_source is not None:
+            print(
+                "Evaluating joint checkpoint on: "
+                + ", ".join(
+                    route for sources in selected_modules.values() for route in sources
+                )
+            )
+        intervals = data_module._intervals
+    elif species_entries is not None:
         species_modules = {}
         organism_indices = {}
         expected_signature = [
@@ -805,15 +1048,19 @@ def main() -> None:
             include_chroms=parse_chrom_set(args.include_chroms) or None,
         )
 
-    if species_entries is None:
+    if species_entries is None and dataset_entries is None:
         for split, split_intervals in intervals.items():
             print(f"{split}: {len(split_intervals)} interval(s)")
 
     target_cache_dir = (
         args.target_cache_dir.expanduser().resolve() if args.target_cache_dir is not None else None
     )
-    if species_entries is not None and target_cache_dir is not None:
-        raise ValueError("Target caches are not yet supported with --species-config.")
+    if (
+        species_entries is not None or dataset_entries is not None
+    ) and target_cache_dir is not None:
+        raise ValueError(
+            "Target caches are not yet supported with --species-config or --dataset-config."
+        )
     if args.build_target_cache:
         if target_cache_dir is None:
             raise ValueError("--target-cache-dir is required with --build-target-cache.")
@@ -950,7 +1197,7 @@ def main() -> None:
         )
         return
 
-    if species_entries is None:
+    if species_entries is None and dataset_entries is None:
         data_module = BigWigDataModule(
             intervals=intervals,
             fasta_path=fasta_path,
@@ -969,6 +1216,16 @@ def main() -> None:
             balance_gene_windows=args.balance_gene_windows,
             gene_window_repeats=args.gene_window_repeats,
         )
+
+    if args.validate_data_config_only:
+        print(
+            "Validated data configuration: "
+            f"heads={len(head_specs)}, "
+            f"train_batches={data_module.num_batches_per_epoch('train')}, "
+            f"valid_batches={data_module.num_batches_per_epoch('valid')}, "
+            f"test_batches={data_module.num_batches_per_epoch('test')}."
+        )
+        return
 
     head_ids = [spec.head_id for spec in head_specs]
     backbone_lora_config = None
