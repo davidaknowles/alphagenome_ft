@@ -33,11 +33,11 @@ canonical_chroms=chr1,chr2,chr3,chr4,chr5,chr6,chr7,chr8,chr9,chr10,chr11,chr12,
 test -f "$targets"
 
 EXTRA_ARGS=(--num-epochs "${NUM_EPOCHS:-100}")
-if (( num_devices > 1 )); then
-  EXTRA_ARGS+=(--drop-last)
-fi
 if [[ "${SMOKE:-0}" == "1" ]]; then
   EXTRA_ARGS=(--num-epochs 1 --max-train-steps 1 --limit-train 16 --limit-valid 16 --limit-test 16)
+fi
+if (( num_devices > 1 )); then
+  EXTRA_ARGS+=(--drop-last)
 fi
 if [[ -n "${WANDB_PROJECT:-}" ]]; then
   EXTRA_ARGS+=(--wandb-project "$WANDB_PROJECT" --wandb-run-name "$run_name")
