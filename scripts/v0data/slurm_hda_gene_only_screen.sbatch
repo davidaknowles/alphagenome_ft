@@ -5,7 +5,7 @@
 #SBATCH --cpus-per-task=24
 #SBATCH --mem=96G
 #SBATCH --time=12:00:00
-#SBATCH --array=0-2%1
+#SBATCH --array=0-3%1
 #SBATCH --output=logs/v0data/hda_gene_only-%A_%a.out
 #SBATCH --error=logs/v0data/hda_gene_only-%A_%a.err
 
@@ -15,8 +15,8 @@ cd /gpfs/commons/home/daknowles/projects/alphagenome_fp4
 mkdir -p logs/v0data outputs/v0data/hda-joint checkpoints/v0data
 export PYTHONPATH="$PWD:${PYTHONPATH:-}"
 export LD_LIBRARY_PATH="/nfs/sw/easybuild/software/Python/3.12.3-GCCcore-13.3.0/lib:${LD_LIBRARY_PATH:-}"
-weights=(0 0.1 1)
-suffixes=(0 0p1 1)
+weights=(0 0.1 1 10)
+suffixes=(0 0p1 1 10)
 screen_index="${SLURM_ARRAY_TASK_ID}"
 weight="${weights[$screen_index]}"
 suffix="${suffixes[$screen_index]}"
