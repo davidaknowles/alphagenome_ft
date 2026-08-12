@@ -87,6 +87,9 @@ fi
   --stride 131072 \
   --batch-size "${BATCH_SIZE:-8}" \
   --learning-rate "${LEARNING_RATE:-1e-3}" \
+  --learning-rate-schedule "${LEARNING_RATE_SCHEDULE:-constant}" \
+  --warmup-steps "${WARMUP_STEPS:-0}" \
+  --minimum-learning-rate-ratio "${MINIMUM_LEARNING_RATE_RATIO:-0.1}" \
   --weight-decay "${WEIGHT_DECAY:-1e-4}" \
   --backbone-lora \
   --adapter-strategy "${STRATEGY}" \

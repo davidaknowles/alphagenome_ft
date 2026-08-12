@@ -280,6 +280,13 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--num-epochs", type=int, default=5)
     parser.add_argument("--max-train-steps", type=_positive_int_or_none, default=None)
     parser.add_argument("--learning-rate", type=float, default=1e-3)
+    parser.add_argument(
+        "--learning-rate-schedule",
+        choices=("constant", "warmup_cosine"),
+        default="constant",
+    )
+    parser.add_argument("--warmup-steps", type=int, default=0)
+    parser.add_argument("--minimum-learning-rate-ratio", type=float, default=0.1)
     parser.add_argument("--weight-decay", type=float, default=1e-4)
     parser.add_argument(
         "--double-centered-correlation-loss-weight",
@@ -1026,6 +1033,27 @@ def main() -> None:
         initial_global_step = int(resume_record["global_step"])
         optimizer_state_path = resume_from / "optimizer_state"
         if optimizer_state_path.exists() and not args.evaluate_only:
+            optimizer_config_path = resume_from / "optimizer_config.json"
+            if optimizer_config_path.exists():
+                saved_optimizer_config = json.loads(optimizer_config_path.read_text())
+                requested_optimizer_config = {
+                    "learning_rate": args.learning_rate,
+                    "learning_rate_schedule": args.learning_rate_schedule,
+                    "warmup_steps": args.warmup_steps,
+                    "minimum_learning_rate_ratio": args.minimum_learning_rate_ratio,
+                    "weight_decay": args.weight_decay,
+                    "num_epochs": args.num_epochs,
+                }
+                mismatches = {
+                    key: (saved_optimizer_config.get(key), value)
+                    for key, value in requested_optimizer_config.items()
+                    if saved_optimizer_config.get(key) != value
+                }
+                if mismatches:
+                    raise ValueError(
+                        "Resume optimizer configuration does not match checkpoint, "
+                        f"{mismatches}."
+                    )
             initial_optimizer_state_path = optimizer_state_path
         model = load_checkpoint(
             resume_from,
@@ -1052,6 +1080,9 @@ def main() -> None:
         data_module=data_module,
         head_specs=head_specs,
         learning_rate=args.learning_rate,
+        learning_rate_schedule=args.learning_rate_schedule,
+        warmup_steps=args.warmup_steps,
+        minimum_learning_rate_ratio=args.minimum_learning_rate_ratio,
         weight_decay=args.weight_decay,
         num_epochs=args.num_epochs,
         seed=args.seed,

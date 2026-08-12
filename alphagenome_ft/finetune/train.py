@@ -95,7 +95,7 @@ def _label_params_for_heads(
 def create_optimizer(
     params,
     trainable_head_names: Sequence[str],
-    learning_rate: float,
+    learning_rate: Any,
     weight_decay: float,
     heads_only: bool,
     train_lora: bool = False,
@@ -133,6 +133,40 @@ def create_optimizer(
             param_labels,
         )
     return optax.adamw(learning_rate, weight_decay=weight_decay)
+
+
+def create_learning_rate_schedule(
+    learning_rate: float,
+    *,
+    schedule: str,
+    total_train_steps: int,
+    warmup_steps: int,
+    minimum_ratio: float,
+):
+    """Return a constant rate or a warmup-cosine Optax schedule."""
+    if not math.isfinite(learning_rate) or learning_rate <= 0:
+        raise ValueError("learning_rate must be finite and positive.")
+    if total_train_steps < 1:
+        raise ValueError("total_train_steps must be positive.")
+    if warmup_steps < 0:
+        raise ValueError("warmup_steps must be non-negative.")
+    if not math.isfinite(minimum_ratio) or not 0 <= minimum_ratio <= 1:
+        raise ValueError("minimum_ratio must be between zero and one.")
+    if schedule == "constant":
+        return learning_rate
+    if schedule != "warmup_cosine":
+        raise ValueError(f"Unknown learning-rate schedule {schedule!r}.")
+    if warmup_steps >= total_train_steps:
+        raise ValueError(
+            "warmup_steps must be smaller than total_train_steps for warmup_cosine."
+        )
+    return optax.warmup_cosine_decay_schedule(
+        init_value=0.0,
+        peak_value=learning_rate,
+        warmup_steps=warmup_steps,
+        decay_steps=total_train_steps,
+        end_value=learning_rate * minimum_ratio,
+    )
 
 
 def _replicate_tree(tree, devices):
@@ -793,6 +827,9 @@ def train(
     learning_rate: float,
     weight_decay: float,
     num_epochs: int,
+    learning_rate_schedule: str = "constant",
+    warmup_steps: int = 0,
+    minimum_learning_rate_ratio: float = 0.1,
     seed: int = 42,
     max_train_steps: int | None = None,
     heads_only: bool = False,
@@ -831,6 +868,9 @@ def train(
         data_module: Batch provider with train/valid intervals and BigWig targets.
         head_specs: Head definitions used to build losses and optimizer filters.
         learning_rate: Base AdamW learning rate.
+        learning_rate_schedule: ``constant`` or ``warmup_cosine``.
+        warmup_steps: Number of optimizer updates used for linear warmup.
+        minimum_learning_rate_ratio: Final cosine rate divided by the peak rate.
         weight_decay: AdamW weight decay.
         num_epochs: Maximum number of epochs to run.
         seed: Base RNG seed used for per-epoch training shuffles.
@@ -909,6 +949,23 @@ def train(
     total_train_steps = (
         min(planned_steps, max_train_steps) if max_train_steps is not None else planned_steps
     )
+    optimizer_learning_rate = create_learning_rate_schedule(
+        learning_rate,
+        schedule=learning_rate_schedule,
+        total_train_steps=total_train_steps,
+        warmup_steps=warmup_steps,
+        minimum_ratio=minimum_learning_rate_ratio,
+    )
+    optimizer_config = {
+        "learning_rate": learning_rate,
+        "learning_rate_schedule": learning_rate_schedule,
+        "warmup_steps": warmup_steps,
+        "minimum_learning_rate_ratio": minimum_learning_rate_ratio,
+        "weight_decay": weight_decay,
+        "num_epochs": num_epochs,
+        "steps_per_epoch": steps_per_epoch,
+        "total_train_steps": total_train_steps,
+    }
     step_width = len(str(steps_per_epoch))
 
     if checkpoint_dir is not None:
@@ -941,6 +998,9 @@ def train(
 
         wb_config = {
             "learning_rate": learning_rate,
+            "learning_rate_schedule": learning_rate_schedule,
+            "warmup_steps": warmup_steps,
+            "minimum_learning_rate_ratio": minimum_learning_rate_ratio,
             "weight_decay": weight_decay,
             "num_epochs": num_epochs,
             "batch_size": data_module._batch_size,
@@ -985,7 +1045,7 @@ def train(
     optimizer = create_optimizer(
         model._params,
         trainable_head_names=head_names,
-        learning_rate=learning_rate,
+        learning_rate=optimizer_learning_rate,
         weight_decay=weight_decay,
         heads_only=heads_only,
         train_lora=train_lora,
@@ -1732,6 +1792,10 @@ def train(
                             checkpoint_dir / "best" / "optimizer_state",
                             _unreplicate_tree(opt_state),
                         )
+                        _write_json(
+                            checkpoint_dir / "best" / "optimizer_config.json",
+                            optimizer_config,
+                        )
                         _write_json(checkpoint_dir / "best" / "metrics.json", epoch_record)
                 else:
                     epochs_since_improvement += 1
@@ -1749,6 +1813,10 @@ def train(
                 _save_optimizer_state(
                     checkpoint_dir / "last" / "optimizer_state",
                     _unreplicate_tree(opt_state),
+                )
+                _write_json(
+                    checkpoint_dir / "last" / "optimizer_config.json",
+                    optimizer_config,
                 )
                 _write_json(checkpoint_dir / "last" / "metrics.json", epoch_record)
 
@@ -1772,6 +1840,10 @@ def train(
             checkpoint_dir / "last" / "optimizer_state",
             _unreplicate_tree(opt_state),
         )
+        _write_json(
+            checkpoint_dir / "last" / "optimizer_config.json",
+            optimizer_config,
+        )
 
     print(f"\n{'=' * 60}")
     print("Training complete!")
@@ -1784,5 +1856,6 @@ def train(
 __all__ = [
     "register_predefined_heads",
     "create_optimizer",
+    "create_learning_rate_schedule",
     "train",
 ]

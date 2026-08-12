@@ -177,6 +177,25 @@ def test_hda_factorized_rna_screen_changes_only_the_rna_projection() -> None:
     assert 'dependency="afterok:${smoke}_*"' in script
 
 
+def test_hda_cosine_screen_is_staged_and_lower_rate() -> None:
+    script = Path("scripts/v0data/submit_hda_cosine_lr_screen.sh").read_text()
+
+    assert "LEARNING_RATE=3e-4" in script
+    assert "LEARNING_RATE_SCHEDULE=warmup_cosine" in script
+    assert "WARMUP_STEPS=262" in script
+    assert "NUM_EPOCHS=8" in script
+    assert "--array=0" in script
+    assert 'dependency="afterok:${smoke}_*"' in script
+
+
+def test_jax_launchers_expose_learning_rate_schedule() -> None:
+    for path in LAUNCHERS:
+        script = Path(path).read_text()
+        assert '"${LEARNING_RATE_SCHEDULE:-constant}"' in script
+        assert '"${WARMUP_STEPS:-0}"' in script
+        assert '"${MINIMUM_LEARNING_RATE_RATIO:-0.1}"' in script
+
+
 def test_zemke_direct_gene_screen_requires_complete_target_agreement() -> None:
     script = Path("scripts/v0data/submit_zemke2023_direct_gene_screen.sh").read_text()
 
