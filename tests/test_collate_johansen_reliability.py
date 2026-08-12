@@ -40,3 +40,14 @@ def test_collate_orders_species_and_renders_ceiling(tmp_path: Path) -> None:
 def test_collate_requires_every_species(tmp_path: Path) -> None:
     with pytest.raises(ValueError, match="missing"):
         collate([_write(tmp_path / "human.json", "human")])
+
+
+def test_collate_accepts_explicit_species_order_and_title(tmp_path: Path) -> None:
+    paths = [
+        _write(tmp_path / f"{species}.json", species)
+        for species in ("mouse", "human")
+    ]
+    result = collate(paths, ("human", "mouse"))
+    markdown = render_markdown(result, title="Zemke RNA reliability")
+    assert [audit["species"] for audit in result["audits"]] == ["human", "mouse"]
+    assert markdown.startswith("# Zemke RNA reliability\n")
