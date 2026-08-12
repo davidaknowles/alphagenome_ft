@@ -932,11 +932,17 @@ def train(
         are averaged across devices with ``lax.pmean`` to keep them in sync.
     """
     train_intervals = list(data_module._intervals.get("train", ()))
-    num_train_examples = len(train_intervals)
+    num_train_examples = (
+        data_module.num_examples_per_epoch("train")
+        if hasattr(data_module, "num_examples_per_epoch")
+        else len(train_intervals)
+    )
     if num_train_examples == 0:
         raise ValueError("No train intervals available for training.")
 
-    if data_module._drop_last:
+    if hasattr(data_module, "num_batches_per_epoch"):
+        steps_per_epoch = data_module.num_batches_per_epoch("train")
+    elif data_module._drop_last:
         steps_per_epoch = num_train_examples // data_module._batch_size
     else:
         steps_per_epoch = math.ceil(num_train_examples / data_module._batch_size)

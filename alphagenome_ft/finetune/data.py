@@ -340,6 +340,32 @@ def _balance_gene_window_order(
     return balanced
 
 
+def _repeat_gene_window_order(
+    order: np.ndarray,
+    gene_counts: np.ndarray,
+    *,
+    additional_repeats: int,
+    rng: np.random.Generator | None = None,
+) -> np.ndarray:
+    """Append repeated gene-bearing windows while retaining the complete base order."""
+    order = np.asarray(order, dtype=np.int64)
+    gene_counts = np.asarray(gene_counts, dtype=np.int64)
+    if additional_repeats < 0:
+        raise ValueError("additional_repeats must be non-negative.")
+    if gene_counts.ndim != 1 or np.any(gene_counts < 0):
+        raise ValueError("gene_counts must be a non-negative vector.")
+    if np.any(order < 0) or np.any(order >= len(gene_counts)):
+        raise ValueError("order contains an out-of-range window index.")
+    if additional_repeats == 0:
+        return order.copy()
+    gene_order = order[gene_counts[order] > 0]
+    repeated = np.tile(gene_order, additional_repeats)
+    combined = np.concatenate((order, repeated))
+    if rng is not None:
+        rng.shuffle(combined)
+    return combined
+
+
 def _available_cpu_count() -> int:
     try:
         return max(1, len(os.sched_getaffinity(0)))
@@ -1234,6 +1260,7 @@ class BigWigDataModule:
         target_cache_dir: Path | None = None,
         target_cache_dtype: str | np.dtype = "float16",
         balance_gene_windows: bool = False,
+        gene_window_repeats: int = 0,
     ) -> None:
         """Initialize streaming sequence/BigWig batch generation.
 
@@ -1253,6 +1280,8 @@ class BigWigDataModule:
             target_cache_dtype: dtype used by the target cache.
             balance_gene_windows: Distribute windows containing direct gene
                 supervision across shuffled training batches without resampling.
+            gene_window_repeats: Additional copies of each gene-bearing training
+                window per epoch. The complete base window order is retained.
 
         Raises:
             ValueError: If no shared chromosomes exist across configured BigWigs,
@@ -1262,6 +1291,8 @@ class BigWigDataModule:
             raise ValueError(f"target_workers must be non-negative, got {target_workers}.")
         if window_workers < 0:
             raise ValueError(f"window_workers must be non-negative, got {window_workers}.")
+        if gene_window_repeats < 0:
+            raise ValueError("gene_window_repeats must be non-negative.")
         self._coverage_head_specs = tuple(
             spec
             for spec in head_specs
@@ -1285,12 +1316,15 @@ class BigWigDataModule:
         self._target_workers = target_workers
         self._window_workers = window_workers
         self._balance_gene_windows = bool(balance_gene_windows)
+        self._gene_window_repeats = int(gene_window_repeats)
         self._encoder = one_hot_encoder.DNAOneHotEncoder(dtype=np.float32)
         self._gene_supervisions = {
             spec.head_id: GeneExpressionSupervision(spec.gene_supervision_path, spec)
             for spec in head_specs
             if spec.gene_supervision_path is not None
         }
+        if self._gene_window_repeats and not self._gene_supervisions:
+            raise ValueError("gene_window_repeats requires direct gene supervision.")
         for supervision in self._gene_supervisions.values():
             supervision.configure_windows(self._intervals)
         self._max_genes = {
@@ -1311,7 +1345,8 @@ class BigWigDataModule:
                 )
                 for split, windows in self._intervals.items()
             }
-            if self._balance_gene_windows and self._gene_supervisions
+            if (self._balance_gene_windows or self._gene_window_repeats)
+            and self._gene_supervisions
             else {}
         )
         for head_name, max_genes in self._max_genes.items():
@@ -1327,6 +1362,20 @@ class BigWigDataModule:
             if target_cache_dir is not None and self._coverage_head_specs
             else None
         )
+
+    def num_examples_per_epoch(self, split: str) -> int:
+        count = len(self._intervals.get(split, ()))
+        if split == "train" and self._gene_window_repeats and self._gene_counts_by_split:
+            count += self._gene_window_repeats * int(
+                np.count_nonzero(self._gene_counts_by_split[split])
+            )
+        return count
+
+    def num_batches_per_epoch(self, split: str) -> int:
+        count = self.num_examples_per_epoch(split)
+        if self._drop_last:
+            return count // self._batch_size
+        return math.ceil(count / self._batch_size)
 
     @staticmethod
     def _get_common_bigwig_chromosomes(
@@ -1399,9 +1448,18 @@ class BigWigDataModule:
 
         order = np.arange(len(windows))
         should_shuffle = self._shuffle if shuffle is None else shuffle
+        rng = None
         if should_shuffle:
             rng = np.random.default_rng(seed)
             rng.shuffle(order)
+        if split == "train" and self._gene_window_repeats:
+            order = _repeat_gene_window_order(
+                order,
+                self._gene_counts_by_split[split],
+                additional_repeats=self._gene_window_repeats,
+                rng=rng,
+            )
+        if should_shuffle:
             if self._balance_gene_windows and self._gene_supervisions:
                 order = _balance_gene_window_order(
                     order,
@@ -1720,6 +1778,24 @@ class MultiSpeciesDataModule:
                     interval for intervals in species_intervals for interval in intervals
                 ]
 
+    @staticmethod
+    def _module_batch_count(module: BigWigDataModule, split: str) -> int:
+        if hasattr(module, "num_batches_per_epoch"):
+            return module.num_batches_per_epoch(split)
+        interval_count = len(module._intervals.get(split, ()))
+        if module._drop_last:
+            return interval_count // module._batch_size
+        return math.ceil(interval_count / module._batch_size)
+
+    def num_batches_per_epoch(self, split: str) -> int:
+        counts = [
+            self._module_batch_count(module, split) for module in self._modules.values()
+        ]
+        return min(counts) * len(counts) if split == "train" else sum(counts)
+
+    def num_examples_per_epoch(self, split: str) -> int:
+        return self.num_batches_per_epoch(split) * self._batch_size
+
     def iter_batches(
         self,
         split: str,
@@ -1746,15 +1822,10 @@ class MultiSpeciesDataModule:
             for species_idx, (species, module) in enumerate(self._modules.items())
         ]
         if split == "train":
-            batch_counts = []
-            for module in self._modules.values():
-                interval_count = len(module._intervals[split])
-                if module._drop_last:
-                    batch_counts.append(interval_count // module._batch_size)
-                else:
-                    batch_counts.append(
-                        (interval_count + module._batch_size - 1) // module._batch_size
-                    )
+            batch_counts = [
+                self._module_batch_count(module, split)
+                for module in self._modules.values()
+            ]
             for _ in range(min(batch_counts)):
                 for iterator in iterators:
                     yield next(iterator)

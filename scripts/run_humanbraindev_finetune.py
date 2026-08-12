@@ -66,6 +66,13 @@ def _positive_int_or_none(value: str) -> int | None:
     return parsed
 
 
+def _nonnegative_int(value: str) -> int:
+    parsed = int(value)
+    if parsed < 0:
+        raise argparse.ArgumentTypeError("Expected a non-negative integer.")
+    return parsed
+
+
 def discover_bigwigs(bigwig_dir: Path) -> list[Path]:
     bigwigs = sorted(bigwig_dir.expanduser().glob("*.bw"))
     if not bigwigs:
@@ -276,6 +283,12 @@ def parse_args() -> argparse.Namespace:
         "--balance-gene-windows",
         action="store_true",
         help="Distribute gene-bearing windows across shuffled batches without resampling.",
+    )
+    parser.add_argument(
+        "--gene-window-repeats",
+        type=_nonnegative_int,
+        default=0,
+        help="Additional copies of every gene-bearing training window per epoch.",
     )
     parser.add_argument("--num-epochs", type=int, default=5)
     parser.add_argument("--max-train-steps", type=_positive_int_or_none, default=None)
@@ -726,6 +739,7 @@ def main() -> None:
                 target_cache_dir=None,
                 target_cache_dtype=args.target_cache_dtype,
                 balance_gene_windows=args.balance_gene_windows,
+                gene_window_repeats=args.gene_window_repeats,
             )
             print(
                 f"{species_name}: "
@@ -946,6 +960,7 @@ def main() -> None:
             target_cache_dir=target_cache_dir,
             target_cache_dtype=args.target_cache_dtype,
             balance_gene_windows=args.balance_gene_windows,
+            gene_window_repeats=args.gene_window_repeats,
         )
 
     head_ids = [spec.head_id for spec in head_specs]
@@ -1126,6 +1141,7 @@ def main() -> None:
             ),
             "target_cache_dir": str(target_cache_dir) if target_cache_dir else None,
             "target_cache_dtype": args.target_cache_dtype,
+            "gene_window_repeats": args.gene_window_repeats,
             "backbone_lora": args.backbone_lora,
             "lora_rank": args.lora_rank if args.backbone_lora else None,
             "lora_alpha": args.lora_alpha if args.backbone_lora else None,

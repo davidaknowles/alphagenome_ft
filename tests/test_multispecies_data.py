@@ -26,6 +26,9 @@ class _FakeModule:
                 "sequences": np.zeros((1, 4, 4), dtype=np.float32),
             }
 
+    def num_batches_per_epoch(self, split):
+        return self.batches if split == "train" else 1
+
 
 def test_multispecies_batches_round_robin_and_stop_at_shortest_species():
     human = _FakeModule("human", batches=3, max_genes=5)
@@ -44,6 +47,8 @@ def test_multispecies_batches_round_robin_and_stop_at_shortest_species():
     assert module._batch_size == 1
     assert batches[0]["seed"] == 10
     assert batches[1]["seed"] == 11
+    assert module.num_batches_per_epoch("train") == 4
+    assert module.num_examples_per_epoch("train") == 4
 
 
 def test_multispecies_batches_carry_per_species_organism_indices():

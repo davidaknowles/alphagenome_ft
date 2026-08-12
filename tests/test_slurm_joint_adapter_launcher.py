@@ -44,6 +44,17 @@ def test_gene_supervision_launchers_expose_balanced_window_ordering() -> None:
         assert "EXTRA_ARGS+=(--balance-gene-windows)" in script
 
 
+def test_hda_gene_window_repeat_screen_has_ordering_matched_control() -> None:
+    launcher = Path("scripts/v0data/slurm_joint_adapter_comparison.sbatch").read_text()
+    script = Path("scripts/v0data/submit_hda_gene_window_repeat_screen.sh").read_text()
+
+    assert '--gene-window-repeats "${GENE_WINDOW_REPEATS}"' in launcher
+    assert "for repeats in 0 1" in script
+    assert "BALANCE_GENE_WINDOWS=1" in script
+    assert "GENE_WINDOW_REPEATS=${repeats}" in script
+    assert "--array=0" in script
+
+
 def test_zemke_joint_evaluator_covers_each_species_and_strategy() -> None:
     script = Path("scripts/v0data/submit_zemke_joint_native_evaluations.sh").read_text()
 

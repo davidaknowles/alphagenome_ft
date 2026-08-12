@@ -1,7 +1,10 @@
 import numpy as np
 import pytest
 
-from alphagenome_ft.finetune.data import _balance_gene_window_order
+from alphagenome_ft.finetune.data import (
+    _balance_gene_window_order,
+    _repeat_gene_window_order,
+)
 
 
 def _batches(order: np.ndarray, batch_size: int) -> list[np.ndarray]:
@@ -49,4 +52,25 @@ def test_balanced_order_rejects_invalid_gene_counts() -> None:
     with pytest.raises(ValueError, match="non-negative"):
         _balance_gene_window_order(
             np.asarray([0, 1]), np.asarray([1, -1]), batch_size=2, drop_last=False
+        )
+
+
+def test_gene_window_repetition_retains_base_order_and_repeats_positive_windows() -> None:
+    order = np.asarray([4, 0, 3, 1, 2])
+    gene_counts = np.asarray([0, 2, 0, 1, 0])
+
+    repeated = _repeat_gene_window_order(
+        order, gene_counts, additional_repeats=2
+    )
+
+    np.testing.assert_array_equal(repeated[: len(order)], order)
+    assert np.count_nonzero(repeated == 1) == 3
+    assert np.count_nonzero(repeated == 3) == 3
+    assert all(np.count_nonzero(repeated == index) == 1 for index in (0, 2, 4))
+
+
+def test_gene_window_repetition_rejects_negative_repeats() -> None:
+    with pytest.raises(ValueError, match="non-negative"):
+        _repeat_gene_window_order(
+            np.asarray([0]), np.asarray([1]), additional_repeats=-1
         )
