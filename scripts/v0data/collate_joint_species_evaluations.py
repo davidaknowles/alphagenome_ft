@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Collate native-species evaluations of joint Zemke checkpoints."""
+"""Collate native-species evaluations of joint cross-species checkpoints."""
 
 from __future__ import annotations
 
@@ -66,7 +66,7 @@ def render_markdown(results: dict[str, Any]) -> str:
     lines = [
         "# Joint-checkpoint native-species evaluations",
         "",
-        "Each joint Zemke checkpoint is evaluated without parameter updates against the native reference and target manifest for each species.",
+        "Each joint cross-species checkpoint is evaluated without parameter updates against the native reference and target manifest for each species.",
         "",
         "| Dataset | Species | Strategy | Epoch | Split | Head | Differential R |",
         "|---|---|---|---:|---|---|---:|",

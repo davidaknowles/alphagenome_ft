@@ -34,3 +34,13 @@ def test_gene_supervision_launchers_expose_balanced_window_ordering() -> None:
 
         assert '"${BALANCE_GENE_WINDOWS:-0}" == "1"' in script
         assert "EXTRA_ARGS+=(--balance-gene-windows)" in script
+
+
+def test_zemke_joint_evaluator_covers_each_species_and_strategy() -> None:
+    script = Path("scripts/v0data/submit_zemke_joint_native_evaluations.sh").read_text()
+
+    assert "submit_strategy lora 0,2,4,6" in script
+    assert "submit_strategy lora_locon 1,3,5,7" in script
+    assert "RUN_SUFFIX=_joint_epoch${epoch}_eval" in script
+    assert "EVALUATE_ONLY=1" in script
+    assert 'sbatch_bin="${SBATCH_BIN:-sbatch}"' in script
