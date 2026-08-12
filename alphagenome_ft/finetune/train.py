@@ -300,6 +300,11 @@ def _r2_stats(prediction, targets, observation_mask=None):
 
     prediction_bins = _maybe_bin_128bp_jax(prediction)
     target_bins = _maybe_bin_128bp_jax(targets)
+    if observation_mask is not None:
+        # Direct RNA targets are counts per million. Fixed rescaling preserves
+        # correlation while avoiding cancellation in split-wide sufficient stats.
+        prediction_bins = prediction_bins / 1_000_000.0
+        target_bins = target_bins / 1_000_000.0
     pred_matrix = prediction_bins.reshape((-1, prediction_bins.shape[-1]))
     target_matrix = target_bins.reshape((-1, target_bins.shape[-1]))
     if observation_mask is None:
@@ -311,11 +316,15 @@ def _r2_stats(prediction, targets, observation_mask=None):
                 f"Binned observation mask shape {differential_mask.shape} does not match "
                 f"prediction shape {pred_matrix.shape}."
             )
-    pred_matrix = pred_matrix * differential_mask
-    target_matrix = target_matrix * differential_mask
-    pred_row_sum = jnp.sum(pred_matrix, axis=-1)
-    target_row_sum = jnp.sum(target_matrix, axis=-1)
     row_count = jnp.sum(differential_mask, axis=-1)
+    pred_row_mean = jnp.sum(pred_matrix * differential_mask, axis=-1) / jnp.maximum(
+        row_count, 1.0
+    )
+    target_row_mean = jnp.sum(target_matrix * differential_mask, axis=-1) / jnp.maximum(
+        row_count, 1.0
+    )
+    pred_matrix = (pred_matrix - pred_row_mean[:, None]) * differential_mask
+    target_matrix = (target_matrix - target_row_mean[:, None]) * differential_mask
     pred_track_sum = jnp.sum(pred_matrix, axis=0)
     target_track_sum = jnp.sum(target_matrix, axis=0)
     differential_count_by_track = jnp.sum(differential_mask, axis=0)
@@ -352,15 +361,6 @@ def _r2_stats(prediction, targets, observation_mask=None):
         "differential_pred2_sum": jnp.sum(jnp.square(pred_matrix)),
         "differential_target2_sum": jnp.sum(jnp.square(target_matrix)),
         "differential_pred_target_sum": jnp.sum(pred_matrix * target_matrix),
-        "differential_pred_row_mean2_sum": jnp.sum(
-            jnp.square(pred_row_sum) / jnp.maximum(row_count, 1.0)
-        ),
-        "differential_target_row_mean2_sum": jnp.sum(
-            jnp.square(target_row_sum) / jnp.maximum(row_count, 1.0)
-        ),
-        "differential_pred_target_row_mean_sum": jnp.sum(
-            pred_row_sum * target_row_sum / jnp.maximum(row_count, 1.0)
-        ),
         "differential_pred_track_sum": pred_track_sum,
         "differential_target_track_sum": target_track_sum,
         "r2_cell_type_sum": r2_cell_type_sum,
@@ -600,7 +600,6 @@ def _finalize_r2_stats(stats: Mapping[str, np.ndarray | float]) -> dict[str, flo
     valid_differential_tracks = differential_count_by_track > 0
     pred_ss = (
         float(np.asarray(stats["differential_pred2_sum"]))
-        - float(np.asarray(stats["differential_pred_row_mean2_sum"]))
         - float(
             np.sum(
                 np.square(pred_track_sum[valid_differential_tracks])
@@ -611,7 +610,6 @@ def _finalize_r2_stats(stats: Mapping[str, np.ndarray | float]) -> dict[str, flo
     )
     target_ss = (
         float(np.asarray(stats["differential_target2_sum"]))
-        - float(np.asarray(stats["differential_target_row_mean2_sum"]))
         - float(
             np.sum(
                 np.square(target_track_sum[valid_differential_tracks])
@@ -622,7 +620,6 @@ def _finalize_r2_stats(stats: Mapping[str, np.ndarray | float]) -> dict[str, flo
     )
     pred_target_cov = (
         float(np.asarray(stats["differential_pred_target_sum"]))
-        - float(np.asarray(stats["differential_pred_target_row_mean_sum"]))
         - float(
             np.sum(
                 pred_track_sum[valid_differential_tracks]

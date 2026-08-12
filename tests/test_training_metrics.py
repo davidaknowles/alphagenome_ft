@@ -513,6 +513,33 @@ def test_channel_masked_metrics_match_sliced_channels():
         np.testing.assert_allclose(masked[metric], sliced[metric], rtol=1e-6, atol=1e-6)
 
 
+def test_gene_cpm_differential_metric_is_stable_at_large_offsets():
+    row = jnp.arange(12, dtype=jnp.float32).reshape(1, 12, 1)
+    track = jnp.arange(5, dtype=jnp.float32).reshape(1, 1, 5)
+    targets = 500_000.0 + 10_000.0 * row + 20_000.0 * track + 500.0 * row * track
+    predictions = targets + 200.0 * jnp.sin(row + track)
+    valid = jnp.ones((1, 12), dtype=bool)
+
+    metrics = _finalize_r2_stats(
+        jax.tree_util.tree_map(np.asarray, _r2_stats(predictions, targets, valid))
+    )
+    def double_center(values):
+        return (
+            values
+            - values.mean(1, keepdims=True)
+            - values.mean(2, keepdims=True)
+            + values.mean((1, 2), keepdims=True)
+        )
+
+    expected = np.corrcoef(
+        np.asarray(double_center(predictions)).ravel(),
+        np.asarray(double_center(targets)).ravel(),
+    )[0, 1]
+
+    assert -1.0 <= metrics["differential_pearson_r"] <= 1.0
+    np.testing.assert_allclose(metrics["differential_pearson_r"], expected, rtol=2e-4)
+
+
 def test_gene_expression_prediction_selects_strand_and_exon_fraction():
     prediction = {
         "predictions_128bp": jnp.asarray([[[8.0, 80.0, 4.0, 40.0], [16.0, 160.0, 2.0, 20.0]]])
