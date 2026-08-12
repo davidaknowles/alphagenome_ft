@@ -12,6 +12,9 @@
 set -euo pipefail
 
 cd /gpfs/commons/home/daknowles/projects/alphagenome_fp4
+mkdir -p logs/v0data outputs/v0data/hda-joint checkpoints/v0data
+export PYTHONPATH="$PWD:${PYTHONPATH:-}"
+export LD_LIBRARY_PATH="/nfs/sw/easybuild/software/Python/3.12.3-GCCcore-13.3.0/lib:${LD_LIBRARY_PATH:-}"
 weights=(0 0.1 1)
 suffixes=(0 0p1 1)
 screen_index="${SLURM_ARRAY_TASK_ID}"
