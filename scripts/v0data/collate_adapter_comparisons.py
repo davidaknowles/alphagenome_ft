@@ -107,6 +107,21 @@ def _read_epochs(path: Path) -> list[dict[str, Any]]:
     return epochs
 
 
+def has_complete_correlations(record: dict[str, Any]) -> bool:
+    """Return whether every reported head has finite validation and test correlation."""
+    metrics = record.get("metrics", {})
+    valid = metrics.get("valid", {})
+    test = metrics.get("test", {})
+    if not valid or set(valid) != set(test):
+        return False
+    return all(
+        isinstance(split[head].get("differential_pearson_r"), (int, float))
+        and math.isfinite(split[head]["differential_pearson_r"])
+        for split in (valid, test)
+        for head in valid
+    )
+
+
 def _mean_valid_r(record: dict[str, Any]) -> float:
     heads = record.get("metrics", {}).get("valid", {})
     values = [
@@ -127,7 +142,9 @@ def collate(checkpoint_root: Path) -> dict[str, Any]:
         identity = _run_identity(metrics_path.parent.name)
         if identity is None:
             continue
-        epochs = _read_epochs(metrics_path)
+        epochs = [
+            record for record in _read_epochs(metrics_path) if has_complete_correlations(record)
+        ]
         if not epochs:
             continue
         best = max(epochs, key=_mean_valid_r)
@@ -227,7 +244,9 @@ def collate_variants(checkpoint_root: Path) -> dict[str, Any]:
         identity = _variant_run_identity(metrics_path.parent.name)
         if identity is None:
             continue
-        epochs = _read_epochs(metrics_path)
+        epochs = [
+            record for record in _read_epochs(metrics_path) if has_complete_correlations(record)
+        ]
         if not epochs:
             continue
         best = max(epochs, key=_mean_valid_r)

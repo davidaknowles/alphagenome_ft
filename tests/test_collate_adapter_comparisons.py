@@ -141,3 +141,19 @@ def test_matched_comparison_uses_highest_common_epoch(tmp_path: Path) -> None:
     } == {("lora", 0.6), ("lora+locon", 0.7)}
     selected_lora = next(run for run in result["runs"] if run["strategy"] == "lora")
     assert selected_lora["selected_epoch"] == 2
+
+
+def test_canonical_collation_rejects_nonfinite_head_correlation(tmp_path: Path) -> None:
+    _write_metrics(tmp_path, "study_lora", 0.7, 0.6)
+    _write_metrics(tmp_path, "study_lora_locon", 0.8, 0.7)
+    path = tmp_path / "study_lora_locon" / "metrics.jsonl"
+    record = json.loads(path.read_text())
+    record["metrics"]["valid"]["atac"]["differential_pearson_r"] = None
+    path.write_text(json.dumps(record) + "\n")
+
+    result = collate(tmp_path)
+
+    assert [(run["strategy"], run["selected_epoch"]) for run in result["runs"]] == [
+        ("lora", 1)
+    ]
+    assert result["matched_runs"] == []

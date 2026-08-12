@@ -13,7 +13,10 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from scripts.v0data.collate_adapter_comparisons import canonical_run_directory
+from scripts.v0data.collate_adapter_comparisons import (
+    canonical_run_directory,
+    has_complete_correlations,
+)
 from scripts.v0data.collate_joint_species_evaluations import collate as collate_native_evaluations
 
 
@@ -72,7 +75,7 @@ def _completed_epochs(path: Path) -> list[int]:
             except json.JSONDecodeError as error:
                 raise ValueError(f"Invalid JSON at {path}:{line_number}") from error
             epoch = record.get("epoch")
-            if isinstance(epoch, int) and record.get("metrics", {}).get("valid"):
+            if isinstance(epoch, int) and has_complete_correlations(record):
                 epochs.add(epoch)
     return sorted(epochs)
 

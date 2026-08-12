@@ -8,7 +8,18 @@ def _write_epoch(root: Path, run: str, epoch: int) -> None:
     path = root / run / "metrics.jsonl"
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("a") as handle:
-        handle.write(json.dumps({"epoch": epoch, "metrics": {"valid": {"head": {}}}}) + "\n")
+        handle.write(
+            json.dumps(
+                {
+                    "epoch": epoch,
+                    "metrics": {
+                        "valid": {"head": {"differential_pearson_r": 0.5}},
+                        "test": {"head": {"differential_pearson_r": 0.4}},
+                    },
+                }
+            )
+            + "\n"
+        )
 
 
 def _write_native_evaluation(
@@ -70,6 +81,19 @@ def test_audit_coverage_uses_corrected_reconstructed_run_names(tmp_path: Path) -
     result = audit_coverage(tmp_path, expected_datasets=("liu-hdma",))
 
     assert result["datasets"][0]["highest_matched_epoch"] == 1
+
+
+def test_audit_coverage_rejects_nonfinite_epoch(tmp_path: Path) -> None:
+    _write_epoch(tmp_path, "study_lora", 1)
+    _write_epoch(tmp_path, "study_lora_locon", 1)
+    path = tmp_path / "study_lora_locon" / "metrics.jsonl"
+    record = json.loads(path.read_text())
+    record["metrics"]["test"]["head"]["differential_pearson_r"] = None
+    path.write_text(json.dumps(record) + "\n")
+
+    result = audit_coverage(tmp_path, expected_datasets=("study",))
+
+    assert result["datasets"][0]["status"] == "missing lora+locon"
 
 
 def test_primary_cross_species_study_requires_every_native_evaluation(tmp_path: Path) -> None:
