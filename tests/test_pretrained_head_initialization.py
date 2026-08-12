@@ -79,13 +79,17 @@ def test_neural_target_channels_are_target_aware() -> None:
                 "Microglia (+)",
                 "Endo (+)",
                 "PVALB (+)",
+                "L5_6_NP",
+                "Chandelier_all",
+                "DG_all",
+                "NR2F2_all",
             )
         }
     )
 
     actual = custom_model._neural_target_channels(targets)
 
-    assert actual == (True, False, True, False, False, True)
+    assert actual == (True, False, True, False, False, True, True, True, True, True)
 
 
 def test_pretrained_bootstrap_copies_consistent_output_channels(monkeypatch) -> None:
