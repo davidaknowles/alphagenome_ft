@@ -7,8 +7,8 @@ The table reports the stronger of the two strategy-selected canonical checkpoint
 | `hda` | ATAC | `lora+locon` | 4 | 0.8086 | 0.8166 | 0.0000 | target reached |
 | `hda-joint` | ATAC | `lora+locon` | 2 | 0.7957 | 0.8049 | 0.0043 | below target |
 | `hda-joint` | RNA | `lora+locon` | 2 | 0.5241 | 0.6222 | 0.2759 | below target |
-| `johansen-human` | ATAC |  |  |  |  |  | missing evidence |
-| `johansen-human` | RNA |  |  |  |  |  | missing evidence |
+| `johansen-human` | ATAC | `lora` | 1 | 0.5664 | 0.5978 | 0.2336 | below target |
+| `johansen-human` | RNA | `lora` | 1 | 0.4207 | 0.4245 | 0.3793 | below target |
 | `johansen_joint` | ATAC |  |  |  |  |  | missing evidence |
 | `johansen_joint` | RNA |  |  |  |  |  | missing evidence |
 | `liu-hdma` | ATAC |  |  |  |  |  | missing evidence |

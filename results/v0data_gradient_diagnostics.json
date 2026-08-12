@@ -76,6 +76,56 @@
       "path": "checkpoints/v0data/zemke2023_human_lora_gradnorm/gradient_diagnostics.json"
     },
     {
+      "run": "zemke2023_mouse_lora_locon_organismfix_gradnorm_smoke",
+      "epoch": 1,
+      "global_step_before_update": 0,
+      "heads": {
+        "zemke2023_atac": {
+          "adapter_gradient_norm": 0.01803789846599102,
+          "head_gradient_norm": 6.7755913734436035,
+          "loss": 2.1147842407226562,
+          "loss_weight": 1.0,
+          "weighted_adapter_gradient_norm": 0.01803789846599102
+        },
+        "zemke2023_rna": {
+          "adapter_gradient_norm": 0.011596732772886753,
+          "head_gradient_norm": 6.0181450843811035,
+          "loss": 1.7656761407852173,
+          "loss_weight": 1.0,
+          "weighted_adapter_gradient_norm": 0.011596732772886753
+        }
+      },
+      "adapter_gradient_cosines": {
+        "zemke2023_atac__zemke2023_rna": 0.3349672555923462
+      },
+      "path": "checkpoints/v0data/zemke2023_mouse_lora_locon_organismfix_gradnorm_smoke/gradient_diagnostics.json"
+    },
+    {
+      "run": "zemke2023_mouse_lora_organismfix_gradnorm_smoke",
+      "epoch": 1,
+      "global_step_before_update": 0,
+      "heads": {
+        "zemke2023_atac": {
+          "adapter_gradient_norm": 0.01589154824614525,
+          "head_gradient_norm": 6.753356456756592,
+          "loss": 2.1135056018829346,
+          "loss_weight": 1.0,
+          "weighted_adapter_gradient_norm": 0.01589154824614525
+        },
+        "zemke2023_rna": {
+          "adapter_gradient_norm": 0.010612393729388714,
+          "head_gradient_norm": 5.998786449432373,
+          "loss": 1.7650262117385864,
+          "loss_weight": 1.0,
+          "weighted_adapter_gradient_norm": 0.010612393729388714
+        }
+      },
+      "adapter_gradient_cosines": {
+        "zemke2023_atac__zemke2023_rna": 0.2792403995990753
+      },
+      "path": "checkpoints/v0data/zemke2023_mouse_lora_organismfix_gradnorm_smoke/gradient_diagnostics.json"
+    },
+    {
       "run": "zemke2024-all_lora_gradnorm",
       "epoch": 1,
       "global_step_before_update": 0,

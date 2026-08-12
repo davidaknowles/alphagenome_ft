@@ -41,15 +41,25 @@
       "dataset": "johansen-human",
       "modality": "ATAC",
       "threshold": 0.8,
-      "status": "missing evidence",
-      "gap_to_target": null
+      "status": "below target",
+      "gap_to_target": 0.23364072411460057,
+      "strategy": "lora",
+      "selected_epoch": 1,
+      "head": "allen_atac",
+      "valid_r": 0.5663592758853995,
+      "test_r": 0.5978214370012669
     },
     {
       "dataset": "johansen-human",
       "modality": "RNA",
       "threshold": 0.8,
-      "status": "missing evidence",
-      "gap_to_target": null
+      "status": "below target",
+      "gap_to_target": 0.37926743181492567,
+      "strategy": "lora",
+      "selected_epoch": 1,
+      "head": "allen_rna",
+      "valid_r": 0.4207325681850744,
+      "test_r": 0.42451627745418924
     },
     {
       "dataset": "johansen_joint",

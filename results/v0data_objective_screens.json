@@ -1,6 +1,49 @@
 {
   "selection_metric": "mean valid differential_pearson_r",
-  "matched_runs": [],
+  "matched_runs": [
+    {
+      "dataset": "zemke2023-human",
+      "strategy": "lora",
+      "variant": "corrw10",
+      "matched_epoch": 1,
+      "global_step": 2619,
+      "selection_mean_valid_r": 0.5752009885833207,
+      "heads": [
+        {
+          "head": "zemke2023_atac",
+          "valid_r": 0.6830563972239395,
+          "test_r": 0.7000818641443448
+        },
+        {
+          "head": "zemke2023_rna",
+          "valid_r": 0.46734557994270176,
+          "test_r": 0.40789836659140327
+        }
+      ],
+      "metrics_path": "checkpoints/v0data/zemke2023-human_lora_corrw10/metrics.jsonl"
+    },
+    {
+      "dataset": "zemke2023-human",
+      "strategy": "lora+locon",
+      "variant": "corrw10",
+      "matched_epoch": 1,
+      "global_step": 2619,
+      "selection_mean_valid_r": 0.5843559256982895,
+      "heads": [
+        {
+          "head": "zemke2023_atac",
+          "valid_r": 0.6821744104062555,
+          "test_r": 0.6997197009905384
+        },
+        {
+          "head": "zemke2023_rna",
+          "valid_r": 0.4865374409903236,
+          "test_r": 0.4004426596127976
+        }
+      ],
+      "metrics_path": "checkpoints/v0data/zemke2023-human_lora_locon_corrw10/metrics.jsonl"
+    }
+  ],
   "runs": [
     {
       "dataset": "hda-joint",
@@ -22,6 +65,48 @@
         }
       ],
       "metrics_path": "checkpoints/v0data/hda-joint_lora_geneonly_corrw0_screen/metrics.jsonl"
+    },
+    {
+      "dataset": "hda-joint",
+      "strategy": "lora",
+      "variant": "geneonly_corrw0p1_screen",
+      "selected_epoch": 1,
+      "global_step": 2619,
+      "selection_mean_valid_r": 0.6001674939067002,
+      "heads": [
+        {
+          "head": "hda_atac",
+          "valid_r": 0.7709699488842328,
+          "test_r": 0.7826771591987307
+        },
+        {
+          "head": "hda_rna",
+          "valid_r": 0.42936503892916766,
+          "test_r": 0.6273708620147295
+        }
+      ],
+      "metrics_path": "checkpoints/v0data/hda-joint_lora_geneonly_corrw0p1_screen/metrics.jsonl"
+    },
+    {
+      "dataset": "hda-joint",
+      "strategy": "lora",
+      "variant": "geneonly_corrw10_screen",
+      "selected_epoch": 1,
+      "global_step": 2619,
+      "selection_mean_valid_r": 0.5680314432761104,
+      "heads": [
+        {
+          "head": "hda_atac",
+          "valid_r": 0.7485998810810721,
+          "test_r": 0.7593806267452116
+        },
+        {
+          "head": "hda_rna",
+          "valid_r": 0.38746300547114887,
+          "test_r": 0.60534348255255
+        }
+      ],
+      "metrics_path": "checkpoints/v0data/hda-joint_lora_geneonly_corrw10_screen/metrics.jsonl"
     },
     {
       "dataset": "hda-joint",
@@ -69,22 +154,43 @@
       "dataset": "zemke2023-human",
       "strategy": "lora",
       "variant": "corrw10",
-      "selected_epoch": 1,
-      "global_step": 2619,
-      "selection_mean_valid_r": 0.5752009885833207,
+      "selected_epoch": 2,
+      "global_step": 5238,
+      "selection_mean_valid_r": 0.5892297095379162,
       "heads": [
         {
           "head": "zemke2023_atac",
-          "valid_r": 0.6830563972239395,
-          "test_r": 0.7000818641443448
+          "valid_r": 0.6949132977818295,
+          "test_r": 0.718290983721414
         },
         {
           "head": "zemke2023_rna",
-          "valid_r": 0.46734557994270176,
-          "test_r": 0.40789836659140327
+          "valid_r": 0.4835461212940029,
+          "test_r": 0.4052023048834604
         }
       ],
       "metrics_path": "checkpoints/v0data/zemke2023-human_lora_corrw10/metrics.jsonl"
+    },
+    {
+      "dataset": "zemke2023-human",
+      "strategy": "lora+locon",
+      "variant": "corrw10",
+      "selected_epoch": 1,
+      "global_step": 2619,
+      "selection_mean_valid_r": 0.5843559256982895,
+      "heads": [
+        {
+          "head": "zemke2023_atac",
+          "valid_r": 0.6821744104062555,
+          "test_r": 0.6997197009905384
+        },
+        {
+          "head": "zemke2023_rna",
+          "valid_r": 0.4865374409903236,
+          "test_r": 0.4004426596127976
+        }
+      ],
+      "metrics_path": "checkpoints/v0data/zemke2023-human_lora_locon_corrw10/metrics.jsonl"
     },
     {
       "dataset": "zemke2023-human",

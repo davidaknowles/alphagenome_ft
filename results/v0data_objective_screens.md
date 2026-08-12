@@ -6,6 +6,10 @@ These non-canonical runs test one change at a time. Paired strategies are compar
 
 | Dataset | Strategy | Variant | Epoch | Head | Validation R | Test R |
 |---|---|---|---:|---|---:|---:|
+| `zemke2023-human` | `lora` | `corrw10` | 1 | `zemke2023_atac` | 0.6831 | 0.7001 |
+| `zemke2023-human` | `lora` | `corrw10` | 1 | `zemke2023_rna` | 0.4673 | 0.4079 |
+| `zemke2023-human` | `lora+locon` | `corrw10` | 1 | `zemke2023_atac` | 0.6822 | 0.6997 |
+| `zemke2023-human` | `lora+locon` | `corrw10` | 1 | `zemke2023_rna` | 0.4865 | 0.4004 |
 
 ## Independently selected checkpoints
 
@@ -13,12 +17,18 @@ These non-canonical runs test one change at a time. Paired strategies are compar
 |---|---|---|---:|---|---:|---:|
 | `hda-joint` | `lora` | `geneonly_corrw0_screen` | 1 | `hda_atac` | 0.7724 | 0.7834 |
 | `hda-joint` | `lora` | `geneonly_corrw0_screen` | 1 | `hda_rna` | 0.4232 | 0.5714 |
+| `hda-joint` | `lora` | `geneonly_corrw0p1_screen` | 1 | `hda_atac` | 0.7710 | 0.7827 |
+| `hda-joint` | `lora` | `geneonly_corrw0p1_screen` | 1 | `hda_rna` | 0.4294 | 0.6274 |
+| `hda-joint` | `lora` | `geneonly_corrw10_screen` | 1 | `hda_atac` | 0.7486 | 0.7594 |
+| `hda-joint` | `lora` | `geneonly_corrw10_screen` | 1 | `hda_rna` | 0.3875 | 0.6053 |
 | `hda-joint` | `lora` | `rnaw5` | 1 | `hda_atac` | 0.7538 | 0.7645 |
 | `hda-joint` | `lora` | `rnaw5` | 1 | `hda_rna` | 0.4310 | 0.5976 |
 | `liu-hdma` | `lora` | `legacy_exon_plus_gene` | 1 | `liu_atac` | 0.7648 | 0.7786 |
 | `liu-hdma` | `lora` | `legacy_exon_plus_gene` | 1 | `liu_rna` | 0.4053 | 0.4390 |
-| `zemke2023-human` | `lora` | `corrw10` | 1 | `zemke2023_atac` | 0.6831 | 0.7001 |
-| `zemke2023-human` | `lora` | `corrw10` | 1 | `zemke2023_rna` | 0.4673 | 0.4079 |
+| `zemke2023-human` | `lora` | `corrw10` | 2 | `zemke2023_atac` | 0.6949 | 0.7183 |
+| `zemke2023-human` | `lora` | `corrw10` | 2 | `zemke2023_rna` | 0.4835 | 0.4052 |
+| `zemke2023-human` | `lora+locon` | `corrw10` | 1 | `zemke2023_atac` | 0.6822 | 0.6997 |
+| `zemke2023-human` | `lora+locon` | `corrw10` | 1 | `zemke2023_rna` | 0.4865 | 0.4004 |
 | `zemke2023-human` | `lora` | `rnaw5` | 1 | `zemke2023_atac` | 0.6637 | 0.6790 |
 | `zemke2023-human` | `lora` | `rnaw5` | 1 | `zemke2023_rna` | 0.4306 | 0.3871 |
 | `zemke2023_macaque` | `lora` | `fold_chr10_chr11` | 4 | `zemke2023_atac` | 0.5157 | 0.6356 |
