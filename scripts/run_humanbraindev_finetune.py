@@ -307,6 +307,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--overwrite-target-cache", action="store_true")
     parser.add_argument("--target-cache-workers", type=int, default=None)
     parser.add_argument("--profile-host-timing", action="store_true")
+    parser.add_argument(
+        "--report-head-gradient-norms",
+        action="store_true",
+        help="Report each head's first-batch gradient norm on shared adapters and head parameters.",
+    )
     parser.add_argument("--no-shuffle", action="store_true")
     parser.add_argument("--drop-last", action="store_true")
     parser.add_argument("--wandb-project", default=None)
@@ -1008,6 +1013,7 @@ def main() -> None:
         progress_interval=args.progress_interval,
         prefetch_batches=args.prefetch_batches,
         profile_host_timing=args.profile_host_timing,
+        report_head_gradient_norms=args.report_head_gradient_norms,
         start_epoch=start_epoch,
         initial_global_step=initial_global_step,
         initial_optimizer_state_path=initial_optimizer_state_path,

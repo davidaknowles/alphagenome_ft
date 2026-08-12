@@ -428,6 +428,29 @@ def _weighted_head_loss_sum(head_losses, head_specs_by_name):
     return total_loss
 
 
+def _gradient_inner_product(first, second, predicate) -> jax.Array:
+    """Return an inner product over gradient leaves selected by path."""
+    products = []
+
+    def collect(path, first_value, second_value):
+        if predicate(_keypath_to_str(path)):
+            products.append(
+                jnp.vdot(
+                    first_value.astype(jnp.float32),
+                    second_value.astype(jnp.float32),
+                ).real
+            )
+
+    jax.tree_util.tree_map_with_path(collect, first, second)
+    return sum(products, jnp.asarray(0.0, dtype=jnp.float32))
+
+
+def _gradient_l2_norm(gradients, predicate) -> jax.Array:
+    """Return an L2 norm over gradient leaves selected by path."""
+    squared_norm = _gradient_inner_product(gradients, gradients, predicate)
+    return jnp.sqrt(jnp.maximum(squared_norm, 0.0))
+
+
 def _save_optimizer_state(path: Path, opt_state) -> None:
     checkpointer = ocp.StandardCheckpointer()
     checkpointer.save(str(path), opt_state, force=True)
@@ -680,6 +703,7 @@ def train(
     progress_interval: int = 50,
     prefetch_batches: int = 2,
     profile_host_timing: bool = False,
+    report_head_gradient_norms: bool = False,
     start_epoch: int = 1,
     initial_global_step: int = 0,
     initial_optimizer_state_path: Path | None = None,
@@ -725,6 +749,8 @@ def train(
             background thread. Set to 0 to disable prefetching.
         profile_host_timing: If True, print wall-clock timing buckets for host-side
             work each epoch.
+        report_head_gradient_norms: If True, measure each head's first-batch gradient
+            norm on shared adapters and its own head parameters.
         start_epoch: One-indexed epoch at which to continue training. Values above
             one require prior metric history in ``checkpoint_dir``.
         initial_global_step: Number of optimizer updates completed before this call.
@@ -813,6 +839,7 @@ def train(
             "eval_splits": list(eval_splits),
             "progress_interval": progress_interval,
             "prefetch_batches": prefetch_batches,
+            "report_head_gradient_norms": report_head_gradient_norms,
             **(wandb_config or {}),
         }
         wandb.init(
@@ -870,68 +897,74 @@ def train(
             return prediction
         return transform.inverse_jax(prediction["predictions_1bp"])
 
+    def training_head_objectives(current_params, state, batch, requested_head_names):
+        predictions = model._predict(
+            current_params,
+            state,
+            batch["sequences"],
+            batch["organism_index"],
+            requested_outputs=requested_head_names,
+            negative_strand_mask=batch["negative_strand_mask"],
+            strand_reindexing=batch["strand_reindexing"],
+        )
+        head_losses = {}
+        head_stats = {}
+        for head_name in requested_head_names:
+            spec = head_specs_by_name[head_name]
+            uses_coverage = spec.gene_supervision_path is None or spec.coverage_loss_weight > 0
+            if uses_coverage:
+                targets = batch[f"targets_{head_name}"]
+                transform = target_transforms.get(head_name)
+                if transform is not None:
+                    targets = transform.forward_jax(targets)
+                head_loss = loss_fns[head_name](
+                    predictions[head_name],
+                    {
+                        "targets": targets,
+                        "organism_index": batch["organism_index"],
+                    },
+                )["loss"]
+            else:
+                head_loss = jnp.asarray(0.0, dtype=jnp.float32)
+            if spec.gene_supervision_path is not None:
+                gene_prediction = _gene_expression_prediction(
+                    predictions[head_name], batch, head_name
+                )
+                gene_targets = batch[f"gene_targets_{head_name}"]
+                gene_valid = batch[f"gene_valid_{head_name}"]
+                gene_loss = _gene_log_mse(gene_prediction, gene_targets, gene_valid)
+                head_loss = (
+                    spec.coverage_loss_weight * head_loss + spec.gene_loss_weight * gene_loss
+                )
+                correlation_prediction = gene_prediction
+                correlation_targets = gene_targets
+                correlation_mask = gene_valid
+            else:
+                correlation_prediction = predictions[head_name]
+                correlation_targets = targets
+                correlation_mask = None
+            if spec.double_centered_correlation_loss_weight > 0:
+                head_loss = head_loss + (
+                    spec.double_centered_correlation_loss_weight
+                    * _double_centered_correlation_loss(
+                        correlation_prediction,
+                        correlation_targets,
+                        correlation_mask,
+                    )
+                )
+            head_losses[head_name] = head_loss
+            if spec.gene_supervision_path is not None:
+                head_stats[head_name] = _r2_stats(gene_prediction, gene_targets, gene_valid)
+            else:
+                head_stats[head_name] = _r2_stats(predictions[head_name], targets)
+        return head_losses, head_stats
+
     @functools.partial(jax.pmap, axis_name="data")
     def train_step(params, state, current_opt_state, batch):
         def loss_fn(current_params):
-            predictions = model._predict(
-                current_params,
-                state,
-                batch["sequences"],
-                batch["organism_index"],
-                requested_outputs=head_names,
-                negative_strand_mask=batch["negative_strand_mask"],
-                strand_reindexing=batch["strand_reindexing"],
+            head_losses, head_stats = training_head_objectives(
+                current_params, state, batch, head_names
             )
-            head_losses = {}
-            head_stats = {}
-            for head_name in head_names:
-                spec = head_specs_by_name[head_name]
-                uses_coverage = spec.gene_supervision_path is None or spec.coverage_loss_weight > 0
-                if uses_coverage:
-                    targets = batch[f"targets_{head_name}"]
-                    transform = target_transforms.get(head_name)
-                    if transform is not None:
-                        targets = transform.forward_jax(targets)
-                    head_loss = loss_fns[head_name](
-                        predictions[head_name],
-                        {
-                            "targets": targets,
-                            "organism_index": batch["organism_index"],
-                        },
-                    )["loss"]
-                else:
-                    head_loss = jnp.asarray(0.0, dtype=jnp.float32)
-                if spec.gene_supervision_path is not None:
-                    gene_prediction = _gene_expression_prediction(
-                        predictions[head_name], batch, head_name
-                    )
-                    gene_targets = batch[f"gene_targets_{head_name}"]
-                    gene_valid = batch[f"gene_valid_{head_name}"]
-                    gene_loss = _gene_log_mse(gene_prediction, gene_targets, gene_valid)
-                    head_loss = (
-                        spec.coverage_loss_weight * head_loss + spec.gene_loss_weight * gene_loss
-                    )
-                    correlation_prediction = gene_prediction
-                    correlation_targets = gene_targets
-                    correlation_mask = gene_valid
-                else:
-                    correlation_prediction = predictions[head_name]
-                    correlation_targets = targets
-                    correlation_mask = None
-                if spec.double_centered_correlation_loss_weight > 0:
-                    head_loss = head_loss + (
-                        spec.double_centered_correlation_loss_weight
-                        * _double_centered_correlation_loss(
-                            correlation_prediction,
-                            correlation_targets,
-                            correlation_mask,
-                        )
-                    )
-                head_losses[head_name] = head_loss
-                if spec.gene_supervision_path is not None:
-                    head_stats[head_name] = _r2_stats(gene_prediction, gene_targets, gene_valid)
-                else:
-                    head_stats[head_name] = _r2_stats(predictions[head_name], targets)
             total_loss = _weighted_head_loss_sum(head_losses, head_specs_by_name)
             return total_loss, (head_losses, head_stats)
 
@@ -951,6 +984,48 @@ def train(
         updates, new_opt_state = optimizer.update(grads, current_opt_state, params)
         new_params = optax.apply_updates(params, updates)
         return new_params, new_opt_state, loss_value, head_losses, head_stats
+
+    @functools.partial(jax.pmap, axis_name="data")
+    def head_gradient_diagnostics(params, state, batch):
+        adapter_gradients = {}
+        results = {}
+        for head_name in head_names:
+
+            def single_head_loss(current_params):
+                losses, _ = training_head_objectives(current_params, state, batch, (head_name,))
+                return losses[head_name]
+
+            loss_value, gradients = jax.value_and_grad(single_head_loss)(params)
+            gradients = jax.lax.pmean(gradients, axis_name="data")
+            adapter_gradients[head_name] = gradients
+            adapter_norm = _gradient_l2_norm(gradients, _is_lora_path)
+            head_norm = _gradient_l2_norm(
+                gradients,
+                lambda path: _is_trainable_head_path(path, {head_name}),
+            )
+            weight = head_specs_by_name[head_name].loss_weight
+            results[head_name] = {
+                "loss": jax.lax.pmean(loss_value, axis_name="data"),
+                "loss_weight": jnp.asarray(weight, dtype=jnp.float32),
+                "adapter_gradient_norm": adapter_norm,
+                "weighted_adapter_gradient_norm": weight * adapter_norm,
+                "head_gradient_norm": head_norm,
+            }
+        adapter_cosines = {}
+        for first_index, first_name in enumerate(head_names):
+            for second_name in head_names[first_index + 1 :]:
+                first_gradients = adapter_gradients[first_name]
+                second_gradients = adapter_gradients[second_name]
+                numerator = _gradient_inner_product(
+                    first_gradients, second_gradients, _is_lora_path
+                )
+                denominator = _gradient_l2_norm(first_gradients, _is_lora_path) * _gradient_l2_norm(
+                    second_gradients, _is_lora_path
+                )
+                adapter_cosines[f"{first_name}__{second_name}"] = jnp.where(
+                    denominator > 0, numerator / denominator, 0.0
+                )
+        return {"heads": results, "adapter_gradient_cosines": adapter_cosines}
 
     @functools.partial(jax.pmap, axis_name="data")
     def eval_step(params, state, batch):
@@ -1194,6 +1269,7 @@ def train(
                 )
             return split_result
 
+        gradient_diagnostics_reported = False
         for epoch in range(start_epoch, num_epochs + 1):
             if verbose:
                 print(f"\n{'=' * 60}")
@@ -1240,6 +1316,18 @@ def train(
                 timing_stats["batch_wait"] += time.perf_counter() - wait_start
                 timing_stats["prepare"] += batch_timing["prepare"]
                 timing_stats["shard"] += batch_timing["shard"]
+                if report_head_gradient_norms and not gradient_diagnostics_reported:
+                    raw_diagnostics = head_gradient_diagnostics(
+                        replicated_params,
+                        replicated_state,
+                        batch,
+                    )
+                    diagnostics = jax.tree_util.tree_map(
+                        lambda value: float(np.asarray(value)[0]),
+                        raw_diagnostics,
+                    )
+                    print("Head gradient diagnostics: " + json.dumps(diagnostics, sort_keys=True))
+                    gradient_diagnostics_reported = True
                 step_start = time.perf_counter()
                 (
                     replicated_params,

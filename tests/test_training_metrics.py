@@ -1,3 +1,5 @@
+from contextlib import nullcontext
+import json
 from types import SimpleNamespace
 
 import numpy as np
@@ -10,9 +12,13 @@ from alphagenome_ft.finetune.train import (
     _finalize_r2_stats,
     _flatten_valid_metrics,
     _gene_expression_prediction,
+    _gradient_inner_product,
+    _gradient_l2_norm,
+    _is_lora_path,
     _r2_stats,
     _restore_optimizer_state,
     _save_optimizer_state,
+    train,
 )
 
 
@@ -39,6 +45,126 @@ def test_weighted_head_loss_sum_rebalances_objective():
     )
 
     np.testing.assert_allclose(total, 13.0)
+
+
+def test_gradient_norm_helpers_filter_parameter_paths():
+    first = {"trunk": {"lora_a": jnp.asarray([3.0, 4.0]), "weight": jnp.asarray([100.0])}}
+    second = {"trunk": {"lora_a": jnp.asarray([1.0, -2.0]), "weight": jnp.asarray([100.0])}}
+
+    np.testing.assert_allclose(_gradient_l2_norm(first, _is_lora_path), 5.0)
+    np.testing.assert_allclose(
+        _gradient_inner_product(first, second, _is_lora_path),
+        -5.0,
+    )
+
+
+def test_train_reports_per_head_gradient_norms_once(capsys):
+    from alphagenome.models import dna_model as ag_dna_model
+
+    class DummyDataModule:
+        _batch_size = 1
+        _drop_last = False
+        _intervals = {"train": [object()]}
+
+        def iter_batches(self, split, seed=None):
+            del split, seed
+            sequence = np.arange(4, dtype=np.float32).reshape(1, 4, 1)
+            yield {
+                "sequences": sequence,
+                "negative_strand_mask": np.asarray([False]),
+                "targets_atac": 2.0 * sequence,
+                "targets_rna": 3.0 * sequence,
+            }
+
+    class DummyModel:
+        def __init__(self):
+            self._params = {
+                "trunk": {"lora_a": jnp.asarray(0.5)},
+                "head": {
+                    "atac": {"weight": jnp.asarray(1.0)},
+                    "rna": {"weight": jnp.asarray(1.5)},
+                },
+            }
+            self._state = {}
+            self._device_context = nullcontext()
+            self._metadata = {
+                ag_dna_model.Organism.HOMO_SAPIENS: SimpleNamespace(
+                    strand_reindexing=jnp.asarray([0], dtype=jnp.int32)
+                )
+            }
+
+        def freeze_backbone(self):
+            return None
+
+        def create_loss_fn_for_head(self, head_name):
+            del head_name
+
+            def loss_fn(prediction, target):
+                residual = prediction["predictions_1bp"] - target["targets"]
+                return {"loss": jnp.mean(jnp.square(residual))}
+
+            return loss_fn
+
+        def _predict(
+            self,
+            params,
+            state,
+            sequences,
+            organism_index,
+            *,
+            requested_outputs,
+            negative_strand_mask,
+            strand_reindexing,
+        ):
+            del state, organism_index, negative_strand_mask, strand_reindexing
+            adapter = params["trunk"]["lora_a"]
+            return {
+                head_name: {
+                    "predictions_1bp": sequences * adapter * params["head"][head_name]["weight"]
+                }
+                for head_name in requested_outputs
+            }
+
+    specs = [
+        SimpleNamespace(
+            head_id=head_name,
+            target_transform_path=None,
+            gene_supervision_path=None,
+            coverage_loss_weight=1.0,
+            gene_loss_weight=0.0,
+            double_centered_correlation_loss_weight=0.0,
+            loss_weight=weight,
+        )
+        for head_name, weight in (("atac", 1.0), ("rna", 5.0))
+    ]
+
+    train(
+        DummyModel(),
+        DummyDataModule(),
+        specs,
+        learning_rate=1e-3,
+        weight_decay=0.0,
+        num_epochs=1,
+        max_train_steps=1,
+        heads_only=True,
+        train_lora=True,
+        eval_splits=("train",),
+        prefetch_batches=0,
+        report_head_gradient_norms=True,
+    )
+
+    output = capsys.readouterr().out
+    lines = [line for line in output.splitlines() if line.startswith("Head gradient diagnostics:")]
+    assert len(lines) == 1
+    diagnostics = json.loads(lines[0].split(": ", 1)[1])
+    for head_name in ("atac", "rna"):
+        assert diagnostics["heads"][head_name]["adapter_gradient_norm"] > 0
+        assert diagnostics["heads"][head_name]["head_gradient_norm"] > 0
+    rna = diagnostics["heads"]["rna"]
+    np.testing.assert_allclose(
+        rna["weighted_adapter_gradient_norm"],
+        5.0 * rna["adapter_gradient_norm"],
+    )
 
 
 def test_optimizer_state_roundtrip(tmp_path):
