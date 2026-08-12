@@ -26,19 +26,19 @@
       "dataset": "zemke2023_macaque",
       "strategy": "lora",
       "variant": "fold_chr10_chr11",
-      "selected_epoch": 1,
-      "global_step": 2488,
-      "selection_mean_valid_r": 0.37811918138519796,
+      "selected_epoch": 2,
+      "global_step": 4976,
+      "selection_mean_valid_r": 0.4251597383382007,
       "heads": [
         {
           "head": "zemke2023_atac",
-          "valid_r": 0.48572115407389005,
-          "test_r": 0.6249656770535725
+          "valid_r": 0.5103979752562718,
+          "test_r": 0.6458643905689438
         },
         {
           "head": "zemke2023_rna",
-          "valid_r": 0.2705172086965058,
-          "test_r": 0.3799459212016921
+          "valid_r": 0.33992150142012956,
+          "test_r": 0.4324738359743709
         }
       ],
       "metrics_path": "checkpoints/v0data/zemke2023_macaque_lora_fold_chr10_chr11/metrics.jsonl"

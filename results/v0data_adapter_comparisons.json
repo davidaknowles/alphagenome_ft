@@ -232,46 +232,6 @@
       "metrics_path": "checkpoints/v0data/zemke2023_marmoset_lora_locon/metrics.jsonl"
     },
     {
-      "dataset": "zemke2023_mouse",
-      "strategy": "lora",
-      "matched_epoch": 1,
-      "global_step": 2269,
-      "selection_mean_valid_r": 0.14539703104217977,
-      "heads": [
-        {
-          "head": "zemke2023_atac",
-          "valid_r": 0.2854793580361432,
-          "test_r": 0.2911027312257545
-        },
-        {
-          "head": "zemke2023_rna",
-          "valid_r": 0.005314704048216335,
-          "test_r": 0.01565582438019073
-        }
-      ],
-      "metrics_path": "checkpoints/v0data/zemke2023_mouse_lora/metrics.jsonl"
-    },
-    {
-      "dataset": "zemke2023_mouse",
-      "strategy": "lora+locon",
-      "matched_epoch": 1,
-      "global_step": 2269,
-      "selection_mean_valid_r": 0.16232486243425054,
-      "heads": [
-        {
-          "head": "zemke2023_atac",
-          "valid_r": 0.32374663179045915,
-          "test_r": 0.31350274646620874
-        },
-        {
-          "head": "zemke2023_rna",
-          "valid_r": 0.0009030930780419249,
-          "test_r": -0.0014448568918707647
-        }
-      ],
-      "metrics_path": "checkpoints/v0data/zemke2023_mouse_lora_locon/metrics.jsonl"
-    },
-    {
       "dataset": "zemke2024-all",
       "strategy": "lora",
       "matched_epoch": 5,
@@ -562,46 +522,6 @@
         }
       ],
       "metrics_path": "checkpoints/v0data/zemke2023_marmoset_lora_locon/metrics.jsonl"
-    },
-    {
-      "dataset": "zemke2023_mouse",
-      "strategy": "lora",
-      "selected_epoch": 1,
-      "global_step": 2269,
-      "selection_mean_valid_r": 0.14539703104217977,
-      "heads": [
-        {
-          "head": "zemke2023_atac",
-          "valid_r": 0.2854793580361432,
-          "test_r": 0.2911027312257545
-        },
-        {
-          "head": "zemke2023_rna",
-          "valid_r": 0.005314704048216335,
-          "test_r": 0.01565582438019073
-        }
-      ],
-      "metrics_path": "checkpoints/v0data/zemke2023_mouse_lora/metrics.jsonl"
-    },
-    {
-      "dataset": "zemke2023_mouse",
-      "strategy": "lora+locon",
-      "selected_epoch": 1,
-      "global_step": 2269,
-      "selection_mean_valid_r": 0.16232486243425054,
-      "heads": [
-        {
-          "head": "zemke2023_atac",
-          "valid_r": 0.32374663179045915,
-          "test_r": 0.31350274646620874
-        },
-        {
-          "head": "zemke2023_rna",
-          "valid_r": 0.0009030930780419249,
-          "test_r": -0.0014448568918707647
-        }
-      ],
-      "metrics_path": "checkpoints/v0data/zemke2023_mouse_lora_locon/metrics.jsonl"
     },
     {
       "dataset": "zemke2024-all",

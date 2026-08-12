@@ -128,17 +128,13 @@
     {
       "dataset": "zemke2023_mouse",
       "completed_epochs": {
-        "lora": [
-          1
-        ],
-        "lora+locon": [
-          1
-        ]
+        "lora": [],
+        "lora+locon": []
       },
-      "latest_lora_epoch": 1,
-      "latest_lora_locon_epoch": 1,
-      "highest_matched_epoch": 1,
-      "status": "matched result available"
+      "latest_lora_epoch": null,
+      "latest_lora_locon_epoch": null,
+      "highest_matched_epoch": null,
+      "status": "missing lora, lora+locon"
     },
     {
       "dataset": "zemke2023_joint",

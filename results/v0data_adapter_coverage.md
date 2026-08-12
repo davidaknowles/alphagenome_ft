@@ -12,6 +12,6 @@ A matched result means both strategies completed the same epoch. It does not imp
 | `zemke2023-human` | 4 | 4 | 4 | matched result available |
 | `zemke2023_macaque` | 1 | 1 | 1 | matched result available |
 | `zemke2023_marmoset` | 1 | 1 | 1 | matched result available |
-| `zemke2023_mouse` | 1 | 1 | 1 | matched result available |
+| `zemke2023_mouse` |  |  |  | missing lora, lora+locon |
 | `zemke2023_joint` | 1 | 1 | 1 | matched result available |
 | `zemke2024-all` | 5 | 5 | 5 | matched result available |

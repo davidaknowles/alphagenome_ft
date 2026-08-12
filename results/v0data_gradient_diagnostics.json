@@ -76,31 +76,6 @@
       "path": "checkpoints/v0data/zemke2023_human_lora_gradnorm/gradient_diagnostics.json"
     },
     {
-      "run": "zemke2023_mouse_lora_gradnorm",
-      "epoch": 1,
-      "global_step_before_update": 0,
-      "heads": {
-        "zemke2023_atac": {
-          "adapter_gradient_norm": 0.010119271464645863,
-          "head_gradient_norm": 0.0,
-          "loss": 1.7371898889541626,
-          "loss_weight": 1.0,
-          "weighted_adapter_gradient_norm": 0.010119271464645863
-        },
-        "zemke2023_rna": {
-          "adapter_gradient_norm": 0.01907232403755188,
-          "head_gradient_norm": 0.0,
-          "loss": 2.157557487487793,
-          "loss_weight": 1.0,
-          "weighted_adapter_gradient_norm": 0.01907232403755188
-        }
-      },
-      "adapter_gradient_cosines": {
-        "zemke2023_atac__zemke2023_rna": -0.21111024916172028
-      },
-      "path": "checkpoints/v0data/zemke2023_mouse_lora_gradnorm/gradient_diagnostics.json"
-    },
-    {
       "run": "zemke2024-all_lora_gradnorm",
       "epoch": 1,
       "global_step_before_update": 0,
