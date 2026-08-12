@@ -76,6 +76,8 @@ fi
   --fasta-path "$fasta" \
   --organism "$organism" \
   --include-chroms "$include_chroms" \
+  --valid-chroms "${VALID_CHROMS:-chr8}" \
+  --test-chroms "${TEST_CHROMS:-chr9}" \
   --checkpoint-path "${CHECKPOINT_PATH:-/gpfs/commons/home/daknowles/.cache/kagglehub/models/google/alphagenome/jax/all_folds/1}" \
   --checkpoint-dir "checkpoints/v0data/${run_name}" \
   --split-source chromosome \
