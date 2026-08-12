@@ -3,87 +3,119 @@
   "gene_supervision": "outputs/v0data/liu-hdma/joint/gene_expression_supervision.npz",
   "chromosomes": {
     "chr8": {
+      "genes_in_supervision": 1525,
+      "genes_in_evaluation": 1067,
       "raw_cpm": {
-        "observations": 1525,
+        "observations": 1067,
         "tracks": 186,
         "numerical_rank": 185,
-        "entropy_effective_rank": 9.2165075136872,
-        "participation_ratio": 4.631443650646879,
+        "entropy_effective_rank": 5.323784800472567,
+        "participation_ratio": 2.7845100346833576,
         "rank_correlation_ceiling": {
-          "1": 0.6326447079862724,
-          "2": 0.773647732740135,
-          "4": 0.866528445269299,
-          "8": 0.9279589228648379,
-          "16": 0.9692455015545537,
-          "32": 0.9899861393290422
+          "1": 0.750286968608035,
+          "2": 0.8630502017304695,
+          "4": 0.9298291711263207,
+          "8": 0.9602495390212682,
+          "16": 0.9837875133164691,
+          "32": 0.9946236621484367
         },
         "rank_for_correlation": {
-          "0.8": 3,
-          "0.9": 6,
-          "0.95": 12
+          "0.8": 2,
+          "0.9": 3,
+          "0.95": 7
         }
       },
       "log1p_cpm": {
-        "observations": 1525,
+        "observations": 1067,
         "tracks": 186,
         "numerical_rank": 185,
-        "entropy_effective_rank": 27.029686625625242,
-        "participation_ratio": 11.170366221780363,
+        "entropy_effective_rank": 30.923139156483604,
+        "participation_ratio": 12.576164474392728,
         "rank_correlation_ceiling": {
-          "1": 0.4719744846312821,
-          "2": 0.5950316037456586,
-          "4": 0.7191953143631378,
-          "8": 0.8265495480302201,
-          "16": 0.8889216884166187,
-          "32": 0.9276204585146522
-        },
-        "rank_for_correlation": {
-          "0.8": 7,
-          "0.9": 20,
-          "0.95": 49
-        }
-      }
-    },
-    "chr9": {
-      "raw_cpm": {
-        "observations": 1340,
-        "tracks": 186,
-        "numerical_rank": 185,
-        "entropy_effective_rank": 4.994139413554057,
-        "participation_ratio": 2.1721725205286058,
-        "rank_correlation_ceiling": {
-          "1": 0.819311272646549,
-          "2": 0.8567989735859938,
-          "4": 0.9028960084497353,
-          "8": 0.944615128052474,
-          "16": 0.9777130335087203,
-          "32": 0.9924553865641925
-        },
-        "rank_for_correlation": {
-          "0.8": 1,
-          "0.9": 4,
-          "0.95": 9
-        }
-      },
-      "log1p_cpm": {
-        "observations": 1340,
-        "tracks": 186,
-        "numerical_rank": 185,
-        "entropy_effective_rank": 29.159926228333457,
-        "participation_ratio": 12.584959785699404,
-        "rank_correlation_ceiling": {
-          "1": 0.4342625002764241,
-          "2": 0.5776470945689798,
-          "4": 0.7014518069649633,
-          "8": 0.8138052766025226,
-          "16": 0.8837894821330838,
-          "32": 0.9254746003464213
+          "1": 0.45535600304947915,
+          "2": 0.5701409989164231,
+          "4": 0.6979191874279336,
+          "8": 0.8056149537479053,
+          "16": 0.8707992603364437,
+          "32": 0.9160134593678605
         },
         "rank_for_correlation": {
           "0.8": 8,
-          "0.9": 21,
-          "0.95": 50
+          "0.9": 25,
+          "0.95": 55
         }
+      },
+      "raw_cpm_leverage": {
+        "observations": 1067,
+        "effective_observations": 4.822526938235407,
+        "top_observation_fraction": 0.41600160108924483,
+        "top_10_observations_fraction": 0.8120056236474215,
+        "top_1_percent_fraction": 0.8263081809856972
+      },
+      "log1p_cpm_leverage": {
+        "observations": 1067,
+        "effective_observations": 231.4098224901589,
+        "top_observation_fraction": 0.02062330368257607,
+        "top_10_observations_fraction": 0.13887408869995788,
+        "top_1_percent_fraction": 0.14789401296855983
+      }
+    },
+    "chr9": {
+      "genes_in_supervision": 1340,
+      "genes_in_evaluation": 972,
+      "raw_cpm": {
+        "observations": 972,
+        "tracks": 186,
+        "numerical_rank": 185,
+        "entropy_effective_rank": 12.095159570755989,
+        "participation_ratio": 7.0994139310832525,
+        "rank_correlation_ceiling": {
+          "1": 0.5051019593392426,
+          "2": 0.6722349843922192,
+          "4": 0.8312428977082833,
+          "8": 0.9186007015477491,
+          "16": 0.9661095416973627,
+          "32": 0.9889631536034956
+        },
+        "rank_for_correlation": {
+          "0.8": 4,
+          "0.9": 7,
+          "0.95": 13
+        }
+      },
+      "log1p_cpm": {
+        "observations": 972,
+        "tracks": 186,
+        "numerical_rank": 185,
+        "entropy_effective_rank": 33.74623307526967,
+        "participation_ratio": 14.518461308020298,
+        "rank_correlation_ceiling": {
+          "1": 0.41366719595067764,
+          "2": 0.5515939878450229,
+          "4": 0.6735348453205946,
+          "8": 0.789240217978309,
+          "16": 0.863789197735118,
+          "32": 0.9133943121430765
+        },
+        "rank_for_correlation": {
+          "0.8": 9,
+          "0.9": 27,
+          "0.95": 56
+        }
+      },
+      "raw_cpm_leverage": {
+        "observations": 972,
+        "effective_observations": 10.783030122934306,
+        "top_observation_fraction": 0.205122694498831,
+        "top_10_observations_fraction": 0.6902312705453464,
+        "top_1_percent_fraction": 0.6902312705453464
+      },
+      "log1p_cpm_leverage": {
+        "observations": 972,
+        "effective_observations": 283.5484748187881,
+        "top_observation_fraction": 0.014569243648567898,
+        "top_10_observations_fraction": 0.10504580880796031,
+        "top_1_percent_fraction": 0.10504580880796031
       }
     }
   }

@@ -5,6 +5,43 @@ from __future__ import annotations
 import numpy as np
 
 
+def fixed_window_gene_mask(
+    chromosomes: np.ndarray,
+    starts: np.ndarray,
+    ends: np.ndarray,
+    chromosome_sizes: dict[str, int],
+    *,
+    window_size: int,
+    stride: int,
+) -> np.ndarray:
+    """Mark genes fully contained by at least one fixed genomic window."""
+    chromosomes = np.asarray(chromosomes).astype(str)
+    starts = np.asarray(starts, dtype=np.int64)
+    ends = np.asarray(ends, dtype=np.int64)
+    if chromosomes.shape != starts.shape or starts.shape != ends.shape or starts.ndim != 1:
+        raise ValueError("Gene chromosomes, starts, and ends must be equal-length vectors.")
+    if window_size < 1 or stride < 1:
+        raise ValueError("window_size and stride must be positive.")
+    if np.any(starts < 0) or np.any(ends <= starts):
+        raise ValueError("Gene intervals must have non-negative starts and positive spans.")
+    result = np.zeros(len(starts), dtype=bool)
+    for chromosome in np.unique(chromosomes):
+        chromosome_size = chromosome_sizes.get(str(chromosome))
+        if chromosome_size is None or chromosome_size < window_size:
+            continue
+        indices = np.flatnonzero(chromosomes == chromosome)
+        first_possible = np.maximum(
+            0,
+            np.floor_divide(ends[indices] - window_size + stride - 1, stride),
+        )
+        last_possible = np.minimum(
+            np.floor_divide(starts[indices], stride),
+            (chromosome_size - window_size) // stride,
+        )
+        result[indices] = first_possible <= last_possible
+    return result
+
+
 def balanced_library_split(library_sizes: np.ndarray) -> np.ndarray:
     """Assign samples to two greedily depth-balanced halves for every group.
 
@@ -77,6 +114,29 @@ def double_centered_pearson(first: np.ndarray, second: np.ndarray) -> float:
     second = center(second)
     denominator = np.sqrt(np.sum(first * first) * np.sum(second * second))
     return float(np.sum(first * second) / denominator) if denominator > 0 else float("nan")
+
+
+def double_centered_leverage_summary(values: np.ndarray) -> dict[str, float | int]:
+    """Summarize concentration of double-centered variance across rows."""
+    values = np.asarray(values, dtype=np.float64)
+    if values.ndim != 2 or min(values.shape) < 2 or np.any(~np.isfinite(values)):
+        raise ValueError("values must be a finite two-dimensional matrix with both axes nontrivial.")
+    centered = values - values.mean(axis=0) - values.mean(axis=1)[:, None] + values.mean()
+    leverage = np.sum(np.square(centered), axis=1)
+    total = float(leverage.sum())
+    if total <= 0:
+        raise ValueError("double-centered values have no variance.")
+    weights = leverage / total
+    ordered = np.sort(weights)[::-1]
+    return {
+        "observations": int(len(weights)),
+        "effective_observations": float(1.0 / np.sum(np.square(weights))),
+        "top_observation_fraction": float(ordered[0]),
+        "top_10_observations_fraction": float(ordered[: min(10, len(ordered))].sum()),
+        "top_1_percent_fraction": float(
+            ordered[: max(1, int(np.ceil(0.01 * len(ordered))))].sum()
+        ),
+    }
 
 
 def double_centered_rank_summary(

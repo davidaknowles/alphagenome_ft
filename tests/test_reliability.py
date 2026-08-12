@@ -6,10 +6,25 @@ from alphagenome_ft.finetune.reliability import (
     binomial_count_split,
     counts_per_million,
     double_centered_pearson,
+    double_centered_leverage_summary,
     double_centered_rank_summary,
+    fixed_window_gene_mask,
     split_half_pseudobulks,
     spearman_brown,
 )
+
+
+def test_fixed_window_gene_mask_matches_containment_and_terminal_bounds() -> None:
+    mask = fixed_window_gene_mask(
+        np.asarray(["chr1"] * 5),
+        np.asarray([10, 90, 100, 180, 290]),
+        np.asarray([20, 110, 190, 210, 300]),
+        {"chr1": 300},
+        window_size=100,
+        stride=100,
+    )
+
+    assert mask.tolist() == [True, False, True, False, True]
 
 
 def test_binomial_count_split_is_deterministic_and_conservative() -> None:
@@ -47,6 +62,16 @@ def test_double_centered_pearson_and_spearman_brown() -> None:
     values = np.asarray([[1, 4, 2], [3, 0, 5], [2, 6, 1]], dtype=float)
     assert double_centered_pearson(values, values) == pytest.approx(1.0)
     assert spearman_brown(0.8) == pytest.approx(8 / 9)
+
+
+def test_double_centered_leverage_summary_detects_row_concentration() -> None:
+    values = np.asarray([[10.0, 0.0, -10.0], [1.0, 0.0, -1.0], [-1.0, 0.0, 1.0]])
+
+    summary = double_centered_leverage_summary(values)
+
+    assert summary["observations"] == 3
+    assert summary["effective_observations"] == pytest.approx(2.0)
+    assert summary["top_observation_fraction"] > 0.6
 
 
 def test_double_centered_rank_summary_recovers_rank_one_target() -> None:

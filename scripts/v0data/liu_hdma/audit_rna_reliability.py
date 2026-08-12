@@ -18,6 +18,7 @@ from alphagenome_ft.finetune.reliability import (
     balanced_library_split,
     counts_per_million,
     double_centered_pearson,
+    fixed_window_gene_mask,
     spearman_brown,
 )
 
@@ -26,6 +27,8 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--sample-dir", required=True, type=Path)
     parser.add_argument("--gene-supervision", type=Path)
+    parser.add_argument("--fasta-index", type=Path)
+    parser.add_argument("--window-size", type=int, default=131_072)
     parser.add_argument("--json-output", required=True, type=Path)
     parser.add_argument("--markdown-output", required=True, type=Path)
     return parser.parse_args()
@@ -48,6 +51,9 @@ def chromosome_reliability(
     second_cpm: np.ndarray,
     gene_ids: tuple[str, ...],
     gene_supervision_path: Path,
+    *,
+    fasta_index_path: Path | None = None,
+    window_size: int = 131_072,
 ) -> dict[str, dict[str, float | int]]:
     """Report split-half reliability for modeled genes on each chromosome."""
     with np.load(gene_supervision_path) as supervision:
@@ -55,9 +61,30 @@ def chromosome_reliability(
         modeled_chromosomes = supervision["chromosomes"].astype(str)
     if modeled_ids.shape != modeled_chromosomes.shape:
         raise ValueError("Modeled gene IDs and chromosomes must have equal shape.")
+    modeled_valid = np.ones(len(modeled_ids), dtype=bool)
+    if fasta_index_path is not None:
+        with np.load(gene_supervision_path) as supervision:
+            modeled_starts = np.asarray(supervision["starts"], dtype=np.int64)
+            modeled_ends = np.asarray(supervision["ends"], dtype=np.int64)
+        chromosome_sizes = {
+            fields[0]: int(fields[1])
+            for line in fasta_index_path.read_text().splitlines()
+            if len(fields := line.split("\t")) >= 2
+        }
+        modeled_valid = fixed_window_gene_mask(
+            modeled_chromosomes,
+            modeled_starts,
+            modeled_ends,
+            chromosome_sizes,
+            window_size=window_size,
+            stride=window_size,
+        )
     chromosome_by_gene = {
         gene_id.split(".", 1)[0]: chromosome
-        for gene_id, chromosome in zip(modeled_ids, modeled_chromosomes, strict=True)
+        for gene_id, chromosome, valid in zip(
+            modeled_ids, modeled_chromosomes, modeled_valid, strict=True
+        )
+        if valid
     }
     normalized_ids = tuple(gene_id.split(".", 1)[0] for gene_id in gene_ids)
     result: dict[str, dict[str, float | int]] = {}
@@ -146,6 +173,10 @@ def main() -> None:
             second_cpm,
             genes,
             args.gene_supervision.expanduser().resolve(),
+            fasta_index_path=(
+                args.fasta_index.expanduser().resolve() if args.fasta_index else None
+            ),
+            window_size=args.window_size,
         )
     args.json_output.parent.mkdir(parents=True, exist_ok=True)
     args.markdown_output.parent.mkdir(parents=True, exist_ok=True)
