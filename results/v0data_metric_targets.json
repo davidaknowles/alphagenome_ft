@@ -17,25 +17,25 @@
       "dataset": "hda-joint",
       "modality": "ATAC",
       "threshold": 0.8,
-      "status": "below target",
-      "gap_to_target": 0.004284170790891495,
+      "status": "target reached",
+      "gap_to_target": 0.0,
       "strategy": "lora+locon",
-      "selected_epoch": 2,
+      "selected_epoch": 3,
       "head": "hda_atac",
-      "valid_r": 0.7957158292091085,
-      "test_r": 0.8049405699637187
+      "valid_r": 0.8034877277838505,
+      "test_r": 0.8126565500101655
     },
     {
       "dataset": "hda-joint",
       "modality": "RNA",
       "threshold": 0.8,
       "status": "below target",
-      "gap_to_target": 0.27592190818864537,
+      "gap_to_target": 0.2810473529877894,
       "strategy": "lora+locon",
-      "selected_epoch": 2,
+      "selected_epoch": 3,
       "head": "hda_rna",
-      "valid_r": 0.5240780918113547,
-      "test_r": 0.6222448794886353
+      "valid_r": 0.5189526470122107,
+      "test_r": 0.6089401114475648
     },
     {
       "dataset": "johansen-human",

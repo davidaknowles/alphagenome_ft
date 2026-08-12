@@ -34,19 +34,19 @@
     {
       "dataset": "hda-joint",
       "strategy": "lora",
-      "matched_epoch": 2,
-      "global_step": 5238,
-      "selection_mean_valid_r": 0.6546778200459211,
+      "matched_epoch": 3,
+      "global_step": 7857,
+      "selection_mean_valid_r": 0.6558697396386284,
       "heads": [
         {
           "head": "hda_atac",
-          "valid_r": 0.789226721250894,
-          "test_r": 0.7989824599640788
+          "valid_r": 0.7947477625595447,
+          "test_r": 0.8061365512447763
         },
         {
           "head": "hda_rna",
-          "valid_r": 0.5201289188409481,
-          "test_r": 0.6182209543500388
+          "valid_r": 0.516991716717712,
+          "test_r": 0.6181098253558587
         }
       ],
       "metrics_path": "checkpoints/v0data/hda-joint_lora/metrics.jsonl"
@@ -54,19 +54,19 @@
     {
       "dataset": "hda-joint",
       "strategy": "lora+locon",
-      "matched_epoch": 2,
-      "global_step": 5238,
-      "selection_mean_valid_r": 0.6598969605102316,
+      "matched_epoch": 3,
+      "global_step": 7857,
+      "selection_mean_valid_r": 0.6612201873980306,
       "heads": [
         {
           "head": "hda_atac",
-          "valid_r": 0.7957158292091085,
-          "test_r": 0.8049405699637187
+          "valid_r": 0.8034877277838505,
+          "test_r": 0.8126565500101655
         },
         {
           "head": "hda_rna",
-          "valid_r": 0.5240780918113547,
-          "test_r": 0.6222448794886353
+          "valid_r": 0.5189526470122107,
+          "test_r": 0.6089401114475648
         }
       ],
       "metrics_path": "checkpoints/v0data/hda-joint_lora_locon/metrics.jsonl"
@@ -376,19 +376,19 @@
     {
       "dataset": "hda-joint",
       "strategy": "lora+locon",
-      "selected_epoch": 2,
-      "global_step": 5238,
-      "selection_mean_valid_r": 0.6598969605102316,
+      "selected_epoch": 3,
+      "global_step": 7857,
+      "selection_mean_valid_r": 0.6612201873980306,
       "heads": [
         {
           "head": "hda_atac",
-          "valid_r": 0.7957158292091085,
-          "test_r": 0.8049405699637187
+          "valid_r": 0.8034877277838505,
+          "test_r": 0.8126565500101655
         },
         {
           "head": "hda_rna",
-          "valid_r": 0.5240780918113547,
-          "test_r": 0.6222448794886353
+          "valid_r": 0.5189526470122107,
+          "test_r": 0.6089401114475648
         }
       ],
       "metrics_path": "checkpoints/v0data/hda-joint_lora_locon/metrics.jsonl"

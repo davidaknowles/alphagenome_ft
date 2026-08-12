@@ -17,7 +17,7 @@ The primary table covers each requested non-ENCODE study. Cross-species studies 
 | Dataset | Latest LoRA epoch | Latest LoRA+LoCon epoch | Highest matched epoch | Status |
 |---|---:|---:|---:|---|
 | `hda` | 4 | 4 | 4 | matched result available |
-| `hda-joint` | 3 | 2 | 2 | matched result available |
+| `hda-joint` | 3 | 3 | 3 | matched result available |
 | `johansen-human` | 3 | 3 | 3 | matched result available |
 | `johansen_joint` | 1 |  |  | missing lora+locon |
 | `liu-hdma` | 1 | 1 | 1 | matched result available |

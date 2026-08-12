@@ -5,8 +5,8 @@ The table reports the stronger of the two strategy-selected canonical checkpoint
 | Dataset | Modality | Strategy | Epoch | Validation R | Test R | Gap to 0.8 | Status |
 |---|---|---|---:|---:|---:|---:|---|
 | `hda` | ATAC | `lora+locon` | 4 | 0.8086 | 0.8166 | 0.0000 | target reached |
-| `hda-joint` | ATAC | `lora+locon` | 2 | 0.7957 | 0.8049 | 0.0043 | below target |
-| `hda-joint` | RNA | `lora+locon` | 2 | 0.5241 | 0.6222 | 0.2759 | below target |
+| `hda-joint` | ATAC | `lora+locon` | 3 | 0.8035 | 0.8127 | 0.0000 | target reached |
+| `hda-joint` | RNA | `lora+locon` | 3 | 0.5190 | 0.6089 | 0.2810 | below target |
 | `johansen-human` | ATAC | `lora+locon` | 3 | 0.5886 | 0.6218 | 0.2114 | below target |
 | `johansen-human` | RNA | `lora+locon` | 3 | 0.5237 | 0.4588 | 0.2763 | below target |
 | `johansen_joint` | ATAC | `lora` | 1 | 0.5270 | 0.4840 | 0.2730 | below target |
