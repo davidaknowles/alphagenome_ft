@@ -1,0 +1,159 @@
+{
+  "audits": [
+    {
+      "manifest": "outputs/v0data/hda-joint/targets.json",
+      "dataset": "hda-joint",
+      "num_windows": 8,
+      "window_size": 131072,
+      "num_bins_per_window": 1024,
+      "heads": [
+        {
+          "id": "hda_atac",
+          "kind": "atac",
+          "num_tracks": 134,
+          "num_observations": 8192,
+          "nonzero_fraction": 0.6364864520172575,
+          "standard_deviation": 4.041690091392431,
+          "double_centered_standard_deviation": 2.7347019482530173,
+          "double_centered_variance_fraction": 0.4578191775040716,
+          "median_pairwise_track_correlation": 0.7178678912819407
+        },
+        {
+          "id": "hda_rna",
+          "kind": "rna_seq",
+          "num_tracks": 268,
+          "num_observations": 8192,
+          "nonzero_fraction": 0.029198034485774255,
+          "standard_deviation": 0.0009720096715278693,
+          "double_centered_standard_deviation": 0.0009271056940822512,
+          "double_centered_variance_fraction": 0.9097400712565121,
+          "median_pairwise_track_correlation": 0.09847680035126788
+        }
+      ]
+    },
+    {
+      "manifest": "outputs/v0data/liu-hdma/joint/targets.json",
+      "dataset": "liu_hdma",
+      "num_windows": 8,
+      "window_size": 131072,
+      "num_bins_per_window": 1024,
+      "heads": [
+        {
+          "id": "liu_atac",
+          "kind": "atac",
+          "num_tracks": 186,
+          "num_observations": 8192,
+          "nonzero_fraction": 0.690143544186828,
+          "standard_deviation": 0.4886503103268031,
+          "double_centered_standard_deviation": 0.43658083844327955,
+          "double_centered_variance_fraction": 0.7982390750080438,
+          "median_pairwise_track_correlation": 0.45086265783685725
+        },
+        {
+          "id": "liu_rna",
+          "kind": "rna_seq",
+          "num_tracks": 372,
+          "num_observations": 8192,
+          "nonzero_fraction": 0.03761931388608871,
+          "standard_deviation": 0.0017772409970310793,
+          "double_centered_standard_deviation": 0.0014118577879348073,
+          "double_centered_variance_fraction": 0.6310870402345062,
+          "median_pairwise_track_correlation": 0.28010922896223706
+        }
+      ]
+    },
+    {
+      "manifest": "outputs/v0data/johansen-fragment-joint-depth-filtered/human/targets.json",
+      "dataset": "human",
+      "num_windows": 8,
+      "window_size": 131072,
+      "num_bins_per_window": 1024,
+      "heads": [
+        {
+          "id": "allen_atac",
+          "kind": "atac",
+          "num_tracks": 47,
+          "num_observations": 8192,
+          "nonzero_fraction": 0.744384765625,
+          "standard_deviation": 0.09377886774147658,
+          "double_centered_standard_deviation": 0.06646638757324388,
+          "double_centered_variance_fraction": 0.5023358594097627,
+          "median_pairwise_track_correlation": 0.6371848823808403
+        },
+        {
+          "id": "allen_rna",
+          "kind": "rna_seq",
+          "num_tracks": 94,
+          "num_observations": 8192,
+          "nonzero_fraction": 0.028109936003989363,
+          "standard_deviation": 0.0017795621902291702,
+          "double_centered_standard_deviation": 0.0012314195701773984,
+          "double_centered_variance_fraction": 0.47883486282805926,
+          "median_pairwise_track_correlation": 0.263351216540092
+        }
+      ]
+    },
+    {
+      "manifest": "outputs/v0data/johansen-fragment-joint-depth-filtered/macaque/targets.json",
+      "dataset": "macaque",
+      "num_windows": 8,
+      "window_size": 131072,
+      "num_bins_per_window": 1024,
+      "heads": [
+        {
+          "id": "allen_atac",
+          "kind": "atac",
+          "num_tracks": 47,
+          "num_observations": 8192,
+          "nonzero_fraction": 0.8769739029255319,
+          "standard_deviation": 0.12158519004613148,
+          "double_centered_standard_deviation": 0.06973861641540414,
+          "double_centered_variance_fraction": 0.3289919700275251,
+          "median_pairwise_track_correlation": 0.763956841451048
+        },
+        {
+          "id": "allen_rna",
+          "kind": "rna_seq",
+          "num_tracks": 94,
+          "num_observations": 8192,
+          "nonzero_fraction": 0.016692465924202128,
+          "standard_deviation": 0.0023918133641957794,
+          "double_centered_standard_deviation": 0.0017872091918446156,
+          "double_centered_variance_fraction": 0.5583367348515995,
+          "median_pairwise_track_correlation": -0.006388218015667719
+        }
+      ]
+    },
+    {
+      "manifest": "outputs/v0data/johansen-fragment-joint-depth-filtered/marmoset/targets.json",
+      "dataset": "marmoset",
+      "num_windows": 8,
+      "window_size": 131072,
+      "num_bins_per_window": 1024,
+      "heads": [
+        {
+          "id": "allen_atac",
+          "kind": "atac",
+          "num_tracks": 47,
+          "num_observations": 8192,
+          "nonzero_fraction": 0.7979138962765957,
+          "standard_deviation": 0.08161171395049371,
+          "double_centered_standard_deviation": 0.052200380334813515,
+          "double_centered_variance_fraction": 0.40911211200275927,
+          "median_pairwise_track_correlation": 0.6979245525442771
+        },
+        {
+          "id": "allen_rna",
+          "kind": "rna_seq",
+          "num_tracks": 94,
+          "num_observations": 8192,
+          "nonzero_fraction": 0.010413636552526596,
+          "standard_deviation": 0.0024985042856520197,
+          "double_centered_standard_deviation": 0.0018417163632068103,
+          "double_centered_variance_fraction": 0.5433570370413148,
+          "median_pairwise_track_correlation": -0.0025352926928879542
+        }
+      ]
+    }
+  ]
+}
