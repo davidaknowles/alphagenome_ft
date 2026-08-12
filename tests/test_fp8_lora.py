@@ -18,6 +18,7 @@ from alphagenome_ft.custom_model import (
     _cast_runtime_backbone_params,
     _resolve_backbone_compute_dtype,
 )
+from alphagenome_ft.custom_heads import _FactorizedMultiOrganismLinear
 
 
 @pytest.mark.parametrize(
@@ -155,7 +156,13 @@ def test_locon_does_not_change_shared_lora_or_reserved_head_initialization():
                     )(x, is_training=True)
                     trunk = hk.Linear(3, with_bias=False, name="q_layer")(trunk)
             with head_rng_context, hk.name_scope("head"):
-                return hk.Linear(2, with_bias=False, name="output")(trunk)
+                full_output = hk.Linear(2, with_bias=False, name="output")(trunk)
+                factorized_output = _FactorizedMultiOrganismLinear(
+                    output_size=2,
+                    num_organisms=1,
+                    rank=1,
+                )(trunk, jnp.zeros((trunk.shape[0],), dtype=jnp.int32))
+                return full_output + factorized_output
 
         transformed = hk.transform_with_state(forward)
         x = jnp.ones((1, 8, 3), dtype=jnp.bfloat16)
@@ -177,6 +184,11 @@ def test_locon_does_not_change_shared_lora_or_reserved_head_initialization():
     assert jnp.array_equal(
         lora_params["head/output"]["w"], combo_params["head/output"]["w"]
     )
+    for name in ("factor_in_w", "factor_out_w", "b"):
+        assert jnp.array_equal(
+            lora_params["head/factorized_multi_organism_linear"][name],
+            combo_params["head/factorized_multi_organism_linear"][name],
+        )
     assert jnp.array_equal(lora_output, combo_output)
 
 
