@@ -704,10 +704,11 @@ def train(
     prefetch_batches: int = 2,
     profile_host_timing: bool = False,
     report_head_gradient_norms: bool = False,
+    evaluate_only: bool = False,
     start_epoch: int = 1,
     initial_global_step: int = 0,
     initial_optimizer_state_path: Path | None = None,
-) -> None:
+) -> dict[str, dict[str, dict[str, float]]] | None:
     """Run fine-tuning with pmapped train/eval steps.
 
     Args:
@@ -751,6 +752,8 @@ def train(
             work each epoch.
         report_head_gradient_norms: If True, measure each head's first-batch gradient
             norm on shared adapters and its own head parameters.
+        evaluate_only: If True, evaluate requested splits without optimizer updates or
+            model checkpoint writes and save ``evaluation.json`` when configured.
         start_epoch: One-indexed epoch at which to continue training. Values above
             one require prior metric history in ``checkpoint_dir``.
         initial_global_step: Number of optimizer updates completed before this call.
@@ -840,6 +843,7 @@ def train(
             "progress_interval": progress_interval,
             "prefetch_batches": prefetch_batches,
             "report_head_gradient_norms": report_head_gradient_norms,
+            "evaluate_only": evaluate_only,
             **(wandb_config or {}),
         }
         wandb.init(
@@ -1139,7 +1143,7 @@ def train(
     epochs_since_improvement = 0
     global_step = initial_global_step
     metrics_history_path = checkpoint_dir / "metrics.jsonl" if checkpoint_dir else None
-    if start_epoch > 1:
+    if start_epoch > 1 and not evaluate_only:
         if metrics_history_path is None or not metrics_history_path.exists():
             raise FileNotFoundError("Continuation requires existing checkpoint metric history.")
         prior_records = [
@@ -1268,6 +1272,29 @@ def train(
                     )
                 )
             return split_result
+
+        if evaluate_only:
+            evaluation = {
+                split: metrics
+                for split in requested_eval_splits
+                if (metrics := evaluate_split(split))
+            }
+            for split, metrics in evaluation.items():
+                printable = []
+                for head_name, head_result in metrics.items():
+                    printable.append(
+                        f"{head_name}: "
+                        f"loss={head_result['loss']:.4f}, "
+                        f"r2_global={head_result['r2_global']:.4f}, "
+                        f"r2_over_loci={head_result['r2_over_loci']:.4f}, "
+                        f"r2_over_cell_types={head_result['r2_over_cell_types']:.4f}, "
+                        f"differential_pearson_r={head_result['differential_pearson_r']:.4f}, "
+                        f"double_centered_r2={head_result['double_centered_r2']:.4f}"
+                    )
+                print(f"  {split.capitalize()} metrics:", "; ".join(printable))
+            if checkpoint_dir:
+                _write_json(checkpoint_dir / "evaluation.json", {"metrics": evaluation})
+            return evaluation
 
         gradient_diagnostics_reported = False
         for epoch in range(start_epoch, num_epochs + 1):

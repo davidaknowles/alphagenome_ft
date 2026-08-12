@@ -58,7 +58,7 @@ def test_gradient_norm_helpers_filter_parameter_paths():
     )
 
 
-def test_train_reports_per_head_gradient_norms_once(capsys):
+def test_train_reports_per_head_gradient_norms_once(capsys, tmp_path):
     from alphagenome.models import dna_model as ag_dna_model
 
     class DummyDataModule:
@@ -66,8 +66,8 @@ def test_train_reports_per_head_gradient_norms_once(capsys):
         _drop_last = False
         _intervals = {"train": [object()]}
 
-        def iter_batches(self, split, seed=None):
-            del split, seed
+        def iter_batches(self, split, seed=None, shuffle=True):
+            del split, seed, shuffle
             sequence = np.arange(4, dtype=np.float32).reshape(1, 4, 1)
             yield {
                 "sequences": sequence,
@@ -165,6 +165,33 @@ def test_train_reports_per_head_gradient_norms_once(capsys):
         rna["weighted_adapter_gradient_norm"],
         5.0 * rna["adapter_gradient_norm"],
     )
+
+    evaluation_model = DummyModel()
+    original_params = jax.tree_util.tree_map(np.asarray, evaluation_model._params)
+    evaluation = train(
+        evaluation_model,
+        DummyDataModule(),
+        specs,
+        learning_rate=1e-3,
+        weight_decay=0.0,
+        num_epochs=1,
+        heads_only=True,
+        train_lora=True,
+        checkpoint_dir=tmp_path / "evaluation",
+        eval_splits=("train",),
+        prefetch_batches=0,
+        evaluate_only=True,
+    )
+
+    assert set(evaluation) == {"train"}
+    assert (tmp_path / "evaluation" / "evaluation.json").exists()
+    for original, current in zip(
+        jax.tree_util.tree_leaves(original_params),
+        jax.tree_util.tree_leaves(evaluation_model._params),
+        strict=True,
+    ):
+        np.testing.assert_array_equal(current, original)
+    assert "Epoch 1/1" not in capsys.readouterr().out
 
 
 def test_optimizer_state_roundtrip(tmp_path):

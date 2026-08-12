@@ -312,6 +312,11 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Report each head's first-batch gradient norm on shared adapters and head parameters.",
     )
+    parser.add_argument(
+        "--evaluate-only",
+        action="store_true",
+        help="Evaluate a loaded checkpoint without optimizer updates or checkpoint writes.",
+    )
     parser.add_argument("--no-shuffle", action="store_true")
     parser.add_argument("--drop-last", action="store_true")
     parser.add_argument("--wandb-project", default=None)
@@ -932,7 +937,7 @@ def main() -> None:
         start_epoch = int(resume_record["epoch"]) + 1
         initial_global_step = int(resume_record["global_step"])
         optimizer_state_path = resume_from / "optimizer_state"
-        if optimizer_state_path.exists():
+        if optimizer_state_path.exists() and not args.evaluate_only:
             initial_optimizer_state_path = optimizer_state_path
         model = load_checkpoint(
             resume_from,
@@ -1014,6 +1019,7 @@ def main() -> None:
         prefetch_batches=args.prefetch_batches,
         profile_host_timing=args.profile_host_timing,
         report_head_gradient_norms=args.report_head_gradient_norms,
+        evaluate_only=args.evaluate_only,
         start_epoch=start_epoch,
         initial_global_step=initial_global_step,
         initial_optimizer_state_path=initial_optimizer_state_path,

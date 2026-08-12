@@ -78,6 +78,8 @@ Joint heads previously entered the optimization objective with equal scalar weig
 
 An optional first-batch gradient diagnostic measures each head's unweighted L2 gradient norm on shared LoRA and LoCon parameters and on its own head parameters. It also reports the configured-weight-adjusted shared norm and the pairwise cosine between heads' shared-adapter gradients. This provides a direct basis for loss balancing because raw likelihood values alone do not determine their relative influence on shared adapter updates.
 
+Evaluation-only runs load head and adapter parameters, execute requested splits, and write a separate evaluation record without optimizer updates or checkpoint writes. The four-species Zemke checkpoints are evaluated against each species' native reference and target manifest because the joint training loop's aggregate validation result pools observations across species.
+
 Final adapter comparisons are collated from each run's `metrics.jsonl`. One epoch is selected per run by the mean validation signed double-centered Pearson correlation across all heads, and every per-head validation and test value is reported from that same epoch. This preserves the joint checkpoint-selection contract and avoids selecting separate favorable epochs for ATAC and RNA.
 
 The Liu preparation keeps its target manifest with the generated exon RNA tracks and gene-level supervision under `outputs/v0data/liu-hdma/joint`. The generic joint launcher resolves this dataset-specific layout automatically; without that mapping it would look for a nonexistent parent-level manifest and fail before model construction.
