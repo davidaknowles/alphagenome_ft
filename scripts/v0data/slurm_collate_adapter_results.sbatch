@@ -26,4 +26,8 @@ mkdir -p logs/v0data results
   --json-output results/v0data_joint_species_evaluations.json \
   --markdown-output results/v0data_joint_species_evaluations.md
 
+"${HOME}/venv/torchfix/bin/python" scripts/v0data/collate_gradient_diagnostics.py \
+  --json-output results/v0data_gradient_diagnostics.json \
+  --markdown-output results/v0data_gradient_diagnostics.md
+
 echo "Regenerated canonical, screen, coverage, and native-species results."
