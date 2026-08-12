@@ -1,5 +1,7 @@
 # Lab Notebook
 
+The v0data endpoint is one model trained jointly across every retained non-ENCODE dataset, including Mannens HDA. The model must contain one shared AlphaGenome backbone and one shared adapter set; LoRA and LoRA plus LoCon are the two candidate shared adaptation strategies. Each study retains separate ATAC and RNA heads because channel identities, cell-group panels, and target scales are not interchangeable, while each input uses its native species reference and organism index. Dataset and species metrics remain separate for evaluation, and the final selection criterion is an aggregate of those metrics rather than a pooled observation-level statistic. Existing per-study and within-study multi-species runs are preprocessing, objective-selection, and baseline experiments, not final deliverables.
+
 ## Multi-study adapter comparison
 
 The fine-tuning comparison uses signed double-centered Pearson correlation, (R), for checkpoint selection. For a prediction matrix (Y \in \mathbb{R}^{L \times C}), (L) is the number of genomic loci and (C) is the number of target channels. Predictions and targets are centered over loci and channels before their Pearson correlation is calculated. This is not the global coefficient of determination reported by some earlier runs. Validation now records a mean of each metric across heads so joint ATAC and ribonucleic-acid, RNA, runs do not select checkpoints from only the first head.
