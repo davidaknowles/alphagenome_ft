@@ -153,3 +153,14 @@ def test_hda_factorized_rna_screen_changes_only_the_rna_projection() -> None:
     assert 'rank="${RNA_OUTPUT_RANK:-16}"' in script
     assert '--nice="${NICE:-100}"' in script
     assert 'dependency="afterok:${smoke}_*"' in script
+
+
+def test_zemke_direct_gene_screen_requires_complete_target_agreement() -> None:
+    script = Path("scripts/v0data/submit_zemke2023_direct_gene_screen.sh").read_text()
+
+    assert "v0data_zemke2023_gene_target_agreement.json" in script
+    assert "(.species | length) == 4" in script
+    assert ".raw_cpm_double_centered_r >= $minimum" in script
+    assert "zemke2023-gene-supervision/human/targets.json" in script
+    assert "CORRELATION_LOSS_WEIGHT=${weight}" in script
+    assert 'dependency="afterok:${smoke}_*"' in script

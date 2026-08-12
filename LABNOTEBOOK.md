@@ -351,3 +351,5 @@ Zemke 2023 provides raw integer gene-by-cell unique-molecular-identifier matrice
 The four-species Zemke 2023 direct-gene target build was submitted as CPU array 19796605, with two concurrent species tasks. Each task writes a species-native supervision artifact and derived manifest; no model training depends on these outputs until all channel, annotation, and CPM invariants pass.
 
 Cross-representation agreement job 19796940 depends on successful completion of every task in array 19796605. It samples 512 genes per species, integrates the published RPKM signal over union exons, converts the integral to CPM scale, and requires raw signed double-centered correlation of at least 0.7. GPU screening remains unsubmitted until this gate passes.
+
+The dormant downstream launcher validates that all four named species are present in the agreement artifact and exceed its recorded threshold. Only then can it submit a matched human one-epoch screen with direct RNA gene supervision and correlation weight 10, preserving the published coordinate losses. This ordering prevents a convenient but biologically conflicting target matrix from consuming GPU time.
