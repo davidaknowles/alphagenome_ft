@@ -51,6 +51,22 @@ def test_neural_source_valid_filters_metadata_and_renal_cortex() -> None:
     assert actual == (True, True, False, True, True, False, False)
 
 
+def test_neural_source_candidate_mask_does_not_apply_diversity_fallback() -> None:
+    source = pd.DataFrame(
+        {
+            "strand": (".", ".", "."),
+            "biosample_name": ("motor neuron", "liver", "heart"),
+        }
+    )
+
+    actual = custom_model._neural_source_candidate_mask(
+        source,
+        source_valid=(True, True, False),
+    )
+
+    assert actual == (True, False, False)
+
+
 def test_neural_source_valid_falls_back_when_pool_lacks_diversity() -> None:
     source = pd.DataFrame(
         {

@@ -431,14 +431,12 @@ _NEURAL_TARGET_TERMS = (
 )
 
 
-def _neural_source_valid(
+def _neural_source_candidate_mask(
     source_frame,
     *,
     source_valid: Sequence[bool],
-    target_strands: Sequence[str],
-    minimum_per_strand: int = 2,
 ) -> tuple[bool, ...]:
-    """Restrict source tracks to neural metadata when the pool stays diverse."""
+    """Identify valid pretrained channels with neural source metadata."""
     searchable_columns = tuple(
         column
         for column in ("name", "biosample_name", "gtex_tissue")
@@ -461,6 +459,21 @@ def _neural_source_valid(
             non_neural_cortex,
             strict=True,
         )
+    )
+    return candidate
+
+
+def _neural_source_valid(
+    source_frame,
+    *,
+    source_valid: Sequence[bool],
+    target_strands: Sequence[str],
+    minimum_per_strand: int = 2,
+) -> tuple[bool, ...]:
+    """Restrict source tracks to neural metadata when the pool stays diverse."""
+    candidate = _neural_source_candidate_mask(
+        source_frame,
+        source_valid=source_valid,
     )
     source_strands = tuple(source_frame["strand"].astype(str))
     for strand in set(map(str, target_strands)):

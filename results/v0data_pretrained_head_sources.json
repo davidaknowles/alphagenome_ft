@@ -1,0 +1,142 @@
+{
+  "organisms": [
+    {
+      "organism": "HOMO_SAPIENS",
+      "assays": [
+        {
+          "assay": "atac",
+          "valid_channels": 167,
+          "neural_channels": 1,
+          "valid_by_strand": {
+            ".": 167
+          },
+          "neural_by_strand": {
+            ".": 1
+          },
+          "neural_labels": [
+            "motor neuron"
+          ]
+        },
+        {
+          "assay": "rna_seq",
+          "valid_channels": 667,
+          "neural_channels": 41,
+          "valid_by_strand": {
+            "+": 271,
+            "-": 271,
+            ".": 125
+          },
+          "neural_by_strand": {
+            "+": 13,
+            "-": 13,
+            ".": 15
+          },
+          "neural_labels": [
+            "neuronal stem cell",
+            "astrocyte",
+            "glutamatergic neuron",
+            "neural cell",
+            "neural crest cell",
+            "neural progenitor cell",
+            "brain",
+            "frontal cortex",
+            "cerebellum",
+            "cerebellum",
+            "spinal cord",
+            "spinal cord",
+            "dorsolateral prefrontal cortex",
+            "neuronal stem cell",
+            "astrocyte",
+            "glutamatergic neuron",
+            "neural cell",
+            "neural crest cell",
+            "neural progenitor cell",
+            "brain",
+            "frontal cortex",
+            "cerebellum",
+            "cerebellum",
+            "spinal cord",
+            "spinal cord",
+            "dorsolateral prefrontal cortex",
+            "motor neuron",
+            "frontal cortex",
+            "caudate nucleus",
+            "putamen",
+            "amygdala",
+            "nucleus accumbens",
+            "hypothalamus",
+            "Ammon's horn",
+            "cerebellum",
+            "substantia nigra",
+            "spinal cord",
+            "cerebellar hemisphere",
+            "C1 segment of cervical spinal cord",
+            "dorsolateral prefrontal cortex",
+            "anterior cingulate cortex"
+          ]
+        }
+      ]
+    },
+    {
+      "organism": "MUS_MUSCULUS",
+      "assays": [
+        {
+          "assay": "atac",
+          "valid_channels": 18,
+          "neural_channels": 4,
+          "valid_by_strand": {
+            ".": 18
+          },
+          "neural_by_strand": {
+            ".": 4
+          },
+          "neural_labels": [
+            "neural tube",
+            "forebrain",
+            "midbrain",
+            "hindbrain"
+          ]
+        },
+        {
+          "assay": "rna_seq",
+          "valid_channels": 173,
+          "neural_channels": 22,
+          "valid_by_strand": {
+            "+": 71,
+            "-": 71,
+            ".": 31
+          },
+          "neural_by_strand": {
+            "+": 8,
+            "-": 8,
+            ".": 6
+          },
+          "neural_labels": [
+            "left cerebral cortex",
+            "brain",
+            "frontal cortex",
+            "forebrain",
+            "midbrain",
+            "hindbrain",
+            "cerebellum",
+            "layer of hippocampus",
+            "left cerebral cortex",
+            "brain",
+            "frontal cortex",
+            "forebrain",
+            "midbrain",
+            "hindbrain",
+            "cerebellum",
+            "layer of hippocampus",
+            "left cerebral cortex",
+            "neural tube",
+            "forebrain",
+            "midbrain",
+            "hindbrain",
+            "layer of hippocampus"
+          ]
+        }
+      ]
+    }
+  ]
+}
