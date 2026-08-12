@@ -86,8 +86,8 @@ def main() -> None:
         "schema_version": 1,
         "selection_status": "provisional canonical targets pending objective screens",
         "sampling": (
-            "equal optimizer updates per dataset; equal round-robin native-source "
-            "updates within each dataset; shorter iterators cycle without discarding windows"
+            "equal optimizer updates per dataset using the largest single-source batch "
+            "count as the epoch budget; round-robin native-source updates within each dataset"
         ),
         "datasets": [
             {

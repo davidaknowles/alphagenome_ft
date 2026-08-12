@@ -1847,11 +1847,10 @@ class MultiSpeciesDataModule:
 class MultiDatasetDataModule:
     """Balanced batches from heterogeneous datasets with dataset-specific heads.
 
-    Training visits every batch from the largest native source in each dataset,
-    cycles shorter sources within that dataset, and then cycles shorter datasets
-    so each dataset contributes the same number of optimizer updates. Evaluation
-    visits every source batch exactly once. Routing fields prefixed with an
-    underscore are host metadata and are not copied to a JAX device.
+    Training gives each dataset the same global single-source batch budget and
+    alternates native sources within a dataset. Short sources cycle when needed.
+    Evaluation visits every source batch exactly once. Routing fields prefixed
+    with an underscore are host metadata and are not copied to a JAX device.
     """
 
     def __init__(
@@ -1920,13 +1919,22 @@ class MultiDatasetDataModule:
             for module in self._datasets[dataset].values()
         ]
         if split == "train":
-            return max(counts, default=0) * len(counts)
+            return max(counts, default=0)
         return sum(counts)
+
+    def _train_batches_per_dataset(self) -> int:
+        return max(
+            (
+                self._module_batch_count(module, "train")
+                for module in self._modules.values()
+            ),
+            default=0,
+        )
 
     def num_batches_per_epoch(self, split: str) -> int:
         counts = [self._dataset_batch_count(dataset, split) for dataset in self._datasets]
         if split == "train":
-            return max(counts, default=0) * len(counts)
+            return self._train_batches_per_dataset() * len(counts)
         return sum(counts)
 
     def num_examples_per_epoch(self, split: str) -> int:
@@ -1997,11 +2005,7 @@ class MultiDatasetDataModule:
                     active = next_active
             return
 
-        dataset_counts = {
-            dataset: self._dataset_batch_count(dataset, split)
-            for dataset in self._datasets
-        }
-        target_count = max(dataset_counts.values(), default=0)
+        target_count = self._train_batches_per_dataset()
         if target_count == 0:
             return
         source_positions = {dataset: 0 for dataset in self._datasets}

@@ -50,17 +50,14 @@ def test_multidataset_training_balances_datasets_and_native_sources():
 
     batches = list(module.iter_batches("train", seed=7))
 
-    assert module.num_batches_per_epoch("train") == 12
-    assert len(batches) == 12
-    assert [batch["_dataset_name"] for batch in batches].count("hda") == 6
-    assert [batch["_dataset_name"] for batch in batches].count("zemke") == 6
+    assert module.num_batches_per_epoch("train") == 6
+    assert len(batches) == 6
+    assert [batch["_dataset_name"] for batch in batches].count("hda") == 3
+    assert [batch["_dataset_name"] for batch in batches].count("zemke") == 3
     assert [batch["_source_name"] for batch in batches if batch["_dataset_name"] == "zemke"] == [
         "zemke_human",
         "zemke_mouse",
         "zemke_human",
-        "zemke_mouse",
-        "zemke_human",
-        "zemke_mouse",
     ]
     assert batches[0]["_active_head_names"] == ("hda_atac", "hda_rna")
     assert batches[1]["_active_head_names"] == ("zemke_atac", "zemke_rna")
