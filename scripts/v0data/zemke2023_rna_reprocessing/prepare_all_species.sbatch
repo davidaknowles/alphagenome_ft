@@ -38,4 +38,5 @@ expression_root="$study_root/cell_expression/by_species/$name"
   --gtf "outputs/v0data/zemke2023-gene-supervision/annotations/${assembly}.ncbiRefSeq.gtf.gz" \
   --fasta "${fastas[$index]}" \
   --output-dir "outputs/v0data/zemke2023-gene-supervision/$name" \
-  --species "$name"
+  --species "$name" \
+  --unsupported-group L5_IT

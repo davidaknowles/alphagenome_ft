@@ -115,3 +115,58 @@ def test_prepare_gene_supervision_preserves_tracks_and_adds_raw_cpm(tmp_path: Pa
         assert np.allclose(supervision["cpm"][1], [0, 6 / 10 * 1e6])
     assert manifest["excluded_groups"] == {"ChC": 1}
     assert manifest["matched_genes"] == 2
+
+
+def test_prepare_gene_supervision_masks_explicitly_unsupported_group(tmp_path: Path):
+    matrix = sparse.coo_matrix(np.asarray([[4, 6]], dtype=np.int64))
+    matrix_path = tmp_path / "matrix.mtx"
+    io.mmwrite(matrix_path, matrix)
+    barcodes = tmp_path / "barcodes.tsv.gz"
+    features = tmp_path / "features.tsv.gz"
+    metadata = tmp_path / "metadata.tsv.gz"
+    _write_gzip(barcodes, "cell1\ncell2\n")
+    _write_gzip(features, "Gene.1\n")
+    _write_gzip(metadata, "cell\tsubclass\ncell1\tA\ncell2\tA\n")
+    targets = tmp_path / "targets.json"
+    targets.write_text(
+        json.dumps(
+            {
+                "heads": [
+                    {
+                        "id": "rna",
+                        "kind": "rna_seq",
+                        "targets": [
+                            {"label": "A", "path": "a.bw"},
+                            {"label": "unreleased", "path": "unreleased.bw"},
+                        ],
+                    }
+                ]
+            }
+        )
+    )
+    fasta = tmp_path / "genome.fa"
+    fasta.write_text(">chr1\n" + "A" * 1000 + "\n")
+    gtf = tmp_path / "genes.gtf"
+    gtf.write_text(
+        'chr1\ttest\texon\t11\t20\t.\t+\t.\tgene_id "Gene.1"; gene_name "Gene.1";\n'
+    )
+
+    manifest = prepare_gene_supervision(
+        matrix_path=matrix_path,
+        barcode_path=barcodes,
+        feature_path=features,
+        metadata_path=metadata,
+        targets_path=targets,
+        gtf_path=gtf,
+        fasta_path=fasta,
+        output_dir=tmp_path / "output",
+        species="test",
+        unsupported_groups=("unreleased",),
+    )
+
+    with np.load(manifest["gene_supervision"]) as supervision:
+        assert supervision["groups"].tolist() == ["A", "unreleased"]
+        assert supervision["group_valid"].tolist() == [True, False]
+        assert supervision["cpm"][:, 0].tolist() == [1_000_000.0, 0.0]
+    assert manifest["direct_gene_groups"] == ["A"]
+    assert manifest["unsupported_direct_gene_groups"] == ["unreleased"]

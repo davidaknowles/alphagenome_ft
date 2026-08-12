@@ -85,12 +85,19 @@ def audit_species(
         if groups != target_groups:
             raise ValueError(f"{species} gene groups do not match RNA target order.")
         cpm = np.asarray(supervision["cpm"], dtype=np.float64)
+        group_valid = (
+            np.asarray(supervision["group_valid"], dtype=bool)
+            if "group_valid" in supervision
+            else np.ones((len(groups),), dtype=bool)
+        )
         chromosomes = supervision["chromosomes"].astype(str)
         exon_offsets = np.asarray(supervision["exon_offsets"], dtype=np.int64)
         exon_starts = np.asarray(supervision["exon_starts"], dtype=np.int64)
         exon_ends = np.asarray(supervision["exon_ends"], dtype=np.int64)
     if cpm.shape[0] != len(groups) or cpm.shape[1] != len(chromosomes):
         raise ValueError(f"{species} supervision arrays have inconsistent dimensions.")
+    if group_valid.shape != (len(groups),) or not np.any(group_valid):
+        raise ValueError(f"{species} has invalid direct-gene group validity.")
     eligible = np.flatnonzero(np.diff(exon_offsets) > 0)
     if not len(eligible):
         raise ValueError(f"{species} has no annotated genes.")
@@ -108,15 +115,19 @@ def audit_species(
                 exon_ends=exon_ends,
                 indices=indices,
             )
-            for target in rna_head["targets"]
+            for target, valid in zip(rna_head["targets"], group_valid, strict=True)
+            if valid
         ],
         axis=1,
     )
-    direct = cpm[:, indices].T
+    direct = cpm[group_valid][:, indices].T
     return {
         "species": species,
         "sampled_genes": len(indices),
-        "groups": len(groups),
+        "groups": int(np.sum(group_valid)),
+        "unsupported_groups": [
+            group for group, valid in zip(groups, group_valid, strict=True) if not valid
+        ],
         "raw_cpm_double_centered_r": double_centered_r(direct, integrated),
         "log1p_double_centered_r": double_centered_r(
             np.log1p(direct), np.log1p(integrated)

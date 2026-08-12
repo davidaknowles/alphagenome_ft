@@ -103,6 +103,7 @@ def prepare_gene_supervision(
     species: str,
     minimum_gene_coverage: float = 0.5,
     correlation_loss_weight: float | None = None,
+    unsupported_groups: tuple[str, ...] = (),
 ) -> dict[str, Any]:
     """Aggregate raw counts and write a target manifest with direct gene supervision."""
     if not 0 < minimum_gene_coverage <= 1:
@@ -114,29 +115,45 @@ def prepare_gene_supervision(
     target_groups = tuple(str(target["label"]) for target in rna_head["targets"])
     if len(set(target_groups)) != len(target_groups):
         raise ValueError("RNA target labels must be unique.")
+    unsupported = set(unsupported_groups)
+    unknown_unsupported = unsupported - set(target_groups)
+    if unknown_unsupported:
+        raise ValueError(
+            f"Unsupported groups are not published targets: {sorted(unknown_unsupported)}."
+        )
+    supported_groups = tuple(group for group in target_groups if group not in unsupported)
+    if not supported_groups:
+        raise ValueError("At least one published group must retain direct-gene supervision.")
 
     barcode_groups, excluded_groups = read_barcode_groups(
         metadata_path,
-        target_groups=target_groups,
+        target_groups=supported_groups,
     )
-    counts = aggregate_matrix_market_by_group(
+    supported_counts = aggregate_matrix_market_by_group(
         matrix_path,
         barcode_path,
         barcode_groups,
-        target_groups,
+        supported_groups,
     )
     feature_ids = read_10x_features(feature_path)
-    if counts.shape != (len(target_groups), len(feature_ids)):
+    if supported_counts.shape != (len(supported_groups), len(feature_ids)):
         raise ValueError(
-            f"Aggregated count shape {counts.shape} does not match "
-            f"{len(target_groups)} groups and {len(feature_ids)} features."
+            f"Aggregated count shape {supported_counts.shape} does not match "
+            f"{len(supported_groups)} supported groups and {len(feature_ids)} features."
         )
     if len(set(feature_ids)) != len(feature_ids):
         raise ValueError("Expression feature identifiers must be unique.")
+    supported_cpm = normalize_counts_per_million(supported_counts)
+    cpm = np.zeros((len(target_groups), len(feature_ids)), dtype=np.float32)
+    supported_index = {group: index for index, group in enumerate(supported_groups)}
+    group_valid = np.asarray([group in supported_index for group in target_groups])
+    for output_index, group in enumerate(target_groups):
+        if group_valid[output_index]:
+            cpm[output_index] = supported_cpm[supported_index[group]]
     expression = PseudobulkExpression(
         groups=target_groups,
         gene_ids=feature_ids,
-        cpm=normalize_counts_per_million(counts),
+        cpm=cpm,
     )
     chromosome_sizes = build_fasta_index(fasta_path)
     genes = read_gene_exons(
@@ -160,6 +177,7 @@ def prepare_gene_supervision(
         expression,
         genes=genes,
         strip_gene_versions=False,
+        group_valid=group_valid,
     )
     output_config = copy.deepcopy(config)
     output_rna_head = _rna_head(output_config)
@@ -191,6 +209,8 @@ def prepare_gene_supervision(
         "fasta": str(fasta_path.resolve()),
         "normalization": "raw UMI counts summed by subclass, then counts per million",
         "published_groups": list(target_groups),
+        "direct_gene_groups": list(supported_groups),
+        "unsupported_direct_gene_groups": sorted(unsupported),
         "cells_per_group": group_counts,
         "excluded_groups": excluded_groups,
         "input_genes": len(feature_ids),
@@ -219,6 +239,7 @@ def main() -> None:
     parser.add_argument("--species", required=True)
     parser.add_argument("--minimum-gene-coverage", type=float, default=0.5)
     parser.add_argument("--correlation-loss-weight", type=float)
+    parser.add_argument("--unsupported-group", action="append", default=[])
     args = parser.parse_args()
     manifest = prepare_gene_supervision(
         matrix_path=args.matrix.expanduser().resolve(),
@@ -232,6 +253,7 @@ def main() -> None:
         species=args.species,
         minimum_gene_coverage=args.minimum_gene_coverage,
         correlation_loss_weight=args.correlation_loss_weight,
+        unsupported_groups=tuple(args.unsupported_group),
     )
     print(json.dumps(manifest, indent=2))
 
