@@ -127,14 +127,15 @@
       "completed_epochs": {
         "lora": [
           1,
-          2
+          2,
+          3
         ],
         "lora+locon": [
           1,
           2
         ]
       },
-      "latest_lora_epoch": 2,
+      "latest_lora_epoch": 3,
       "latest_lora_locon_epoch": 2,
       "highest_matched_epoch": 2,
       "status": "matched result available"
