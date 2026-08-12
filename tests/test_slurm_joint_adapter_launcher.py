@@ -254,6 +254,20 @@ def test_liu_exon_window_screen_is_lora_only_and_staged() -> None:
     assert script.count("EVALUATE_ONLY=1") == 2
 
 
+def test_zemke_published_row_screen_has_ordering_control_and_coordinate_eval() -> None:
+    script = Path(
+        "scripts/v0data/submit_zemke2023_published_row_correlation_screen.sh"
+    ).read_text()
+
+    assert 'weights_string="${ROW_WEIGHTS:-0;1;10}"' in script
+    assert "--double-centered-weight 0" in script
+    assert "BALANCE_GENE_WINDOWS=1" in script
+    assert script.count("--array=0") == 3
+    assert "zemke2023-species/human/targets.json" in script
+    assert "EVALUATE_ONLY=1" in script
+    assert 'dependency="afterok:${full}_0"' in script
+
+
 def test_jax_launchers_expose_learning_rate_schedule() -> None:
     for path in LAUNCHERS:
         script = Path(path).read_text()

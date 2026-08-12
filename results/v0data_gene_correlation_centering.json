@@ -279,6 +279,62 @@
       },
       "balanced_fraction_batches_without_genes": 0.08298575263266571,
       "balanced_fraction_batches_without_local_double_centered_variance": 0.5805285979764608
+    },
+    "Zemke2023-published-human": {
+      "gene_supervision": "outputs/v0data/zemke2023-published-gene-supervision/human/gene_expression_supervision.npz",
+      "groups": 20,
+      "training_genes": 15033,
+      "training_windows": 20952,
+      "training_windows_with_genes": 7078,
+      "fraction_training_windows_with_genes": 0.33781977854142803,
+      "batch_size_windows": 8,
+      "shuffle_repeats": 10,
+      "row_vs_global_double_centered_cosine": 0.999931089400735,
+      "global_double_centered_variance_fraction_of_row_centered": 0.9998621835501403,
+      "local_vs_global_double_centered_cosine": {
+        "minimum": 2.2461569421839508e-05,
+        "p10": 0.5762245022700346,
+        "p25": 0.749231741555922,
+        "median": 0.863690026266791,
+        "p75": 0.9215626026778592,
+        "p90": 0.9503787946087899,
+        "maximum": 0.9942776812473847,
+        "mean": 0.7969655031732095
+      },
+      "genes_per_batch": {
+        "minimum": 0.0,
+        "p10": 1.0,
+        "p25": 3.0,
+        "median": 5.0,
+        "p75": 7.0,
+        "p90": 10.0,
+        "maximum": 76.0,
+        "mean": 5.357388316151202
+      },
+      "fraction_batches_without_genes": 0.03573883161512027,
+      "fraction_batches_without_local_double_centered_variance": 0.08411607483772432,
+      "balanced_local_vs_global_double_centered_cosine": {
+        "minimum": 4.9821810975887596e-05,
+        "p10": 0.6965696066051404,
+        "p25": 0.8164670036616846,
+        "median": 0.8763223701879895,
+        "p75": 0.9032989439675012,
+        "p90": 0.9276421238874187,
+        "maximum": 0.9843362636638202,
+        "mean": 0.8220082328290822
+      },
+      "balanced_genes_per_batch": {
+        "minimum": 5.0,
+        "p10": 5.0,
+        "p25": 5.0,
+        "median": 5.0,
+        "p75": 5.0,
+        "p90": 6.0,
+        "maximum": 69.0,
+        "mean": 5.357388316151202
+      },
+      "balanced_fraction_batches_without_genes": 0.0,
+      "balanced_fraction_batches_without_local_double_centered_variance": 0.002787323405880107
     }
   }
 }

@@ -73,6 +73,9 @@ if [[ -n "${CORRELATION_LOSS_WEIGHT:-}" ]]; then
     --double-centered-correlation-loss-weight "${CORRELATION_LOSS_WEIGHT}"
   )
 fi
+if [[ "${BALANCE_GENE_WINDOWS:-0}" == "1" ]]; then
+  EXTRA_ARGS+=(--balance-gene-windows)
+fi
 
 "${HOME}/venv/jax/bin/python" scripts/run_humanbraindev_finetune.py \
   --targets-config "$targets" \
