@@ -20,5 +20,6 @@ export LD_LIBRARY_PATH="/nfs/sw/easybuild/software/Python/3.12.3-GCCcore-13.3.0/
   results/v0data_zemke2023_mouse_rna_donor_reliability.json \
   --expected-species human,macaque,marmoset,mouse \
   --title "Zemke 2023 RNA donor reliability" \
+  --qualification "These values characterize the raw-UMI direct-gene auxiliary target. The reported model RNA metric uses released coordinate-resolved RPKM tracks, so these ceilings do not apply directly to that metric." \
   --json-output results/v0data_zemke2023_rna_donor_reliability.json \
   --markdown-output results/v0data_zemke2023_rna_donor_reliability.md

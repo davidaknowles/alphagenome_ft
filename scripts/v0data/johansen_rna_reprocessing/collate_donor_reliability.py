@@ -41,15 +41,22 @@ def render_markdown(
     result: dict[str, Any],
     *,
     title: str = "Johansen RNA donor reliability",
+    qualification: str | None = None,
 ) -> str:
     lines = [
         f"# {title}",
         "",
         "Raw unique molecular identifier counts are aggregated separately by donor and retained cell group. Donors are assigned within each group to library-depth-balanced halves, and each half is normalized to counts per million, CPM. Full reliability uses the Spearman-Brown correction. The model correlation ceiling is the square root of reliability under a classical independent measurement-error assumption; it is not an observed model result.",
         "",
-        "| Species | Donors | Estimable groups | Genes | Split-half raw CPM R | Full reliability | Estimated model R ceiling | Split-half log1p CPM R |",
-        "|---|---:|---:|---:|---:|---:|---:|---:|",
     ]
+    if qualification:
+        lines.extend((qualification, ""))
+    lines.extend(
+        (
+            "| Species | Donors | Estimable groups | Genes | Split-half raw CPM R | Full reliability | Estimated model R ceiling | Split-half log1p CPM R |",
+            "|---|---:|---:|---:|---:|---:|---:|---:|",
+        )
+    )
     for audit in result["audits"]:
         lines.append(
             f"| {audit['species']} | {audit['donors']} | "
@@ -73,6 +80,7 @@ def main() -> None:
         help="Comma-separated species in output order.",
     )
     parser.add_argument("--title", default="Johansen RNA donor reliability")
+    parser.add_argument("--qualification")
     args = parser.parse_args()
     expected_species = tuple(
         species.strip() for species in args.expected_species.split(",") if species.strip()
@@ -81,7 +89,13 @@ def main() -> None:
     args.json_output.parent.mkdir(parents=True, exist_ok=True)
     args.markdown_output.parent.mkdir(parents=True, exist_ok=True)
     args.json_output.write_text(json.dumps(result, indent=2) + "\n")
-    args.markdown_output.write_text(render_markdown(result, title=args.title))
+    args.markdown_output.write_text(
+        render_markdown(
+            result,
+            title=args.title,
+            qualification=args.qualification,
+        )
+    )
 
 
 if __name__ == "__main__":
