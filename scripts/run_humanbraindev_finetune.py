@@ -597,6 +597,20 @@ def main() -> None:
             for spec in head_specs
         ]
     validate_head_specs(head_specs)
+    active_coverage_tracks = sum(
+        len(spec.tracks)
+        for spec in head_specs
+        if spec.gene_supervision_path is None or spec.coverage_loss_weight > 0
+    )
+    gene_only_heads = [
+        spec.head_id
+        for spec in head_specs
+        if spec.gene_supervision_path is not None and spec.coverage_loss_weight == 0
+    ]
+    print(
+        f"Active coverage supervision: {active_coverage_tracks} BigWig track(s); "
+        f"gene-only heads: {gene_only_heads or 'none'}."
+    )
     register_predefined_heads(head_specs)
 
     if species_entries is not None:
