@@ -1,0 +1,57 @@
+import json
+from pathlib import Path
+
+import numpy as np
+import pyBigWig
+
+from scripts.v0data.audit_target_differential_signal import audit_manifest
+
+
+def _write_bigwig(path: Path, values: np.ndarray) -> None:
+    starts = np.arange(values.size, dtype=np.int64) * 10
+    with pyBigWig.open(str(path), "w") as handle:
+        handle.addHeader([("chr1", int(values.size * 10))])
+        handle.addEntries(
+            ["chr1"] * values.size,
+            starts.tolist(),
+            ends=(starts + 10).tolist(),
+            values=values.astype(float).tolist(),
+        )
+
+
+def test_audit_manifest_reports_finite_differential_signal(tmp_path: Path) -> None:
+    positions = np.arange(100, dtype=np.float64)
+    paths = [tmp_path / f"track_{index}.bw" for index in range(3)]
+    _write_bigwig(paths[0], 1.0 + positions % 7)
+    _write_bigwig(paths[1], 2.0 + positions % 5)
+    _write_bigwig(paths[2], 3.0 + positions % 3)
+    manifest_path = tmp_path / "targets.json"
+    manifest_path.write_text(
+        json.dumps(
+            {
+                "dataset": "synthetic",
+                "heads": [
+                    {
+                        "id": "atac",
+                        "kind": "atac",
+                        "targets": [{"path": str(path)} for path in paths],
+                    }
+                ],
+            }
+        )
+    )
+
+    result = audit_manifest(
+        manifest_path,
+        num_windows=2,
+        window_size=100,
+        num_bins=10,
+        excluded_chromosomes=set(),
+        seed=3,
+    )
+
+    head = result["heads"][0]
+    assert head["num_tracks"] == 3
+    assert head["num_observations"] == 20
+    assert 0 < head["double_centered_variance_fraction"] <= 1
+    assert np.isfinite(head["median_pairwise_track_correlation"])

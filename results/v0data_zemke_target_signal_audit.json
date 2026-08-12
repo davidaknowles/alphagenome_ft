@@ -1,0 +1,128 @@
+{
+  "audits": [
+    {
+      "manifest": "outputs/v0data/zemke2023-human/targets.json",
+      "dataset": "zemke2023-human",
+      "num_windows": 32,
+      "window_size": 131072,
+      "num_bins_per_window": 1024,
+      "heads": [
+        {
+          "id": "zemke2023_atac",
+          "kind": "atac",
+          "num_tracks": 20,
+          "num_observations": 32768,
+          "nonzero_fraction": 0.78372802734375,
+          "standard_deviation": 12.30370716202922,
+          "double_centered_standard_deviation": 8.58727523136176,
+          "double_centered_variance_fraction": 0.48712317687089396,
+          "median_pairwise_track_correlation": 0.7631889745640285
+        },
+        {
+          "id": "zemke2023_rna",
+          "kind": "rna_seq",
+          "num_tracks": 20,
+          "num_observations": 32768,
+          "nonzero_fraction": 0.28770904541015624,
+          "standard_deviation": 4.99572287714138,
+          "double_centered_standard_deviation": 3.806651079715431,
+          "double_centered_variance_fraction": 0.5806166202885312,
+          "median_pairwise_track_correlation": 0.6982213025908098
+        }
+      ]
+    },
+    {
+      "manifest": "outputs/v0data/zemke2023-macaque/targets.json",
+      "dataset": "zemke2023-macaque",
+      "num_windows": 32,
+      "window_size": 131072,
+      "num_bins_per_window": 1024,
+      "heads": [
+        {
+          "id": "zemke2023_atac",
+          "kind": "atac",
+          "num_tracks": 20,
+          "num_observations": 32768,
+          "nonzero_fraction": 0.7306686401367187,
+          "standard_deviation": 10.636669554984511,
+          "double_centered_standard_deviation": 5.361478733328408,
+          "double_centered_variance_fraction": 0.25407260506540863,
+          "median_pairwise_track_correlation": 0.8052012613061534
+        },
+        {
+          "id": "zemke2023_rna",
+          "kind": "rna_seq",
+          "num_tracks": 20,
+          "num_observations": 32768,
+          "nonzero_fraction": 0.31849365234375,
+          "standard_deviation": 13.518653226394026,
+          "double_centered_standard_deviation": 7.503656294246437,
+          "double_centered_variance_fraction": 0.308090998754895,
+          "median_pairwise_track_correlation": 0.7091839705688057
+        }
+      ]
+    },
+    {
+      "manifest": "outputs/v0data/zemke2023-marmoset/targets.json",
+      "dataset": "zemke2023-marmoset",
+      "num_windows": 32,
+      "window_size": 131072,
+      "num_bins_per_window": 1024,
+      "heads": [
+        {
+          "id": "zemke2023_atac",
+          "kind": "atac",
+          "num_tracks": 20,
+          "num_observations": 32768,
+          "nonzero_fraction": 0.8555450439453125,
+          "standard_deviation": 6.392991084705809,
+          "double_centered_standard_deviation": 3.2092183125943925,
+          "double_centered_variance_fraction": 0.25199407285482267,
+          "median_pairwise_track_correlation": 0.7822179236836497
+        },
+        {
+          "id": "zemke2023_rna",
+          "kind": "rna_seq",
+          "num_tracks": 20,
+          "num_observations": 32768,
+          "nonzero_fraction": 0.313531494140625,
+          "standard_deviation": 6.540986557448559,
+          "double_centered_standard_deviation": 3.91277631190366,
+          "double_centered_variance_fraction": 0.3578355859254994,
+          "median_pairwise_track_correlation": 0.8360268933190274
+        }
+      ]
+    },
+    {
+      "manifest": "outputs/v0data/zemke2023-mouse/targets.json",
+      "dataset": "zemke2023-mouse",
+      "num_windows": 32,
+      "window_size": 131072,
+      "num_bins_per_window": 1024,
+      "heads": [
+        {
+          "id": "zemke2023_atac",
+          "kind": "atac",
+          "num_tracks": 20,
+          "num_observations": 32768,
+          "nonzero_fraction": 0.8002593994140625,
+          "standard_deviation": 10.654134015384688,
+          "double_centered_standard_deviation": 6.294011455911718,
+          "double_centered_variance_fraction": 0.34899463232853506,
+          "median_pairwise_track_correlation": 0.7236280412228036
+        },
+        {
+          "id": "zemke2023_rna",
+          "kind": "rna_seq",
+          "num_tracks": 20,
+          "num_observations": 32768,
+          "nonzero_fraction": 0.26068878173828125,
+          "standard_deviation": 7.822671593263637,
+          "double_centered_standard_deviation": 5.0678057227611735,
+          "double_centered_variance_fraction": 0.4196910602848531,
+          "median_pairwise_track_correlation": 0.7383100558276647
+        }
+      ]
+    }
+  ]
+}
