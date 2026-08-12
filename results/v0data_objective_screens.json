@@ -2,6 +2,48 @@
   "selection_metric": "mean valid differential_pearson_r",
   "runs": [
     {
+      "dataset": "hda-joint",
+      "strategy": "lora",
+      "variant": "rnaw5",
+      "selected_epoch": 1,
+      "global_step": 2619,
+      "selection_mean_valid_r": 0.5923746967595291,
+      "heads": [
+        {
+          "head": "hda_atac",
+          "valid_r": 0.7537664093350033,
+          "test_r": 0.76450698436739
+        },
+        {
+          "head": "hda_rna",
+          "valid_r": 0.4309829841840551,
+          "test_r": 0.597641953519487
+        }
+      ],
+      "metrics_path": "checkpoints/v0data/hda-joint_lora_rnaw5/metrics.jsonl"
+    },
+    {
+      "dataset": "zemke2023-human",
+      "strategy": "lora",
+      "variant": "corrw10",
+      "selected_epoch": 1,
+      "global_step": 2619,
+      "selection_mean_valid_r": 0.5752009885833207,
+      "heads": [
+        {
+          "head": "zemke2023_atac",
+          "valid_r": 0.6830563972239395,
+          "test_r": 0.7000818641443448
+        },
+        {
+          "head": "zemke2023_rna",
+          "valid_r": 0.46734557994270176,
+          "test_r": 0.40789836659140327
+        }
+      ],
+      "metrics_path": "checkpoints/v0data/zemke2023-human_lora_corrw10/metrics.jsonl"
+    },
+    {
       "dataset": "zemke2023-human",
       "strategy": "lora",
       "variant": "rnaw5",
@@ -26,19 +68,19 @@
       "dataset": "zemke2023_macaque",
       "strategy": "lora",
       "variant": "fold_chr10_chr11",
-      "selected_epoch": 2,
-      "global_step": 4976,
-      "selection_mean_valid_r": 0.4251597383382007,
+      "selected_epoch": 3,
+      "global_step": 7464,
+      "selection_mean_valid_r": 0.42611575089562326,
       "heads": [
         {
           "head": "zemke2023_atac",
-          "valid_r": 0.5103979752562718,
-          "test_r": 0.6458643905689438
+          "valid_r": 0.5089003266237047,
+          "test_r": 0.652257262387811
         },
         {
           "head": "zemke2023_rna",
-          "valid_r": 0.33992150142012956,
-          "test_r": 0.4324738359743709
+          "valid_r": 0.34333117516754186,
+          "test_r": 0.4339664613438894
         }
       ],
       "metrics_path": "checkpoints/v0data/zemke2023_macaque_lora_fold_chr10_chr11/metrics.jsonl"
