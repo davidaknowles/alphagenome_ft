@@ -186,24 +186,24 @@
       "modality": "ATAC",
       "threshold": 0.8,
       "status": "below target",
-      "gap_to_target": 0.1358798654250919,
-      "strategy": "lora",
+      "gap_to_target": 0.1266890296908959,
+      "strategy": "lora+locon",
       "selected_epoch": 1,
       "head": "zemke2023_atac",
-      "valid_r": 0.6641201345749081,
-      "test_r": 0.664230340479793
+      "valid_r": 0.6733109703091041,
+      "test_r": 0.6718747947207659
     },
     {
       "dataset": "zemke2023_mouse",
       "modality": "RNA",
       "threshold": 0.8,
       "status": "below target",
-      "gap_to_target": 0.5904934172195285,
-      "strategy": "lora",
+      "gap_to_target": 0.5858704200843539,
+      "strategy": "lora+locon",
       "selected_epoch": 1,
       "head": "zemke2023_rna",
-      "valid_r": 0.20950658278047155,
-      "test_r": 0.23104843518844964
+      "valid_r": 0.21412957991564618,
+      "test_r": 0.24030388324043245
     },
     {
       "dataset": "zemke2023_joint",

@@ -16,10 +16,10 @@ The first table compares strategies at the highest epoch completed by both. The 
 | `johansen-human` | `lora` | 4 | `allen_rna` | 0.4647 | 0.4643 |
 | `johansen-human` | `lora+locon` | 4 | `allen_atac` | 0.5931 | 0.6233 |
 | `johansen-human` | `lora+locon` | 4 | `allen_rna` | 0.5067 | 0.4747 |
-| `liu-hdma` | `lora` | 1 | `liu_atac` | 0.7613 | 0.7791 |
-| `liu-hdma` | `lora` | 1 | `liu_rna` | 0.5231 | 0.4445 |
-| `liu-hdma` | `lora+locon` | 1 | `liu_atac` | 0.7629 | 0.7795 |
-| `liu-hdma` | `lora+locon` | 1 | `liu_rna` | 0.5159 | 0.4437 |
+| `liu-hdma` | `lora` | 2 | `liu_atac` | 0.7671 | 0.7842 |
+| `liu-hdma` | `lora` | 2 | `liu_rna` | 0.4481 | 0.4718 |
+| `liu-hdma` | `lora+locon` | 2 | `liu_atac` | 0.7680 | 0.7845 |
+| `liu-hdma` | `lora+locon` | 2 | `liu_rna` | 0.4930 | 0.4862 |
 | `zemke2023-human` | `lora` | 4 | `zemke2023_atac` | 0.6957 | 0.7112 |
 | `zemke2023-human` | `lora` | 4 | `zemke2023_rna` | 0.4809 | 0.4051 |
 | `zemke2023-human` | `lora+locon` | 4 | `zemke2023_atac` | 0.6971 | 0.7151 |
@@ -36,6 +36,10 @@ The first table compares strategies at the highest epoch completed by both. The 
 | `zemke2023_marmoset` | `lora` | 1 | `zemke2023_rna` | 0.2771 | 0.1549 |
 | `zemke2023_marmoset` | `lora+locon` | 1 | `zemke2023_atac` | 0.5799 | 0.5527 |
 | `zemke2023_marmoset` | `lora+locon` | 1 | `zemke2023_rna` | 0.2800 | 0.1918 |
+| `zemke2023_mouse` | `lora` | 1 | `zemke2023_atac` | 0.6641 | 0.6642 |
+| `zemke2023_mouse` | `lora` | 1 | `zemke2023_rna` | 0.2095 | 0.2310 |
+| `zemke2023_mouse` | `lora+locon` | 1 | `zemke2023_atac` | 0.6733 | 0.6719 |
+| `zemke2023_mouse` | `lora+locon` | 1 | `zemke2023_rna` | 0.2141 | 0.2403 |
 | `zemke2024-all` | `lora` | 5 | `zemke2024_all_atac` | 0.7436 | 0.7534 |
 | `zemke2024-all` | `lora` | 5 | `zemke2024_all_rna` | 0.4759 | 0.2925 |
 | `zemke2024-all` | `lora+locon` | 5 | `zemke2024_all_atac` | 0.7462 | 0.7543 |
@@ -79,6 +83,8 @@ The first table compares strategies at the highest epoch completed by both. The 
 | `zemke2023_marmoset` | `lora+locon` | 1 | `zemke2023_rna` | 0.2800 | 0.1918 |
 | `zemke2023_mouse` | `lora` | 1 | `zemke2023_atac` | 0.6641 | 0.6642 |
 | `zemke2023_mouse` | `lora` | 1 | `zemke2023_rna` | 0.2095 | 0.2310 |
+| `zemke2023_mouse` | `lora+locon` | 1 | `zemke2023_atac` | 0.6733 | 0.6719 |
+| `zemke2023_mouse` | `lora+locon` | 1 | `zemke2023_rna` | 0.2141 | 0.2403 |
 | `zemke2024-all` | `lora` | 5 | `zemke2024_all_atac` | 0.7436 | 0.7534 |
 | `zemke2024-all` | `lora` | 5 | `zemke2024_all_rna` | 0.4759 | 0.2925 |
 | `zemke2024-all` | `lora+locon` | 4 | `zemke2024_all_atac` | 0.7499 | 0.7599 |
