@@ -299,6 +299,48 @@
     },
     {
       "dataset": "hda-joint",
+      "strategy": "lora",
+      "variant": "geneonly_stranded_balanced_screen",
+      "selected_epoch": 1,
+      "global_step": 2619,
+      "selection_mean_valid_r": 0.6138865421881743,
+      "heads": [
+        {
+          "head": "hda_atac",
+          "valid_r": 0.7679237617408711,
+          "test_r": 0.781919752895657
+        },
+        {
+          "head": "hda_rna",
+          "valid_r": 0.45984932263547745,
+          "test_r": 0.48986538018510056
+        }
+      ],
+      "metrics_path": "checkpoints/v0data/hda-joint_lora_geneonly_stranded_balanced_screen/metrics.jsonl"
+    },
+    {
+      "dataset": "hda-joint",
+      "strategy": "lora",
+      "variant": "geneonly_unstranded_balanced_screen",
+      "selected_epoch": 1,
+      "global_step": 2619,
+      "selection_mean_valid_r": 0.6239975344290584,
+      "heads": [
+        {
+          "head": "hda_atac",
+          "valid_r": 0.7692421927552482,
+          "test_r": 0.7835188162473763
+        },
+        {
+          "head": "hda_rna",
+          "valid_r": 0.4787528761028686,
+          "test_r": 0.5537321019584728
+        }
+      ],
+      "metrics_path": "checkpoints/v0data/hda-joint_lora_geneonly_unstranded_balanced_screen/metrics.jsonl"
+    },
+    {
+      "dataset": "hda-joint",
       "strategy": "lora+locon",
       "variant": "geneonly_corrw0p1_screen",
       "selected_epoch": 1,
@@ -359,6 +401,27 @@
         }
       ],
       "metrics_path": "checkpoints/v0data/liu-hdma_lora/metrics.jsonl"
+    },
+    {
+      "dataset": "liu-hdma",
+      "strategy": "lora",
+      "variant": "exonwindow_screen",
+      "selected_epoch": 1,
+      "global_step": 2619,
+      "selection_mean_valid_r": 0.5116801575993932,
+      "heads": [
+        {
+          "head": "liu_atac",
+          "valid_r": 0.7620035215977005,
+          "test_r": 0.7795245334955203
+        },
+        {
+          "head": "liu_rna",
+          "valid_r": 0.26135679360108605,
+          "test_r": 0.3977026468451822
+        }
+      ],
+      "metrics_path": "checkpoints/v0data/liu-hdma_lora_exonwindow_screen/metrics.jsonl"
     },
     {
       "dataset": "zemke2023-human",
