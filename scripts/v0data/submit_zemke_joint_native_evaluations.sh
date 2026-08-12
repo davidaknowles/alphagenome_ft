@@ -7,18 +7,21 @@ cd "$(dirname "$0")/../.."
 mkdir -p logs/v0data checkpoints/v0data
 sbatch_bin="${SBATCH_BIN:-sbatch}"
 
-submit_strategy() {
-  local strategy=$1
-  local tasks=$2
+submit_evaluation() {
+  local task=$1
+  local strategy=$2
+  local species=$3
   local source="checkpoints/v0data/zemke2023_joint_${strategy}/best"
   local epoch
   test -f "$source/metrics.json"
   epoch=$(jq -er '.epoch | select(type == "number" and . >= 1)' "$source/metrics.json")
   "$sbatch_bin" --parsable --nice="${NICE:-30}" --time="${TIME_LIMIT:-01:00:00}" \
-    --array="$tasks" \
-    --export="ALL,EVALUATE_ONLY=1,RESUME_FROM=${source},RUN_SUFFIX=_joint_epoch${epoch}_eval" \
-    scripts/v0data/slurm_zemke2023_adapter_matrix.sbatch
+    --array="$task" \
+    --export="ALL,EVALUATE_ONLY=1,EVALUATE_SPECIES=${species},RESUME_FROM=${source},RUN_SUFFIX=_joint_epoch${epoch}_eval" \
+    scripts/v0data/slurm_zemke2023_joint_adapters.sbatch
 }
 
-printf 'lora=%s\n' "$(submit_strategy lora 0,2,4,6)"
-printf 'lora_locon=%s\n' "$(submit_strategy lora_locon 1,3,5,7)"
+for species in human macaque marmoset mouse; do
+  printf 'lora_%s=%s\n' "$species" "$(submit_evaluation 0 lora "$species")"
+  printf 'lora_locon_%s=%s\n' "$species" "$(submit_evaluation 1 lora_locon "$species")"
+done

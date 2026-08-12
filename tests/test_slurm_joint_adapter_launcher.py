@@ -39,11 +39,19 @@ def test_gene_supervision_launchers_expose_balanced_window_ordering() -> None:
 def test_zemke_joint_evaluator_covers_each_species_and_strategy() -> None:
     script = Path("scripts/v0data/submit_zemke_joint_native_evaluations.sh").read_text()
 
-    assert "submit_strategy lora 0,2,4,6" in script
-    assert "submit_strategy lora_locon 1,3,5,7" in script
+    assert "for species in human macaque marmoset mouse" in script
+    assert "submit_evaluation 0 lora" in script
+    assert "submit_evaluation 1 lora_locon" in script
     assert "RUN_SUFFIX=_joint_epoch${epoch}_eval" in script
     assert "EVALUATE_ONLY=1" in script
+    assert "EVALUATE_SPECIES=${species}" in script
+    assert "slurm_zemke2023_joint_adapters.sbatch" in script
     assert 'sbatch_bin="${SBATCH_BIN:-sbatch}"' in script
+
+    launcher = Path("scripts/v0data/slurm_zemke2023_joint_adapters.sbatch").read_text()
+    assert 'EXTRA_ARGS+=(--evaluate-only)' in launcher
+    assert '--evaluate-species "${EVALUATE_SPECIES}"' in launcher
+    assert 'run_name="zemke2023_${EVALUATE_SPECIES}_${strategy//+/_}${RUN_SUFFIX:-}"' in launcher
 
 
 def test_johansen_joint_evaluator_uses_corrected_checkpoints() -> None:

@@ -21,7 +21,11 @@ export MPLCONFIGDIR="${MPLCONFIGDIR:-/tmp/matplotlib-${USER}}"
 
 STRATEGIES=(lora lora+locon)
 strategy="${STRATEGIES[$SLURM_ARRAY_TASK_ID]}"
-run_name="zemke2023_joint_${strategy//+/_}${RUN_SUFFIX:-}"
+if [[ "${EVALUATE_ONLY:-0}" == "1" && -n "${EVALUATE_SPECIES:-}" ]]; then
+  run_name="zemke2023_${EVALUATE_SPECIES}_${strategy//+/_}${RUN_SUFFIX:-}"
+else
+  run_name="zemke2023_joint_${strategy//+/_}${RUN_SUFFIX:-}"
+fi
 if [[ "${SMOKE:-0}" == "1" && "$run_name" != *_smoke ]]; then
   run_name="${run_name}_smoke"
 fi
@@ -38,6 +42,10 @@ if [[ -n "${WANDB_PROJECT:-}" ]]; then
 fi
 if [[ -n "${RESUME_FROM:-}" ]]; then
   EXTRA_ARGS+=(--resume-from "${RESUME_FROM}")
+fi
+if [[ "${EVALUATE_ONLY:-0}" == "1" ]]; then
+  EXTRA_ARGS+=(--evaluate-only)
+  [[ -n "${EVALUATE_SPECIES:-}" ]] && EXTRA_ARGS+=(--evaluate-species "${EVALUATE_SPECIES}")
 fi
 
 "${HOME}/venv/jax/bin/python" scripts/run_humanbraindev_finetune.py \
