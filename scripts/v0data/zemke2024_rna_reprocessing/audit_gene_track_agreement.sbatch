@@ -8,7 +8,7 @@
 #SBATCH --error=logs/v0data/zemke24_gene_audit-%j.err
 
 set -euo pipefail
-cd "$(dirname "$0")/../../.."
+cd "${SLURM_SUBMIT_DIR:-/gpfs/commons/home/daknowles/projects/alphagenome_fp4}"
 export LD_LIBRARY_PATH="/nfs/sw/easybuild/software/Python/3.12.3-GCCcore-13.3.0/lib:${LD_LIBRARY_PATH:-}"
 source ~/venv/jax/bin/activate
 
