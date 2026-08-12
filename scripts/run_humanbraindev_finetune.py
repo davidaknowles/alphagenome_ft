@@ -1039,11 +1039,14 @@ def main() -> None:
                 requested_optimizer_config = {
                     "learning_rate": args.learning_rate,
                     "learning_rate_schedule": args.learning_rate_schedule,
-                    "warmup_steps": args.warmup_steps,
-                    "minimum_learning_rate_ratio": args.minimum_learning_rate_ratio,
                     "weight_decay": args.weight_decay,
-                    "num_epochs": args.num_epochs,
                 }
+                if args.learning_rate_schedule != "constant":
+                    requested_optimizer_config.update(
+                        warmup_steps=args.warmup_steps,
+                        minimum_learning_rate_ratio=args.minimum_learning_rate_ratio,
+                        num_epochs=args.num_epochs,
+                    )
                 mismatches = {
                     key: (saved_optimizer_config.get(key), value)
                     for key, value in requested_optimizer_config.items()
