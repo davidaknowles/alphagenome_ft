@@ -12,13 +12,14 @@ import h5py
 import numpy as np
 import pandas as pd
 from anndata.io import read_elem
+from scipy import sparse
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from alphagenome_ft.finetune.reprocessing import (
-    aggregate_sparse_counts_by_group,
+    aggregate_sparse_count_chunks_by_group,
     normalize_counts_per_million,
 )
 
@@ -36,22 +37,53 @@ def _read_h5ad_column(group: h5py.Group, name: str) -> np.ndarray:
     raise ValueError(f"Unsupported H5AD encoding for {group.name}/{name}.")
 
 
+def _iter_h5ad_csr_rows(matrix: h5py.Group, chunk_size: int):
+    encoding = matrix.attrs.get("encoding-type")
+    if isinstance(encoding, bytes):
+        encoding = encoding.decode()
+    if encoding != "csr_matrix":
+        raise ValueError(f"{matrix.name} must use H5AD CSR encoding, not {encoding!r}.")
+    n_rows, n_columns = (int(value) for value in matrix.attrs["shape"])
+    indptr = np.asarray(matrix["indptr"][:], dtype=np.int64)
+    if indptr.shape != (n_rows + 1,):
+        raise ValueError(f"{matrix.name}/indptr does not match the encoded shape.")
+    for start in range(0, n_rows, chunk_size):
+        stop = min(start + chunk_size, n_rows)
+        data_start = int(indptr[start])
+        data_stop = int(indptr[stop])
+        local_indptr = indptr[start : stop + 1] - data_start
+        yield sparse.csr_matrix(
+            (
+                matrix["data"][data_start:data_stop],
+                matrix["indices"][data_start:data_stop],
+                local_indptr,
+            ),
+            shape=(stop - start, n_columns),
+        )
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--input", required=True, type=Path)
     parser.add_argument("--output", required=True, type=Path)
     parser.add_argument("--group-column", default="Group")
+    parser.add_argument("--chunk-size", type=int, default=10_000)
     args = parser.parse_args()
+    if args.chunk_size <= 0:
+        parser.error("--chunk-size must be positive")
 
     with h5py.File(args.input.expanduser().resolve(), "r") as source:
+        if "raw/X" not in source or "raw/var" not in source:
+            raise ValueError("Input H5AD does not contain raw counts and annotations.")
         labels = tuple(
             value.decode() if isinstance(value, bytes) else str(value)
             for value in _read_h5ad_column(source["obs"], args.group_column)
         )
-        counts = read_elem(source["raw/X"])
         var = read_elem(source["raw/var"])
+        groups, aggregated, n_cells = aggregate_sparse_count_chunks_by_group(
+            _iter_h5ad_csr_rows(source["raw/X"], args.chunk_size), labels
+        )
 
-    groups, aggregated, n_cells = aggregate_sparse_counts_by_group(counts, labels)
     totals = aggregated.sum(axis=1)
     cpm = normalize_counts_per_million(aggregated)
     obs = pd.DataFrame(

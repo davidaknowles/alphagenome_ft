@@ -2,7 +2,7 @@
 #SBATCH --job-name=johansen_rna_reprocess
 #SBATCH --partition=cpu
 #SBATCH --cpus-per-task=8
-#SBATCH --mem=400G
+#SBATCH --mem=64G
 #SBATCH --time=24:00:00
 #SBATCH --output=logs/v0data/johansen_rna_reprocess-%j.out
 #SBATCH --error=logs/v0data/johansen_rna_reprocess-%j.err

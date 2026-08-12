@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 import gzip
 from pathlib import Path
 from typing import Mapping, Sequence
@@ -67,6 +68,72 @@ def aggregate_sparse_counts_by_group(
     aggregated = assignment.T @ counts
     n_cells = np.bincount(columns, minlength=len(groups)).astype(np.int64)
     return groups, np.asarray(aggregated.toarray(), dtype=np.float64), n_cells
+
+
+def aggregate_sparse_count_chunks_by_group(
+    count_chunks: Iterable[sparse.spmatrix],
+    cell_groups: Sequence[str],
+    groups: Sequence[str] | None = None,
+) -> tuple[tuple[str, ...], np.ndarray, np.ndarray]:
+    """Sum consecutive cells-by-genes sparse chunks by cell group.
+
+    Chunks must cover the rows represented by ``cell_groups`` exactly and in
+    order. Only one sparse chunk and the dense groups-by-genes accumulator are
+    retained, which permits backed aggregation of large single-cell matrices.
+    """
+    cell_groups = tuple(str(group) for group in cell_groups)
+    if groups is None:
+        groups = tuple(sorted(set(cell_groups)))
+    else:
+        groups = tuple(str(group) for group in groups)
+    if not groups or len(set(groups)) != len(groups):
+        raise ValueError("Groups must be nonempty and unique.")
+    group_indices = {group: index for index, group in enumerate(groups)}
+    unknown = sorted(set(cell_groups) - set(group_indices))
+    if unknown:
+        raise ValueError(f"Cell labels contain unknown groups: {unknown[:10]}")
+
+    aggregated: np.ndarray | None = None
+    n_cells = np.zeros(len(groups), dtype=np.int64)
+    row_offset = 0
+    for chunk in count_chunks:
+        if not sparse.issparse(chunk):
+            raise TypeError("Every count chunk must be a SciPy sparse matrix.")
+        chunk = chunk.tocsr()
+        if np.any(~np.isfinite(chunk.data)) or np.any(chunk.data < 0):
+            raise ValueError("Sparse counts must be finite and non-negative.")
+        row_stop = row_offset + chunk.shape[0]
+        if row_stop > len(cell_groups):
+            raise ValueError("Count chunks contain more cells than cell_groups.")
+        chunk_groups = cell_groups[row_offset:row_stop]
+        columns = np.fromiter(
+            (group_indices[group] for group in chunk_groups),
+            dtype=np.int64,
+            count=len(chunk_groups),
+        )
+        rows = np.arange(chunk.shape[0], dtype=np.int64)
+        assignment = sparse.csr_matrix(
+            (np.ones(len(rows), dtype=np.float32), (rows, columns)),
+            shape=(chunk.shape[0], len(groups)),
+        )
+        chunk_aggregated = np.asarray(
+            (assignment.T @ chunk).toarray(), dtype=np.float64
+        )
+        if aggregated is None:
+            aggregated = np.zeros_like(chunk_aggregated, dtype=np.float64)
+        elif chunk_aggregated.shape != aggregated.shape:
+            raise ValueError("Count chunks have inconsistent numbers of genes.")
+        aggregated += chunk_aggregated
+        n_cells += np.bincount(columns, minlength=len(groups)).astype(np.int64)
+        row_offset = row_stop
+
+    if aggregated is None:
+        raise ValueError("At least one nonempty count chunk is required.")
+    if row_offset != len(cell_groups):
+        raise ValueError(
+            f"Count chunks contain {row_offset} cells but {len(cell_groups)} labels were given."
+        )
+    return groups, aggregated, n_cells
 
 
 def align_cpm_to_gene_supervision(
@@ -185,6 +252,7 @@ def aggregate_matrix_market_by_group(
 
 
 __all__ = [
+    "aggregate_sparse_count_chunks_by_group",
     "aggregate_sparse_counts_by_group",
     "aggregate_matrix_market_by_group",
     "align_cpm_to_gene_supervision",

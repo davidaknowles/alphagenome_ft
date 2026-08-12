@@ -6,6 +6,7 @@ from scipy import sparse
 from scipy.io import mmwrite
 
 from alphagenome_ft.finetune.reprocessing import (
+    aggregate_sparse_count_chunks_by_group,
     aggregate_sparse_counts_by_group,
     aggregate_matrix_market_by_group,
     align_cpm_to_gene_supervision,
@@ -31,6 +32,32 @@ def test_aggregate_sparse_counts_by_group_and_normalize():
         normalize_counts_per_million(aggregated),
         [[0, 1_000_000, 0], [625_000, 0, 375_000]],
     )
+
+
+def test_chunked_sparse_aggregation_matches_full_matrix():
+    counts = sparse.csr_matrix(
+        np.asarray(
+            [[1, 0, 2], [0, 3, 0], [4, 0, 1], [2, 2, 0]],
+            dtype=np.float32,
+        )
+    )
+    labels = ("b", "a", "b", "c")
+
+    expected = aggregate_sparse_counts_by_group(counts, labels)
+    observed = aggregate_sparse_count_chunks_by_group(
+        (counts[:1], counts[1:3], counts[3:]), labels
+    )
+
+    assert observed[0] == expected[0]
+    np.testing.assert_array_equal(observed[1], expected[1])
+    np.testing.assert_array_equal(observed[2], expected[2])
+
+
+def test_chunked_sparse_aggregation_requires_all_labeled_rows():
+    counts = sparse.csr_matrix(np.ones((2, 3), dtype=np.float32))
+
+    with np.testing.assert_raises_regex(ValueError, "1 cells but 2 labels"):
+        aggregate_sparse_count_chunks_by_group((counts[:1],), ("a", "b"))
 
 
 def test_align_cpm_to_gene_supervision_reorders_maps_and_renormalizes():
