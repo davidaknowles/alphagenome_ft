@@ -49,6 +49,8 @@ def test_load_targets_config_resolves_target_transform_path(tmp_path: Path):
 
 
 def test_prepare_head_specs_parses_head_loss_weight(tmp_path: Path):
+    track_path = tmp_path / "track.bw"
+    track_path.touch()
     specs = prepare_head_specs(
         {
             "heads": [
@@ -57,7 +59,7 @@ def test_prepare_head_specs_parses_head_loss_weight(tmp_path: Path):
                     "source": "predefined",
                     "kind": "atac",
                     "loss_weight": 5.0,
-                    "targets": [{"path": str(tmp_path / "track.bw")}],
+                    "targets": [{"path": str(track_path)}],
                 }
             ]
         },
@@ -69,6 +71,8 @@ def test_prepare_head_specs_parses_head_loss_weight(tmp_path: Path):
 
 @pytest.mark.parametrize("weight", [0.0, -1.0, float("inf"), float("nan")])
 def test_prepare_head_specs_rejects_invalid_head_loss_weight(tmp_path: Path, weight: float):
+    track_path = tmp_path / "track.bw"
+    track_path.touch()
     with pytest.raises(ValueError, match="finite and positive"):
         prepare_head_specs(
             {
@@ -78,7 +82,7 @@ def test_prepare_head_specs_rejects_invalid_head_loss_weight(tmp_path: Path, wei
                         "source": "predefined",
                         "kind": "atac",
                         "loss_weight": weight,
-                        "targets": [{"path": str(tmp_path / "track.bw")}],
+                        "targets": [{"path": str(track_path)}],
                     }
                 ]
             },
