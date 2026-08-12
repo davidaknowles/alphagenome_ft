@@ -23,6 +23,8 @@ These non-canonical runs test one change at a time. Paired strategies are compar
 | `hda-joint` | `lora` | `geneonly_corrw10_screen` | 1 | `hda_rna` | 0.3875 | 0.6053 |
 | `hda-joint` | `lora` | `geneonly_corrw1_screen` | 1 | `hda_atac` | 0.7649 | 0.7787 |
 | `hda-joint` | `lora` | `geneonly_corrw1_screen` | 1 | `hda_rna` | 0.4253 | 0.6420 |
+| `hda-joint` | `lora` | `geneonly_rowcorrw10_screen` | 1 | `hda_atac` | 0.7398 | 0.7512 |
+| `hda-joint` | `lora` | `geneonly_rowcorrw10_screen` | 1 | `hda_rna` | 0.3709 | 0.4943 |
 | `hda-joint` | `lora` | `rnaw5` | 1 | `hda_atac` | 0.7538 | 0.7645 |
 | `hda-joint` | `lora` | `rnaw5` | 1 | `hda_rna` | 0.4310 | 0.5976 |
 | `liu-hdma` | `lora` | `legacy_exon_plus_gene` | 1 | `liu_atac` | 0.7648 | 0.7786 |
