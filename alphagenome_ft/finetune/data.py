@@ -335,7 +335,9 @@ def _balance_gene_window_order(
     if negative_index != len(negative):
         raise RuntimeError("Failed to assign every selected gene-free window.")
     balanced = np.asarray([index for batch in batches for index in batch], dtype=np.int64)
-    if len(balanced) != len(selected) or set(balanced) != set(selected):
+    if len(balanced) != len(selected) or not np.array_equal(
+        np.sort(balanced), np.sort(selected)
+    ):
         raise RuntimeError("Balanced window order did not preserve selected windows exactly once.")
     return balanced
 

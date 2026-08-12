@@ -74,3 +74,18 @@ def test_gene_window_repetition_rejects_negative_repeats() -> None:
         _repeat_gene_window_order(
             np.asarray([0]), np.asarray([1]), additional_repeats=-1
         )
+
+
+def test_balancing_preserves_repeated_window_multiplicity() -> None:
+    base = np.asarray([0, 1, 2, 3, 4, 5])
+    gene_counts = np.asarray([0, 3, 0, 2, 0, 1])
+    repeated = _repeat_gene_window_order(
+        base, gene_counts, additional_repeats=2
+    )
+
+    balanced = _balance_gene_window_order(
+        repeated, gene_counts, batch_size=3, drop_last=False
+    )
+
+    np.testing.assert_array_equal(np.sort(balanced), np.sort(repeated))
+    assert [np.count_nonzero(balanced == index) for index in range(6)] == [1, 3, 1, 3, 1, 3]
