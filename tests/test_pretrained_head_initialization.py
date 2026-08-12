@@ -69,6 +69,25 @@ def test_neural_source_valid_falls_back_when_pool_lacks_diversity() -> None:
     assert actual == valid
 
 
+def test_neural_target_channels_are_target_aware() -> None:
+    targets = pd.DataFrame(
+        {
+            "name": (
+                "BR_4 (+)",
+                "LI_4 (+)",
+                "Astrocyte (+)",
+                "Microglia (+)",
+                "Endo (+)",
+                "PVALB (+)",
+            )
+        }
+    )
+
+    actual = custom_model._neural_target_channels(targets)
+
+    assert actual == (True, False, True, False, False, True)
+
+
 def test_pretrained_bootstrap_copies_consistent_output_channels(monkeypatch) -> None:
     output_type = dna_output.OutputType.RNA_SEQ
     source_strands = ("+", "+", "-", "-", ".", ".")
@@ -146,7 +165,14 @@ def test_neural_bootstrap_copies_only_neural_source_channels(monkeypatch) -> Non
     monkeypatch.setattr(
         custom_model,
         "_resolve_user_metadata",
-        lambda **_kwargs: {organism: pd.DataFrame({"strand": ("+", "-")})},
+        lambda **_kwargs: {
+            organism: pd.DataFrame(
+                {
+                    "name": ("Astrocyte (+)", "GABA (-)"),
+                    "strand": ("+", "-"),
+                }
+            )
+        },
     )
     source = jnp.arange(6, dtype=jnp.float32).reshape((1, 1, 6))
     params = {

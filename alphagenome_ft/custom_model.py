@@ -294,6 +294,7 @@ def _bootstrap_track_indices(
     target_strands: Sequence[str],
     *,
     source_valid: Sequence[bool] | None = None,
+    source_valid_by_target: Sequence[Sequence[bool]] | None = None,
     seed: int,
 ) -> tuple[int, ...]:
     """Assign each target to a deterministic empirical source-head channel."""
@@ -301,22 +302,31 @@ def _bootstrap_track_indices(
         source_valid = (True,) * len(source_strands)
     if len(source_valid) != len(source_strands):
         raise ValueError("source_valid and source_strands must have equal length.")
-    valid_indices = [index for index, keep in enumerate(source_valid) if keep]
-    if not valid_indices:
+    if source_valid_by_target is None:
+        source_valid_by_target = (tuple(source_valid),) * len(target_strands)
+    if len(source_valid_by_target) != len(target_strands) or any(
+        len(mask) != len(source_strands) for mask in source_valid_by_target
+    ):
+        raise ValueError("Every target source mask must match the source-track dimension.")
+    if not any(source_valid):
         raise ValueError("Pretrained output head has no valid source tracks.")
 
     assignments = [-1] * len(target_strands)
-    for strand in dict.fromkeys(str(target) for target in target_strands):
+    groups: dict[tuple[str, tuple[bool, ...]], list[int]] = {}
+    for target_index, (strand, valid_mask) in enumerate(
+        zip(target_strands, source_valid_by_target, strict=True)
+    ):
+        groups.setdefault((str(strand), tuple(valid_mask)), []).append(target_index)
+    for (strand, valid_mask), target_indices in groups.items():
+        valid_indices = [index for index, keep in enumerate(valid_mask) if keep]
+        if not valid_indices:
+            raise ValueError("A target channel has no valid pretrained source tracks.")
         pool = [index for index in valid_indices if str(source_strands[index]) == strand]
         if not pool:
             pool = valid_indices.copy()
         # The same seed and relative ordering pair '+' and '-' source channels when
         # the pretrained metadata stores their pools in matching order.
         random.Random(seed).shuffle(pool)
-        target_indices = [
-            index for index, target_strand in enumerate(target_strands)
-            if str(target_strand) == strand
-        ]
         for offset, target_index in enumerate(target_indices):
             assignments[target_index] = pool[offset % len(pool)]
     if any(index < 0 for index in assignments):
@@ -352,6 +362,65 @@ _NEURAL_METADATA_TERMS = (
     "substantia nigra",
 )
 _NON_NEURAL_CORTEX_TERMS = ("kidney", "renal")
+_NON_NEURAL_TARGET_TERMS = (
+    "bam",
+    "endo",
+    "macro",
+    "microgl",
+    "mic_",
+    "pericyte",
+    "pvm",
+    "smc",
+    "t-cell",
+    "t_cell",
+    "vlmc",
+    "vsmc",
+)
+_NEURAL_TARGET_TERMS = (
+    "amy-",
+    "asc",
+    "astro",
+    "ca1",
+    "ca2",
+    "ca3",
+    "cholinergic",
+    "cop",
+    "dopa",
+    "ependym",
+    "floor_plate",
+    "gaba",
+    "gbl_",
+    "glut",
+    "gpe",
+    "gpi",
+    "lamp5",
+    "msn",
+    "neur",
+    "ob ",
+    "odc",
+    "oligo",
+    "opc",
+    "ot ",
+    "purk",
+    "pvalb",
+    "rgl_",
+    "roof_plate",
+    "schwl",
+    "sn ",
+    "sn-",
+    "sncg",
+    "sst",
+    "sth ",
+    "str ",
+    "str-",
+    "strd ",
+    "strv ",
+    "sub_",
+    "vip",
+    "vtr-",
+    "vz_prog",
+    "zi-",
+)
 
 
 def _neural_source_valid(
@@ -394,6 +463,21 @@ def _neural_source_valid(
         if matching < minimum_per_strand:
             return tuple(source_valid)
     return candidate
+
+
+def _neural_target_channels(target_frame) -> tuple[bool, ...]:
+    """Identify target channels whose labels support neural source filtering."""
+    if target_frame is None or "name" not in target_frame:
+        return ()
+    labels = target_frame["name"].fillna("").astype(str).str.lower()
+    result = []
+    for label in labels:
+        excluded = any(term in label for term in _NON_NEURAL_TARGET_TERMS)
+        included = label.startswith("br_") or any(
+            term in label for term in _NEURAL_TARGET_TERMS
+        )
+        result.append(bool(included and not excluded))
+    return tuple(result)
 
 
 def _initialize_heads_from_pretrained_bootstrap(
@@ -475,12 +559,19 @@ def _initialize_heads_from_pretrained_bootstrap(
                         bool(value)
                         for value in ~pretrained_metadata[source_organism].padding[output_type]
                     )
+                    source_valid_by_target = None
                     if neural_sources:
-                        source_valid = _neural_source_valid(
+                        neural_valid = _neural_source_valid(
                             source_frame,
                             source_valid=source_valid,
                             target_strands=target_strands,
                         )
+                        neural_targets = _neural_target_channels(target_frame)
+                        if len(neural_targets) == len(target_strands):
+                            source_valid_by_target = tuple(
+                                neural_valid if is_neural else source_valid
+                                for is_neural in neural_targets
+                            )
                     seed = zlib.crc32(
                         f"{head_name}:{source_organism.name}".encode("utf-8")
                     )
@@ -488,6 +579,7 @@ def _initialize_heads_from_pretrained_bootstrap(
                         source_strands,
                         target_strands,
                         source_valid=source_valid,
+                        source_valid_by_target=source_valid_by_target,
                         seed=seed,
                     )
                     organism_values.append(
