@@ -1,4 +1,5 @@
 from contextlib import nullcontext
+import functools
 import json
 from types import SimpleNamespace
 
@@ -269,6 +270,70 @@ def test_double_centered_correlation_loss_has_finite_gradient_without_variance()
     assert loss == 0
     assert np.all(np.isfinite(gradient))
     np.testing.assert_array_equal(gradient, np.zeros_like(gradient))
+
+
+def test_double_centered_correlation_loss_uses_global_pmap_batch():
+    device_count = jax.local_device_count()
+    targets = jnp.square(jnp.arange(device_count * 24, dtype=jnp.float32)).reshape(
+        device_count, 2, 4, 3
+    )
+    predictions = targets.at[0, :, :, 0].set(jnp.flip(targets[0, :, :, 0], axis=1))
+    expected = _double_centered_correlation_loss(
+        predictions.reshape((-1, 4, 3)),
+        targets.reshape((-1, 4, 3)),
+    )
+
+    @functools.partial(jax.pmap, axis_name="data")
+    def distributed_loss(prediction, target):
+        return _double_centered_correlation_loss(
+            prediction,
+            target,
+            axis_name="data",
+        )
+
+    actual = distributed_loss(predictions, targets)
+
+    np.testing.assert_allclose(actual, expected, rtol=1e-6)
+
+
+def test_global_pmap_correlation_gradient_matches_concatenated_batch():
+    device_count = jax.local_device_count()
+    features = jnp.arange(device_count * 24, dtype=jnp.float32).reshape(
+        device_count, 2, 4, 3
+    )
+    targets = jnp.square(features + 1.0)
+    baseline = jnp.sin(features / 5.0)
+    direction = jnp.mod(features, 5.0)
+    parameter = jnp.asarray(0.7, dtype=jnp.float32)
+
+    def concatenated_loss(value):
+        return _double_centered_correlation_loss(
+            (baseline + direction * value).reshape((-1, 4, 3)),
+            targets.reshape((-1, 4, 3)),
+        )
+
+    expected = jax.grad(concatenated_loss)(parameter)
+
+    @functools.partial(jax.pmap, axis_name="data")
+    def distributed_gradient(value, local_baseline, local_direction, target):
+        gradient = jax.grad(
+            lambda current: _double_centered_correlation_loss(
+                local_baseline + local_direction * current,
+                target,
+                axis_name="data",
+            )
+        )(value)
+        return jax.lax.pmean(gradient, axis_name="data")
+
+    actual = distributed_gradient(
+        jnp.broadcast_to(parameter, (device_count,)),
+        baseline,
+        direction,
+        targets,
+    )
+
+    assert abs(expected) > 1e-3
+    np.testing.assert_allclose(actual, expected, rtol=1e-5, atol=1e-7)
 
 
 def test_r2_stats_are_one_for_perfect_predictions():

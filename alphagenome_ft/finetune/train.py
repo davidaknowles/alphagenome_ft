@@ -380,8 +380,14 @@ def _gene_log_mse(prediction, targets, valid):
     )
 
 
-def _double_centered_correlation_loss(prediction, targets, observation_mask=None):
-    """Return one minus signed Pearson correlation after two-axis centering."""
+def _double_centered_correlation_loss(
+    prediction,
+    targets,
+    observation_mask=None,
+    *,
+    axis_name: str | None = None,
+):
+    """Return one minus signed Pearson correlation after global two-axis centering."""
     prediction, targets = _align_prediction_and_targets(prediction, targets, observation_mask)
     prediction = prediction.astype(jnp.float32)
     targets = targets.astype(jnp.float32)
@@ -399,21 +405,27 @@ def _double_centered_correlation_loss(prediction, targets, observation_mask=None
     pred_matrix = prediction.reshape((-1, prediction.shape[-1]))
     target_matrix = targets.reshape((-1, targets.shape[-1]))
     row_mask = mask.reshape((-1, 1))
-    count = jnp.sum(row_mask)
+    def global_sum(value):
+        if axis_name is None:
+            return value
+        return jax.lax.psum(value, axis_name=axis_name)
+
+    count = global_sum(jnp.sum(row_mask))
     num_tracks = prediction.shape[-1]
 
     def center(values):
         values = values * row_mask
-        track_mean = jnp.sum(values, axis=0, keepdims=True) / jnp.maximum(count, 1.0)
+        track_sum = global_sum(jnp.sum(values, axis=0, keepdims=True))
+        track_mean = track_sum / jnp.maximum(count, 1.0)
         row_mean = jnp.mean(values, axis=1, keepdims=True)
-        grand_mean = jnp.sum(values) / jnp.maximum(count * num_tracks, 1.0)
+        grand_mean = jnp.sum(track_sum) / jnp.maximum(count * num_tracks, 1.0)
         return (values - track_mean - row_mean + grand_mean) * row_mask
 
     pred_centered = center(pred_matrix)
     target_centered = center(target_matrix)
-    covariance = jnp.sum(pred_centered * target_centered)
-    pred_sum_squares = jnp.sum(jnp.square(pred_centered))
-    target_sum_squares = jnp.sum(jnp.square(target_centered))
+    covariance = global_sum(jnp.sum(pred_centered * target_centered))
+    pred_sum_squares = global_sum(jnp.sum(jnp.square(pred_centered)))
+    target_sum_squares = global_sum(jnp.sum(jnp.square(target_centered)))
     denominator = jnp.sqrt(jnp.maximum(pred_sum_squares * target_sum_squares, 1e-16))
     correlation = covariance / denominator
     has_variance = (pred_sum_squares > 1e-8) & (target_sum_squares > 1e-8)
@@ -914,7 +926,14 @@ def train(
             return prediction
         return transform.inverse_jax(prediction["predictions_1bp"])
 
-    def training_head_objectives(current_params, state, batch, requested_head_names):
+    def training_head_objectives(
+        current_params,
+        state,
+        batch,
+        requested_head_names,
+        *,
+        axis_name: str | None = None,
+    ):
         predictions = model._predict(
             current_params,
             state,
@@ -967,6 +986,7 @@ def train(
                         correlation_prediction,
                         correlation_targets,
                         correlation_mask,
+                        axis_name=axis_name,
                     )
                 )
             head_losses[head_name] = head_loss
@@ -980,7 +1000,11 @@ def train(
     def train_step(params, state, current_opt_state, batch):
         def loss_fn(current_params):
             head_losses, head_stats = training_head_objectives(
-                current_params, state, batch, head_names
+                current_params,
+                state,
+                batch,
+                head_names,
+                axis_name="data",
             )
             total_loss = _weighted_head_loss_sum(head_losses, head_specs_by_name)
             return total_loss, (head_losses, head_stats)
@@ -1025,7 +1049,13 @@ def train(
         for head_name in head_names:
 
             def single_head_loss(current_params):
-                losses, _ = training_head_objectives(current_params, state, batch, (head_name,))
+                losses, _ = training_head_objectives(
+                    current_params,
+                    state,
+                    batch,
+                    (head_name,),
+                    axis_name="data",
+                )
                 return losses[head_name]
 
             loss_value, gradients = jax.value_and_grad(single_head_loss)(params)
@@ -1121,6 +1151,7 @@ def train(
                         correlation_prediction,
                         correlation_targets,
                         correlation_mask,
+                        axis_name="data",
                     )
                 )
             head_losses[head_name] = head_loss
