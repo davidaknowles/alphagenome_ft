@@ -23,6 +23,7 @@ STRATEGIES=(lora lora+locon)
 strategy="${STRATEGIES[$SLURM_ARRAY_TASK_ID]}"
 run_name="johansen_joint_${strategy//+/_}${RUN_SUFFIX:-}"
 species_config="${SPECIES_CONFIG:-outputs/v0data/johansen-fragment-joint-depth-filtered/species.json}"
+num_devices="${NUM_DEVICES:-${SLURM_GPUS_ON_NODE:-1}}"
 test -f "$species_config"
 
 EXTRA_ARGS=(--num-epochs "${NUM_EPOCHS:-100}")
@@ -47,6 +48,8 @@ if [[ "${REPORT_HEAD_GRADIENT_NORMS:-0}" == "1" ]]; then
   EXTRA_ARGS+=(--report-head-gradient-norms)
 fi
 
+printf 'Using %s JAX device(s) with global batch size %s.\n' "$num_devices" "${BATCH_SIZE:-4}"
+
 "${HOME}/venv/jax/bin/python" scripts/run_humanbraindev_finetune.py \
   --species-config "$species_config" \
   --checkpoint-path "${CHECKPOINT_PATH:-/gpfs/commons/home/daknowles/.cache/kagglehub/models/google/alphagenome/jax/all_folds/1}" \
@@ -55,6 +58,7 @@ fi
   --window-size 131072 \
   --stride 131072 \
   --batch-size "${BATCH_SIZE:-4}" \
+  --num-devices "$num_devices" \
   --drop-last \
   --learning-rate "${LEARNING_RATE:-1e-3}" \
   --weight-decay "${WEIGHT_DECAY:-1e-4}" \

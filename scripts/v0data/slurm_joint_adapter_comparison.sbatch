@@ -28,10 +28,14 @@ if [[ "$DATASET" == "liu-hdma" ]]; then
 fi
 targets="${TARGETS_CONFIG:-$default_targets}"
 run_name="${DATASET}_${strategy//+/_}${RUN_SUFFIX:-}"
+num_devices="${NUM_DEVICES:-${SLURM_GPUS_ON_NODE:-1}}"
 canonical_chroms=chr1,chr2,chr3,chr4,chr5,chr6,chr7,chr8,chr9,chr10,chr11,chr12,chr13,chr14,chr15,chr16,chr17,chr18,chr19,chr20,chr21,chr22,chrX
 test -f "$targets"
 
 EXTRA_ARGS=(--num-epochs "${NUM_EPOCHS:-100}")
+if (( num_devices > 1 )); then
+  EXTRA_ARGS+=(--drop-last)
+fi
 if [[ "${SMOKE:-0}" == "1" ]]; then
   EXTRA_ARGS=(--num-epochs 1 --max-train-steps 1 --limit-train 16 --limit-valid 16 --limit-test 16)
 fi
@@ -51,6 +55,8 @@ if [[ "${REPORT_HEAD_GRADIENT_NORMS:-0}" == "1" ]]; then
   EXTRA_ARGS+=(--report-head-gradient-norms)
 fi
 
+printf 'Using %s JAX device(s) with global batch size %s.\n' "$num_devices" "${BATCH_SIZE:-8}"
+
 "${HOME}/venv/jax/bin/python" scripts/run_humanbraindev_finetune.py \
   --targets-config "$targets" \
   --fasta-path "${FASTA_PATH:-/gpfs/commons/home/daknowles/knowles_lab/index/hg38/hg38.fa}" \
@@ -62,6 +68,7 @@ fi
   --window-size 131072 \
   --stride 131072 \
   --batch-size "${BATCH_SIZE:-8}" \
+  --num-devices "$num_devices" \
   --learning-rate "${LEARNING_RATE:-1e-3}" \
   --weight-decay "${WEIGHT_DECAY:-1e-4}" \
   --backbone-lora \
