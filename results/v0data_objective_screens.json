@@ -44,6 +44,48 @@
       "metrics_path": "checkpoints/v0data/zemke2023-human_lora_locon_corrw10/metrics.jsonl"
     },
     {
+      "dataset": "zemke2023_human",
+      "strategy": "lora",
+      "variant": "published_gene_corrw10",
+      "matched_epoch": 1,
+      "global_step": 2619,
+      "selection_mean_valid_r": 0.4929046837373168,
+      "heads": [
+        {
+          "head": "zemke2023_atac",
+          "valid_r": 0.6324811289696811,
+          "test_r": 0.6558411241203941
+        },
+        {
+          "head": "zemke2023_rna",
+          "valid_r": 0.3533282385049524,
+          "test_r": 0.3774137685923592
+        }
+      ],
+      "metrics_path": "checkpoints/v0data/zemke2023_human_lora_published_gene_corrw10/metrics.jsonl"
+    },
+    {
+      "dataset": "zemke2023_human",
+      "strategy": "lora+locon",
+      "variant": "published_gene_corrw10",
+      "matched_epoch": 1,
+      "global_step": 2619,
+      "selection_mean_valid_r": 0.42432339170717376,
+      "heads": [
+        {
+          "head": "zemke2023_atac",
+          "valid_r": 0.598806301402138,
+          "test_r": 0.6245497723441611
+        },
+        {
+          "head": "zemke2023_rna",
+          "valid_r": 0.24984048201220954,
+          "test_r": 0.17933408904118392
+        }
+      ],
+      "metrics_path": "checkpoints/v0data/zemke2023_human_lora_locon_published_gene_corrw10/metrics.jsonl"
+    },
+    {
       "dataset": "zemke2024-all",
       "strategy": "lora",
       "variant": "rna_corrw10",
@@ -296,6 +338,48 @@
         }
       ],
       "metrics_path": "checkpoints/v0data/zemke2023-human_lora_rnaw5/metrics.jsonl"
+    },
+    {
+      "dataset": "zemke2023_human",
+      "strategy": "lora+locon",
+      "variant": "published_gene_corrw10",
+      "selected_epoch": 1,
+      "global_step": 2619,
+      "selection_mean_valid_r": 0.42432339170717376,
+      "heads": [
+        {
+          "head": "zemke2023_atac",
+          "valid_r": 0.598806301402138,
+          "test_r": 0.6245497723441611
+        },
+        {
+          "head": "zemke2023_rna",
+          "valid_r": 0.24984048201220954,
+          "test_r": 0.17933408904118392
+        }
+      ],
+      "metrics_path": "checkpoints/v0data/zemke2023_human_lora_locon_published_gene_corrw10/metrics.jsonl"
+    },
+    {
+      "dataset": "zemke2023_human",
+      "strategy": "lora",
+      "variant": "published_gene_corrw10",
+      "selected_epoch": 1,
+      "global_step": 2619,
+      "selection_mean_valid_r": 0.4929046837373168,
+      "heads": [
+        {
+          "head": "zemke2023_atac",
+          "valid_r": 0.6324811289696811,
+          "test_r": 0.6558411241203941
+        },
+        {
+          "head": "zemke2023_rna",
+          "valid_r": 0.3533282385049524,
+          "test_r": 0.3774137685923592
+        }
+      ],
+      "metrics_path": "checkpoints/v0data/zemke2023_human_lora_published_gene_corrw10/metrics.jsonl"
     },
     {
       "dataset": "zemke2023_macaque",

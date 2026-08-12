@@ -87,8 +87,8 @@ The first table compares strategies at the highest epoch completed by both. The 
 | `zemke2023_marmoset` | `lora` | 1 | `zemke2023_rna` | 0.2771 | 0.1549 |
 | `zemke2023_marmoset` | `lora+locon` | 1 | `zemke2023_atac` | 0.5799 | 0.5527 |
 | `zemke2023_marmoset` | `lora+locon` | 1 | `zemke2023_rna` | 0.2800 | 0.1918 |
-| `zemke2023_mouse` | `lora` | 1 | `zemke2023_atac` | 0.6641 | 0.6642 |
-| `zemke2023_mouse` | `lora` | 1 | `zemke2023_rna` | 0.2095 | 0.2310 |
+| `zemke2023_mouse` | `lora` | 2 | `zemke2023_atac` | 0.6886 | 0.6871 |
+| `zemke2023_mouse` | `lora` | 2 | `zemke2023_rna` | 0.2448 | 0.3019 |
 | `zemke2023_mouse` | `lora+locon` | 1 | `zemke2023_atac` | 0.6733 | 0.6719 |
 | `zemke2023_mouse` | `lora+locon` | 1 | `zemke2023_rna` | 0.2141 | 0.2403 |
 | `zemke2024-all` | `lora` | 5 | `zemke2024_all_atac` | 0.7436 | 0.7534 |

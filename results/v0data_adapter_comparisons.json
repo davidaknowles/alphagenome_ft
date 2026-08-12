@@ -786,19 +786,19 @@
     {
       "dataset": "zemke2023_mouse",
       "strategy": "lora",
-      "selected_epoch": 1,
-      "global_step": 2269,
-      "selection_mean_valid_r": 0.43681335867768983,
+      "selected_epoch": 2,
+      "global_step": 4538,
+      "selection_mean_valid_r": 0.4667086943927302,
       "heads": [
         {
           "head": "zemke2023_atac",
-          "valid_r": 0.6641201345749081,
-          "test_r": 0.664230340479793
+          "valid_r": 0.6886082173067817,
+          "test_r": 0.6871420480238639
         },
         {
           "head": "zemke2023_rna",
-          "valid_r": 0.20950658278047155,
-          "test_r": 0.23104843518844964
+          "valid_r": 0.2448091714786788,
+          "test_r": 0.30189490714217837
         }
       ],
       "metrics_path": "checkpoints/v0data/zemke2023_mouse_lora/metrics.jsonl"
