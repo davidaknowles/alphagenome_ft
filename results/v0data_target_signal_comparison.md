@@ -47,3 +47,5 @@ Normalized target quality remains depth-dependent. Across Liu and each Johansen 
 | Johansen marmoset | 47 | 2 | 6 | 14 | 0.992 | 0.480 | -0.418 |
 
 HDA peak-calling pseudobulks were downsampled to 25 million fragments, but imposing that threshold on these datasets would retain only 91 Liu groups and 29 Johansen groups shared across species. A conservative 10-million-fragment screen retains 140 Liu groups and 38 Johansen groups. It filters ATAC and paired RNA channels synchronously, retains the corresponding direct gene-expression rows, and combines the filter with gene-only RNA supervision. This is an explicit target-quality experiment rather than an attempt to rescale low-depth observations.
+
+The retained groups also have adequate RNA sampling for the initial screen. In Liu, ATAC fragment depth and RNA unique-molecular-identifier depth have Spearman correlation 0.79. All 140 retained groups have at least one million RNA counts and 136 have at least 1,000 cells. The minimum RNA cell counts among retained Johansen groups are 159 for human, 286 for macaque, and 220 for marmoset. A separate RNA-depth filter is therefore not added to this factorial comparison.
