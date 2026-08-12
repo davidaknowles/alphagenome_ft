@@ -47,12 +47,13 @@ def test_collate_accepts_explicit_species_order_and_title(tmp_path: Path) -> Non
         _write(tmp_path / f"{species}.json", species)
         for species in ("mouse", "human")
     ]
-    result = collate(paths, ("human", "mouse"))
+    result = collate(paths, ("human", "mouse"), "Auxiliary target only.")
     markdown = render_markdown(
         result,
         title="Zemke RNA reliability",
         qualification="Auxiliary target only.",
     )
     assert [audit["species"] for audit in result["audits"]] == ["human", "mouse"]
+    assert result["qualification"] == "Auxiliary target only."
     assert markdown.startswith("# Zemke RNA reliability\n")
     assert "Auxiliary target only." in markdown

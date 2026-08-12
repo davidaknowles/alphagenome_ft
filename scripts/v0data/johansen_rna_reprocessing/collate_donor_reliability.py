@@ -14,6 +14,7 @@ EXPECTED_SPECIES = ("human", "macaque", "marmoset")
 def collate(
     paths: list[Path],
     expected_species: tuple[str, ...] = EXPECTED_SPECIES,
+    qualification: str | None = None,
 ) -> dict[str, Any]:
     if not expected_species or len(set(expected_species)) != len(expected_species):
         raise ValueError("Expected species must be nonempty and unique.")
@@ -28,13 +29,16 @@ def collate(
             f"Expected {expected_species}; missing={sorted(missing)}, "
             f"unexpected={sorted(unexpected)}."
         )
-    return {
+    result = {
         "definition": (
             "Donor-balanced split-half signed double-centered correlation over raw-count "
             "pseudobulk CPM restricted to retained groups and modeled genes."
         ),
         "audits": [by_species[species] for species in expected_species],
     }
+    if qualification:
+        result["qualification"] = qualification
+    return result
 
 
 def render_markdown(
@@ -49,8 +53,9 @@ def render_markdown(
         "Raw unique molecular identifier counts are aggregated separately by donor and retained cell group. Donors are assigned within each group to library-depth-balanced halves, and each half is normalized to counts per million, CPM. Full reliability uses the Spearman-Brown correction. The model correlation ceiling is the square root of reliability under a classical independent measurement-error assumption; it is not an observed model result.",
         "",
     ]
-    if qualification:
-        lines.extend((qualification, ""))
+    resolved_qualification = qualification or result.get("qualification")
+    if resolved_qualification:
+        lines.extend((resolved_qualification, ""))
     lines.extend(
         (
             "| Species | Donors | Estimable groups | Genes | Split-half raw CPM R | Full reliability | Estimated model R ceiling | Split-half log1p CPM R |",
@@ -85,7 +90,11 @@ def main() -> None:
     expected_species = tuple(
         species.strip() for species in args.expected_species.split(",") if species.strip()
     )
-    result = collate(args.inputs, expected_species)
+    result = collate(
+        args.inputs,
+        expected_species,
+        qualification=args.qualification,
+    )
     args.json_output.parent.mkdir(parents=True, exist_ok=True)
     args.markdown_output.parent.mkdir(parents=True, exist_ok=True)
     args.json_output.write_text(json.dumps(result, indent=2) + "\n")

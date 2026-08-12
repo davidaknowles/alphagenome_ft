@@ -77,5 +77,6 @@
       "log1p_cpm_double_centered_r": 0.8030245633911627,
       "log1p_cpm_full_reliability_estimate": 0.8907527714218367
     }
-  ]
+  ],
+  "qualification": "These values characterize the raw-UMI direct-gene auxiliary target. The reported model RNA metric uses released coordinate-resolved RPKM tracks, so these ceilings do not apply directly to that metric."
 }
