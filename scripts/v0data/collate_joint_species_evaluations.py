@@ -10,30 +10,41 @@ import re
 from pathlib import Path
 from typing import Any
 
-RUN_PATTERN = re.compile(
+ZEMKE_RUN_PATTERN = re.compile(
     r"^zemke2023_(?P<species>human|macaque|marmoset|mouse)_"
     r"(?P<strategy>lora|lora_locon)_joint_epoch(?P<epoch>\d+)_eval$"
+)
+JOHANSEN_RUN_PATTERN = re.compile(
+    r"^johansen_joint_(?P<strategy>lora|lora_locon)_"
+    r"(?P<species>human|macaque|marmoset)_eval$"
 )
 
 
 def collate(checkpoint_root: Path) -> dict[str, Any]:
     evaluations = []
     for path in sorted(checkpoint_root.glob("*/evaluation.json")):
-        match = RUN_PATTERN.fullmatch(path.parent.name)
+        zemke_match = ZEMKE_RUN_PATTERN.fullmatch(path.parent.name)
+        johansen_match = JOHANSEN_RUN_PATTERN.fullmatch(path.parent.name)
+        match = zemke_match or johansen_match
         if match is None:
             continue
         record = json.loads(path.read_text())
-        expected_epoch = int(match.group("epoch"))
         source_epoch = record.get("source_epoch")
-        if source_epoch != expected_epoch:
-            raise ValueError(
-                f"{path} names epoch {expected_epoch} but records source epoch {source_epoch}."
-            )
+        if not isinstance(source_epoch, int) or source_epoch < 1:
+            raise ValueError(f"{path} does not record a positive integer source epoch.")
+        if zemke_match is not None:
+            expected_epoch = int(zemke_match.group("epoch"))
+            if source_epoch != expected_epoch:
+                raise ValueError(
+                    f"{path} names epoch {expected_epoch} but records source epoch "
+                    f"{source_epoch}."
+                )
         metrics = record.get("metrics")
         if not isinstance(metrics, dict) or not metrics:
             raise ValueError(f"{path} does not contain nonempty split metrics.")
         evaluations.append(
             {
+                "dataset": "zemke2023_joint" if zemke_match else "johansen_joint",
                 "species": match.group("species"),
                 "strategy": match.group("strategy").replace("_", "+"),
                 "source_epoch": source_epoch,
@@ -57,14 +68,15 @@ def render_markdown(results: dict[str, Any]) -> str:
         "",
         "Each joint Zemke checkpoint is evaluated without parameter updates against the native reference and target manifest for each species.",
         "",
-        "| Species | Strategy | Epoch | Split | Head | Differential R |",
-        "|---|---|---:|---|---|---:|",
+        "| Dataset | Species | Strategy | Epoch | Split | Head | Differential R |",
+        "|---|---|---|---:|---|---|---:|",
     ]
     for evaluation in results["evaluations"]:
         for split, heads in evaluation["metrics"].items():
             for head_name, metrics in heads.items():
                 lines.append(
-                    f"| `{evaluation['species']}` | `{evaluation['strategy']}` | "
+                    f"| `{evaluation['dataset']}` | `{evaluation['species']}` | "
+                    f"`{evaluation['strategy']}` | "
                     f"{evaluation['source_epoch']} | `{split}` | `{head_name}` | "
                     f"{_format(metrics.get('differential_pearson_r'))} |"
                 )
