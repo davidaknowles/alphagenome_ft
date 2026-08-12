@@ -26,3 +26,11 @@ def test_smoke_runs_use_isolated_checkpoint_names() -> None:
         assert '"${SMOKE:-0}" == "1"' in script
         assert '!= *_smoke' in script
         assert '_smoke"' in script
+
+
+def test_gene_supervision_launchers_expose_balanced_window_ordering() -> None:
+    for path in LAUNCHERS[:2]:
+        script = Path(path).read_text()
+
+        assert '"${BALANCE_GENE_WINDOWS:-0}" == "1"' in script
+        assert "EXTRA_ARGS+=(--balance-gene-windows)" in script

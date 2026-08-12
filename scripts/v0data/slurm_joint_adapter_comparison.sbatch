@@ -57,6 +57,9 @@ fi
 if [[ "${REPORT_HEAD_GRADIENT_NORMS:-0}" == "1" ]]; then
   EXTRA_ARGS+=(--report-head-gradient-norms)
 fi
+if [[ "${BALANCE_GENE_WINDOWS:-0}" == "1" ]]; then
+  EXTRA_ARGS+=(--balance-gene-windows)
+fi
 
 printf 'Using %s JAX device(s) with global batch size %s.\n' "$num_devices" "${BATCH_SIZE:-8}"
 
