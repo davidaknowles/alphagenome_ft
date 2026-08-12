@@ -22,4 +22,8 @@ mkdir -p logs/v0data results
   --json-output results/v0data_adapter_coverage.json \
   --markdown-output results/v0data_adapter_coverage.md
 
-echo "Regenerated canonical adapter comparison and coverage results."
+"${HOME}/venv/torchfix/bin/python" scripts/v0data/collate_joint_species_evaluations.py \
+  --json-output results/v0data_joint_species_evaluations.json \
+  --markdown-output results/v0data_joint_species_evaluations.md
+
+echo "Regenerated canonical, screen, coverage, and native-species results."
