@@ -112,6 +112,46 @@
       "metrics_path": "checkpoints/v0data/zemke2023-human_lora_locon/metrics.jsonl"
     },
     {
+      "dataset": "zemke2023_joint",
+      "strategy": "lora",
+      "selected_epoch": 1,
+      "global_step": 9072,
+      "selection_mean_valid_r": 0.3483889184432376,
+      "heads": [
+        {
+          "head": "zemke2023_atac",
+          "valid_r": 0.4017298437496455,
+          "test_r": 0.6478102609763368
+        },
+        {
+          "head": "zemke2023_rna",
+          "valid_r": 0.2950479931368298,
+          "test_r": 0.19896710443406693
+        }
+      ],
+      "metrics_path": "checkpoints/v0data/zemke2023_joint_lora/metrics.jsonl"
+    },
+    {
+      "dataset": "zemke2023_joint",
+      "strategy": "lora+locon",
+      "selected_epoch": 1,
+      "global_step": 9072,
+      "selection_mean_valid_r": 0.3584059336298058,
+      "heads": [
+        {
+          "head": "zemke2023_atac",
+          "valid_r": 0.4332973719654195,
+          "test_r": 0.6539546867547638
+        },
+        {
+          "head": "zemke2023_rna",
+          "valid_r": 0.283514495294192,
+          "test_r": 0.2152338470381379
+        }
+      ],
+      "metrics_path": "checkpoints/v0data/zemke2023_joint_lora_locon/metrics.jsonl"
+    },
+    {
       "dataset": "zemke2023_marmoset",
       "strategy": "lora",
       "selected_epoch": 1,
