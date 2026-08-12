@@ -202,6 +202,18 @@ def test_hda_cosine_screen_is_staged_and_lower_rate() -> None:
     assert 'dependency="afterok:${smoke}_*"' in script
 
 
+def test_liu_cosine_screen_uses_corrected_targets_and_is_staged() -> None:
+    script = Path("scripts/v0data/submit_liu_cosine_lr_screen.sh").read_text()
+
+    assert "DATASET=liu-hdma" in script
+    assert "outputs/v0data/liu-hdma/joint/targets.json" in script
+    assert "LEARNING_RATE=3e-4" in script
+    assert "LEARNING_RATE_SCHEDULE=warmup_cosine" in script
+    assert "WARMUP_STEPS=262" in script
+    assert "--array=0" in script
+    assert 'dependency="afterok:${smoke}_*"' in script
+
+
 def test_jax_launchers_expose_learning_rate_schedule() -> None:
     for path in LAUNCHERS:
         script = Path(path).read_text()
