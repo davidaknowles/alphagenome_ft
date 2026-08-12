@@ -14,7 +14,9 @@ mkdir -p logs/v0data results
 
 "${HOME}/venv/torchfix/bin/python" scripts/v0data/collate_adapter_comparisons.py \
   --json-output results/v0data_adapter_comparisons.json \
-  --markdown-output results/v0data_adapter_comparisons.md
+  --markdown-output results/v0data_adapter_comparisons.md \
+  --variant-json-output results/v0data_objective_screens.json \
+  --variant-markdown-output results/v0data_objective_screens.md
 
 "${HOME}/venv/torchfix/bin/python" scripts/v0data/audit_adapter_coverage.py \
   --json-output results/v0data_adapter_coverage.json \
