@@ -106,3 +106,13 @@ def test_pretrained_head_screen_supports_neural_accessibility_bootstrap() -> Non
     assert '"${SMOKE_GATE:-0}" == "1"' in script
     assert '--nice="${NICE:-50}"' in script
     assert 'dependency="afterok:${smoke}_*"' in script
+
+
+def test_hda_rna_only_screen_is_deterministically_initialized() -> None:
+    script = Path("scripts/v0data/submit_hda_rna_only_screen.sh").read_text()
+
+    assert "prepare_single_head_config.py" in script
+    assert "--head hda_rna" in script
+    assert "PRETRAINED_HEAD_INITIALIZATION=neural_accessibility_bootstrap" in script
+    assert "RUN_SUFFIX=_rna_only_neural_accessibility_bootstrap_screen" in script
+    assert 'dependency="afterok:${smoke}_*"' in script

@@ -5,7 +5,7 @@ from __future__ import annotations
 import copy
 import math
 from pathlib import Path
-from typing import Any, Sequence
+from typing import Any, Iterable, Sequence
 
 import pyBigWig
 
@@ -37,6 +37,29 @@ def make_gene_only_config(
     head["resolutions"] = [128]
     head["double_centered_correlation_loss_weight"] = correlation_loss_weight
     head["row_centered_correlation_loss_weight"] = row_correlation_loss_weight
+    return config
+
+
+def retain_target_heads(
+    config: dict[str, Any],
+    head_ids: Iterable[str],
+) -> dict[str, Any]:
+    """Copy a target manifest and retain the requested heads in source order."""
+    requested = tuple(dict.fromkeys(map(str, head_ids)))
+    if not requested:
+        raise ValueError("At least one target head must be retained.")
+    config = copy.deepcopy(config)
+    heads = config.get("heads")
+    if not isinstance(heads, list):
+        raise ValueError('Target manifest must contain a "heads" list.')
+    available = {str(head.get("id")) for head in heads}
+    missing = [head_id for head_id in requested if head_id not in available]
+    if missing:
+        raise ValueError(f"Target manifest does not contain heads {missing}.")
+    requested_set = set(requested)
+    config["heads"] = [
+        head for head in heads if str(head.get("id")) in requested_set
+    ]
     return config
 
 
@@ -103,4 +126,9 @@ def build_head_config(
     }
 
 
-__all__ = ["bigwig_nonzero_mean", "build_head_config", "make_gene_only_config"]
+__all__ = [
+    "bigwig_nonzero_mean",
+    "build_head_config",
+    "make_gene_only_config",
+    "retain_target_heads",
+]

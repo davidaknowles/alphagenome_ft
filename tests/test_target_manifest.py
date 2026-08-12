@@ -5,7 +5,20 @@ from pathlib import Path
 import pyBigWig
 import pytest
 
-from alphagenome_ft.finetune.target_manifest import bigwig_nonzero_mean, build_head_config
+from alphagenome_ft.finetune.target_manifest import (
+    bigwig_nonzero_mean,
+    build_head_config,
+    retain_target_heads,
+)
+
+
+def test_retain_target_heads_preserves_source_order_without_mutation() -> None:
+    source = {"dataset": "study", "heads": [{"id": "atac"}, {"id": "rna"}]}
+
+    result = retain_target_heads(source, ("rna",))
+
+    assert result["heads"] == [{"id": "rna"}]
+    assert source["heads"] == [{"id": "atac"}, {"id": "rna"}]
 
 
 def _write_bigwig(path: Path) -> None:
