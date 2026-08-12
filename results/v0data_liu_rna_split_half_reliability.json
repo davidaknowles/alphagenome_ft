@@ -1,0 +1,19 @@
+{
+  "samples": 76,
+  "groups": 186,
+  "genes": 38705,
+  "groups_estimable_in_both_halves": 175,
+  "raw_cpm_double_centered_r": 0.8969231078214993,
+  "raw_cpm_full_reliability_estimate": 0.9456610066304277,
+  "log1p_cpm_double_centered_r": 0.5342786841926749,
+  "log1p_cpm_full_reliability_estimate": 0.6964558521176457,
+  "log1p_per_group_pearson_quantiles": {
+    "0.0": 0.2657113613161832,
+    "0.05": 0.7140185391350203,
+    "0.25": 0.9571187242639714,
+    "0.5": 0.9836079913208942,
+    "0.75": 0.9921157964475062,
+    "0.95": 0.9968252597762733,
+    "1.0": 0.9980108718212439
+  }
+}
