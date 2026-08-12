@@ -8,7 +8,7 @@ A matched result means both strategies completed the same epoch. It does not imp
 | `hda-joint` | 3 | 2 | 2 | matched result available |
 | `johansen-human` |  |  |  | missing lora, lora+locon |
 | `johansen_joint` |  | 1 |  | missing lora |
-| `liu-hdma` |  |  |  | missing lora, lora+locon |
+| `liu-hdma` | 1 |  |  | missing lora+locon |
 | `zemke2023-human` | 4 | 4 | 4 | matched result available |
 | `zemke2023_macaque` | 1 | 1 | 1 | matched result available |
 | `zemke2023_marmoset` | 1 | 1 | 1 | matched result available |

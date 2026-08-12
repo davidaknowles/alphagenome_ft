@@ -49,6 +49,8 @@ The first table compares strategies at the highest epoch completed by both. The 
 | `hda` | `lora+locon` | 4 | `hda_atac` | 0.8086 | 0.8166 |
 | `johansen_joint` | `lora+locon` | 1 | `allen_atac` | 0.5107 | 0.4704 |
 | `johansen_joint` | `lora+locon` | 1 | `allen_rna` | 0.2721 | 0.3621 |
+| `liu-hdma` | `lora` | 1 | `liu_atac` | 0.7648 | 0.7786 |
+| `liu-hdma` | `lora` | 1 | `liu_rna` | 0.4053 | 0.4390 |
 | `zemke2023-human` | `lora` | 4 | `zemke2023_atac` | 0.6957 | 0.7112 |
 | `zemke2023-human` | `lora` | 4 | `zemke2023_rna` | 0.4809 | 0.4051 |
 | `zemke2023-human` | `lora+locon` | 4 | `zemke2023_atac` | 0.6971 | 0.7151 |

@@ -41,6 +41,7 @@ fi
   --species-config "$species_config" \
   --checkpoint-path "${CHECKPOINT_PATH:-/gpfs/commons/home/daknowles/.cache/kagglehub/models/google/alphagenome/jax/all_folds/1}" \
   --checkpoint-dir "checkpoints/v0data/${run_name}" \
+  --pretrained-head-initialization "${PRETRAINED_HEAD_INITIALIZATION:-none}" \
   --window-size 131072 \
   --stride 131072 \
   --batch-size "${BATCH_SIZE:-8}" \

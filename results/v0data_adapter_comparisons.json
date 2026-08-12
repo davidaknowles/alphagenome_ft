@@ -404,6 +404,26 @@
       "metrics_path": "checkpoints/v0data/johansen_joint_lora_locon/metrics.jsonl"
     },
     {
+      "dataset": "liu-hdma",
+      "strategy": "lora",
+      "selected_epoch": 1,
+      "global_step": 2619,
+      "selection_mean_valid_r": 0.5850393284821469,
+      "heads": [
+        {
+          "head": "liu_atac",
+          "valid_r": 0.7648121544793519,
+          "test_r": 0.7786114824775034
+        },
+        {
+          "head": "liu_rna",
+          "valid_r": 0.40526650248494184,
+          "test_r": 0.43903851609377437
+        }
+      ],
+      "metrics_path": "checkpoints/v0data/liu-hdma_lora/metrics.jsonl"
+    },
+    {
       "dataset": "zemke2023-human",
       "strategy": "lora",
       "selected_epoch": 4,

@@ -77,6 +77,7 @@ fi
   --include-chroms "${CANONICAL_CHROMS}" \
   --checkpoint-path "${CHECKPOINT_PATH:-/gpfs/commons/home/daknowles/.cache/kagglehub/models/google/alphagenome/jax/all_folds/1}" \
   --checkpoint-dir "checkpoints/v0data/${RUN_NAME}${RUN_SUFFIX:-}" \
+  --pretrained-head-initialization "${PRETRAINED_HEAD_INITIALIZATION:-none}" \
   --head-id "${DATASET//-/_}" \
   --split-source chromosome \
   --window-size 131072 \

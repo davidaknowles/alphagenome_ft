@@ -239,6 +239,15 @@ def parse_args() -> argparse.Namespace:
         help="Restore head and adapter parameters from a saved last/best checkpoint.",
     )
     parser.add_argument(
+        "--pretrained-head-initialization",
+        choices=("none", "bootstrap"),
+        default="none",
+        help=(
+            "Initialize each new genomic output channel from a deterministic "
+            "same-assay pretrained channel, or retain random initialization."
+        ),
+    )
+    parser.add_argument(
         "--split-source",
         choices=("chromosome", "fold", "bed"),
         default="chromosome",
@@ -951,6 +960,10 @@ def main() -> None:
     start_epoch = 1
     initial_global_step = 0
     initial_optimizer_state_path = None
+    if args.resume_from is not None and args.pretrained_head_initialization != "none":
+        raise ValueError(
+            "--pretrained-head-initialization applies only to a new run, not --resume-from."
+        )
     if args.resume_from is None:
         model = create_model_with_heads(
             args.model_version,
@@ -962,6 +975,7 @@ def main() -> None:
             backbone_locon_config=backbone_locon_config,
             runtime_backbone_param_dtype=args.base_param_dtype,
             runtime_backbone_compute_dtype=args.backbone_compute_dtype,
+            pretrained_head_initialization=args.pretrained_head_initialization,
         )
     else:
         resume_from = args.resume_from.expanduser().resolve()
@@ -1024,6 +1038,7 @@ def main() -> None:
             "backend": args.backend,
             "precision": args.precision,
             "adapter_strategy": args.adapter_strategy,
+            "pretrained_head_initialization": args.pretrained_head_initialization,
             "bigwig_dir": str(bigwig_dir),
             "num_bigwigs": len(bigwigs),
             "fasta_path": str(fasta_path),

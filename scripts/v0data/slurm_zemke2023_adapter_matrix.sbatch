@@ -80,6 +80,7 @@ fi
   --test-chroms "${TEST_CHROMS:-chr9}" \
   --checkpoint-path "${CHECKPOINT_PATH:-/gpfs/commons/home/daknowles/.cache/kagglehub/models/google/alphagenome/jax/all_folds/1}" \
   --checkpoint-dir "checkpoints/v0data/${run_name}" \
+  --pretrained-head-initialization "${PRETRAINED_HEAD_INITIALIZATION:-none}" \
   --split-source chromosome \
   --window-size 131072 \
   --stride 131072 \

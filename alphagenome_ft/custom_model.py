@@ -39,7 +39,9 @@ import enum
 import json
 import os
 from pathlib import Path
+import random
 from typing import Any
+import zlib
 
 import haiku as hk
 import jax
@@ -285,6 +287,139 @@ def _resolve_user_metadata(
             f"expected {num_tracks}."
         )
     return {organism: metadata for organism in dna_client.Organism}
+
+
+def _bootstrap_track_indices(
+    source_strands: Sequence[str],
+    target_strands: Sequence[str],
+    *,
+    source_valid: Sequence[bool] | None = None,
+    seed: int,
+) -> tuple[int, ...]:
+    """Assign each target to a deterministic empirical source-head channel."""
+    if source_valid is None:
+        source_valid = (True,) * len(source_strands)
+    if len(source_valid) != len(source_strands):
+        raise ValueError("source_valid and source_strands must have equal length.")
+    valid_indices = [index for index, keep in enumerate(source_valid) if keep]
+    if not valid_indices:
+        raise ValueError("Pretrained output head has no valid source tracks.")
+
+    assignments = [-1] * len(target_strands)
+    for strand in dict.fromkeys(str(target) for target in target_strands):
+        pool = [index for index in valid_indices if str(source_strands[index]) == strand]
+        if not pool:
+            pool = valid_indices.copy()
+        # The same seed and relative ordering pair '+' and '-' source channels when
+        # the pretrained metadata stores their pools in matching order.
+        random.Random(seed).shuffle(pool)
+        target_indices = [
+            index for index, target_strand in enumerate(target_strands)
+            if str(target_strand) == strand
+        ]
+        for offset, target_index in enumerate(target_indices):
+            assignments[target_index] = pool[offset % len(pool)]
+    if any(index < 0 for index in assignments):
+        raise RuntimeError("Failed to initialize every target-head channel.")
+    return tuple(assignments)
+
+
+def _initialize_heads_from_pretrained_bootstrap(
+    params: dict[str, Any],
+    *,
+    head_names: Sequence[str],
+    head_configs: Mapping[str, custom_heads_module.HeadConfigLike],
+    pretrained_metadata: Mapping[dna_model.Organism, Any],
+) -> dict[str, Any]:
+    """Bootstrap new genomic heads from same-assay pretrained output channels."""
+    organism_order = tuple(pretrained_metadata)
+    initialized = []
+    for head_name in head_names:
+        config = head_configs[head_name]
+        output_type = getattr(config, "output_type", None)
+        if output_type is None:
+            continue
+        source_prefix = f"alphagenome/head/{output_type.name.lower()}"
+        target_prefix = f"head/{head_name}"
+        target_metadata = _resolve_user_metadata(head_name=head_name, head_config=config)
+        copied_modules = 0
+        for target_module, target_leaves in params.items():
+            if not target_module.startswith(f"{target_prefix}/resolution_"):
+                continue
+            source_module = source_prefix + target_module[len(target_prefix):]
+            source_leaves = params.get(source_module)
+            if not isinstance(source_leaves, Mapping):
+                continue
+            for leaf_name, target_value in tuple(target_leaves.items()):
+                source_value = source_leaves.get(leaf_name)
+                if source_value is None or not hasattr(target_value, "shape"):
+                    continue
+                if target_value.ndim < 2 or source_value.ndim != target_value.ndim:
+                    continue
+                if source_value.shape[1:-1] != target_value.shape[1:-1]:
+                    continue
+                organism_values = []
+                target_organisms = tuple(target_metadata or ())
+                if len(target_organisms) != target_value.shape[0]:
+                    target_organisms = organism_order[: target_value.shape[0]]
+                for organism in target_organisms:
+                    matching_indices = [
+                        index for index, candidate in enumerate(organism_order)
+                        if candidate == organism
+                        or getattr(candidate, "name", None) == getattr(organism, "name", None)
+                    ]
+                    if not matching_indices:
+                        raise ValueError(
+                            f"Target metadata organism {organism!r} is absent from the "
+                            "pretrained model."
+                        )
+                    source_organism_index = matching_indices[0]
+                    source_organism = organism_order[source_organism_index]
+                    source_frame = pretrained_metadata[source_organism].get(output_type)
+                    if source_frame is None or len(source_frame) != source_value.shape[-1]:
+                        raise ValueError(
+                            f"Pretrained metadata for {output_type.name} does not match "
+                            f"the {source_value.shape[-1]} source channels."
+                        )
+                    target_frame = None if target_metadata is None else target_metadata.get(organism)
+                    if target_frame is None and target_metadata:
+                        target_frame = next(
+                            (frame for frame in target_metadata.values() if frame is not None),
+                            None,
+                        )
+                    source_strands = (
+                        tuple(source_frame["strand"].astype(str))
+                        if "strand" in source_frame
+                        else (".",) * len(source_frame)
+                    )
+                    target_strands = (
+                        tuple(target_frame["strand"].astype(str))
+                        if target_frame is not None and "strand" in target_frame
+                        else (".",) * target_value.shape[-1]
+                    )
+                    source_valid = tuple(
+                        bool(value)
+                        for value in ~pretrained_metadata[source_organism].padding[output_type]
+                    )
+                    seed = zlib.crc32(
+                        f"{head_name}:{source_organism.name}".encode("utf-8")
+                    )
+                    indices = _bootstrap_track_indices(
+                        source_strands,
+                        target_strands,
+                        source_valid=source_valid,
+                        seed=seed,
+                    )
+                    organism_values.append(
+                        jnp.take(source_value[source_organism_index], jnp.asarray(indices), axis=-1)
+                    )
+                target_leaves[leaf_name] = jnp.stack(organism_values).astype(target_value.dtype)
+            copied_modules += 1
+        if copied_modules:
+            initialized.append(head_name)
+    if initialized:
+        print("Initialized heads from pretrained output channels:", initialized)
+    return params
 
 
 class _PredictionsDict:
@@ -1064,6 +1199,9 @@ class CustomAlphaGenomeModel:
                 _serialize_value(asdict(locon_config)) if locon_config is not None else None
             ),
             'backbone_effective_conv_paths': list(effective_conv_paths),
+            'pretrained_head_initialization': getattr(
+                self, "_pretrained_head_initialization", "none"
+            ),
             'use_encoder_output': hasattr(self, '_custom_forward_fn') and self._custom_forward_fn is not None,
         }
 
@@ -2345,6 +2483,7 @@ def create_model_with_heads(
     backbone_effective_conv_paths: Sequence[str] | None = None,
     runtime_backbone_param_dtype: str | None = None,
     runtime_backbone_compute_dtype: str | None = None,
+    pretrained_head_initialization: str = "none",
 ) -> CustomAlphaGenomeModel:
     """Create an AlphaGenome model with specified heads replacing standard heads.
 
@@ -2386,6 +2525,9 @@ def create_model_with_heads(
         runtime_backbone_compute_dtype: Compute and output dtype for the complete
             AlphaGenome trunk. Defaults to bfloat16. Adapter projection compute
             dtypes remain controlled by their LoRA and LoCon configurations.
+        pretrained_head_initialization: ``"bootstrap"`` initializes each new
+            genomic channel from a deterministic same-assay pretrained channel,
+            respecting strand metadata. ``"none"`` keeps Haiku initialization.
 
     Returns:
         CustomAlphaGenomeModel with requested heads and pretrained backbone.
@@ -2426,6 +2568,11 @@ def create_model_with_heads(
         ```
     """
     normalized_heads = [custom_heads_module.normalize_head_name(name) for name in heads]
+    if pretrained_head_initialization not in {"none", "bootstrap"}:
+        raise ValueError(
+            "pretrained_head_initialization must be 'none' or 'bootstrap', got "
+            f"{pretrained_head_initialization!r}."
+        )
 
     effective_conv_paths = tuple(str(path) for path in (backbone_effective_conv_paths or ()))
     has_backbone_patch = (
@@ -2638,6 +2785,18 @@ def create_model_with_heads(
     merged_params = merge_params(base_model._params, new_params)
     merged_state = merge_params(base_model._state, new_state)
 
+    registered_head_configs = {
+        head_name: custom_heads_module.get_registered_head_config(head_name)
+        for head_name in normalized_heads
+    }
+    if pretrained_head_initialization == "bootstrap":
+        merged_params = _initialize_heads_from_pretrained_bootstrap(
+            merged_params,
+            head_names=normalized_heads,
+            head_configs=registered_head_configs,
+            pretrained_metadata=metadata,
+        )
+
     print("✓ Parameters merged")
 
     if runtime_backbone_param_dtype is not None:
@@ -2670,7 +2829,7 @@ def create_model_with_heads(
     # Store head configs for loss computation
     head_configs = {}
     for head_name in normalized_heads:
-        config = custom_heads_module.get_registered_head_config(head_name)
+        config = registered_head_configs[head_name]
         source = 'custom' if custom_heads_module.is_custom_config(config) else 'predefined'
         head_configs[head_name] = _HeadConfigEntry(
             source=source,
@@ -2689,6 +2848,7 @@ def create_model_with_heads(
     custom_model._backbone_lora_config = backbone_lora_config
     custom_model._backbone_locon_config = backbone_locon_config
     custom_model._backbone_effective_conv_paths = effective_conv_paths
+    custom_model._pretrained_head_initialization = pretrained_head_initialization
 
     print("✓ Model created successfully")
     print(f"  Total parameters: {custom_model.count_parameters():,}")
@@ -3714,5 +3874,8 @@ def load_checkpoint(
     custom_model._backbone_lora_config = backbone_lora_config
     custom_model._backbone_locon_config = backbone_locon_config
     custom_model._backbone_effective_conv_paths = tuple(backbone_effective_conv_paths or ())
+    custom_model._pretrained_head_initialization = config.get(
+        "pretrained_head_initialization", "none"
+    )
 
     return custom_model
