@@ -37,6 +37,7 @@ from alphagenome_ft.finetune.target_transforms import (
 from alphagenome_ft.finetune.target_manifest import (
     bigwig_nonzero_mean,
     build_head_config,
+    make_gene_only_config,
 )
 from alphagenome_ft.finetune.reprocessing import (
     BinnedAtacAccumulator,
@@ -97,6 +98,7 @@ __all__ = [
     # target manifests
     "bigwig_nonzero_mean",
     "build_head_config",
+    "make_gene_only_config",
     # ATAC pseudobulk tracks
     "BinnedAtacAccumulator",
     "fragment_totals_by_group",

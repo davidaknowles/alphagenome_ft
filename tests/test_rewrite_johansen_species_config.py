@@ -134,4 +134,5 @@ def test_rewrite_species_config_uses_corrected_gene_only_supervision(tmp_path: P
     rna = rewritten["heads"][1]
     assert rna["gene_supervision"]["path"] == str(supervision.resolve())
     assert rna["gene_supervision"]["coverage_loss_weight"] == 0
+    assert rna["resolutions"] == [128]
     assert rna["double_centered_correlation_loss_weight"] == 1

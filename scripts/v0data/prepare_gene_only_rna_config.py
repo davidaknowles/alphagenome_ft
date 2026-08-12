@@ -4,10 +4,15 @@
 from __future__ import annotations
 
 import argparse
-import copy
 import json
 from pathlib import Path
-from typing import Any
+import sys
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
+from alphagenome_ft.finetune.target_manifest import make_gene_only_config
 
 
 def parse_args() -> argparse.Namespace:
@@ -18,31 +23,6 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--correlation-loss-weight", type=float, default=0.0)
     parser.add_argument("--gene-supervision-path", type=Path)
     return parser.parse_args()
-
-
-def make_gene_only_config(
-    config: dict[str, Any],
-    *,
-    head_id: str,
-    correlation_loss_weight: float,
-    gene_supervision_path: str | None = None,
-) -> dict[str, Any]:
-    if correlation_loss_weight < 0:
-        raise ValueError("Correlation loss weight must be non-negative.")
-    config = copy.deepcopy(config)
-    matches = [head for head in config.get("heads", ()) if head.get("id") == head_id]
-    if len(matches) != 1:
-        raise ValueError(f'Expected exactly one head named "{head_id}", found {len(matches)}.')
-    head = matches[0]
-    gene_supervision = head.get("gene_supervision")
-    if not isinstance(gene_supervision, dict):
-        raise ValueError(f'Head "{head_id}" does not define gene supervision.')
-    gene_supervision["coverage_loss_weight"] = 0.0
-    if gene_supervision_path is not None:
-        gene_supervision["path"] = gene_supervision_path
-    head["resolutions"] = [128]
-    head["double_centered_correlation_loss_weight"] = correlation_loss_weight
-    return config
 
 
 def main() -> None:

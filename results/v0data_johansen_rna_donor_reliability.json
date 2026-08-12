@@ -1,0 +1,62 @@
+{
+  "definition": "Donor-balanced split-half signed double-centered correlation over raw-count pseudobulk CPM restricted to retained groups and modeled genes.",
+  "audits": [
+    {
+      "species": "human",
+      "donors": 10,
+      "groups": 47,
+      "genes": 13509,
+      "groups_estimable_in_both_halves": 47,
+      "donor_support_quantiles": {
+        "0": 7.0,
+        "0.25": 9.0,
+        "0.5": 9.0,
+        "0.75": 10.0,
+        "1": 10.0
+      },
+      "raw_cpm_double_centered_r": 0.9749308039623867,
+      "raw_cpm_full_reliability_estimate": 0.987306291447115,
+      "raw_cpm_model_correlation_ceiling_estimate": 0.9936328755869116,
+      "log1p_cpm_double_centered_r": 0.9331427229925658,
+      "log1p_cpm_full_reliability_estimate": 0.9654152400584592
+    },
+    {
+      "species": "macaque",
+      "donors": 8,
+      "groups": 47,
+      "genes": 13495,
+      "groups_estimable_in_both_halves": 47,
+      "donor_support_quantiles": {
+        "0": 5.0,
+        "0.25": 7.0,
+        "0.5": 7.0,
+        "0.75": 7.5,
+        "1": 8.0
+      },
+      "raw_cpm_double_centered_r": 0.9714459050516955,
+      "raw_cpm_full_reliability_estimate": 0.9855161661422529,
+      "raw_cpm_model_correlation_ceiling_estimate": 0.9927316687515579,
+      "log1p_cpm_double_centered_r": 0.886540307331527,
+      "log1p_cpm_full_reliability_estimate": 0.9398583257259107
+    },
+    {
+      "species": "marmoset",
+      "donors": 4,
+      "groups": 47,
+      "genes": 13506,
+      "groups_estimable_in_both_halves": 47,
+      "donor_support_quantiles": {
+        "0": 2.0,
+        "0.25": 3.0,
+        "0.5": 4.0,
+        "0.75": 4.0,
+        "1": 4.0
+      },
+      "raw_cpm_double_centered_r": 0.9661463403325259,
+      "raw_cpm_full_reliability_estimate": 0.9827817192581155,
+      "raw_cpm_model_correlation_ceiling_estimate": 0.9913534784617016,
+      "log1p_cpm_double_centered_r": 0.840871690259619,
+      "log1p_cpm_full_reliability_estimate": 0.9135581743245021
+    }
+  ]
+}

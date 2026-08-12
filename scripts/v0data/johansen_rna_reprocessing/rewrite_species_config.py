@@ -7,6 +7,13 @@ import argparse
 import copy
 import json
 from pathlib import Path
+import sys
+
+REPO_ROOT = Path(__file__).resolve().parents[3]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
+from alphagenome_ft.finetune.target_manifest import make_gene_only_config
 
 
 def main() -> None:
@@ -33,10 +40,11 @@ def main() -> None:
         supervision = (args.supervision_root / species / "gene_expression_supervision.npz").resolve()
         if not supervision.exists():
             raise FileNotFoundError(supervision)
-        rna_heads[0]["gene_supervision"]["path"] = str(supervision)
-        rna_heads[0]["gene_supervision"]["coverage_loss_weight"] = 0.0
-        rna_heads[0]["double_centered_correlation_loss_weight"] = (
-            args.correlation_loss_weight
+        targets = make_gene_only_config(
+            targets,
+            head_id=str(rna_heads[0]["id"]),
+            correlation_loss_weight=args.correlation_loss_weight,
+            gene_supervision_path=str(supervision),
         )
 
         species_dir = output_dir / species

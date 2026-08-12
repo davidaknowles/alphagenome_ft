@@ -2,11 +2,38 @@
 
 from __future__ import annotations
 
+import copy
 import math
 from pathlib import Path
 from typing import Any, Sequence
 
 import pyBigWig
+
+
+def make_gene_only_config(
+    config: dict[str, Any],
+    *,
+    head_id: str,
+    correlation_loss_weight: float,
+    gene_supervision_path: str | None = None,
+) -> dict[str, Any]:
+    """Copy a target manifest and retain one RNA head's gene supervision only."""
+    if correlation_loss_weight < 0:
+        raise ValueError("Correlation loss weight must be non-negative.")
+    config = copy.deepcopy(config)
+    matches = [head for head in config.get("heads", ()) if head.get("id") == head_id]
+    if len(matches) != 1:
+        raise ValueError(f'Expected exactly one head named "{head_id}", found {len(matches)}.')
+    head = matches[0]
+    gene_supervision = head.get("gene_supervision")
+    if not isinstance(gene_supervision, dict):
+        raise ValueError(f'Head "{head_id}" does not define gene supervision.')
+    gene_supervision["coverage_loss_weight"] = 0.0
+    if gene_supervision_path is not None:
+        gene_supervision["path"] = gene_supervision_path
+    head["resolutions"] = [128]
+    head["double_centered_correlation_loss_weight"] = correlation_loss_weight
+    return config
 
 
 def bigwig_nonzero_mean(path: Path) -> float:
@@ -72,4 +99,4 @@ def build_head_config(
     }
 
 
-__all__ = ["bigwig_nonzero_mean", "build_head_config"]
+__all__ = ["bigwig_nonzero_mean", "build_head_config", "make_gene_only_config"]

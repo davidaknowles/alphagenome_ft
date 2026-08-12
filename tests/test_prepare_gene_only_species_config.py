@@ -2,7 +2,7 @@ import copy
 
 import pytest
 
-from scripts.v0data.prepare_gene_only_rna_config import make_gene_only_config
+from alphagenome_ft.finetune.target_manifest import make_gene_only_config
 
 
 def _config() -> dict:

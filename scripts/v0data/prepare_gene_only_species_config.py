@@ -13,7 +13,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from scripts.v0data.prepare_gene_only_rna_config import make_gene_only_config
+from alphagenome_ft.finetune.target_manifest import make_gene_only_config
 
 
 def main() -> None:

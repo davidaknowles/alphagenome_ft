@@ -1,0 +1,19 @@
+{
+  "species": "macaque",
+  "donors": 8,
+  "groups": 47,
+  "genes": 13495,
+  "groups_estimable_in_both_halves": 47,
+  "donor_support_quantiles": {
+    "0": 5.0,
+    "0.25": 7.0,
+    "0.5": 7.0,
+    "0.75": 7.5,
+    "1": 8.0
+  },
+  "raw_cpm_double_centered_r": 0.9714459050516955,
+  "raw_cpm_full_reliability_estimate": 0.9855161661422529,
+  "raw_cpm_model_correlation_ceiling_estimate": 0.9927316687515579,
+  "log1p_cpm_double_centered_r": 0.886540307331527,
+  "log1p_cpm_full_reliability_estimate": 0.9398583257259107
+}
