@@ -17,12 +17,17 @@ def make_gene_only_config(
     correlation_loss_weight: float,
     row_correlation_loss_weight: float = 0.0,
     gene_supervision_path: str | None = None,
+    output_rank: int | None = None,
 ) -> dict[str, Any]:
     """Copy a target manifest and retain one RNA head's gene supervision only."""
     if not math.isfinite(correlation_loss_weight) or correlation_loss_weight < 0:
         raise ValueError("Correlation loss weight must be finite and non-negative.")
     if not math.isfinite(row_correlation_loss_weight) or row_correlation_loss_weight < 0:
         raise ValueError("Row correlation loss weight must be finite and non-negative.")
+    if output_rank is not None and (
+        not isinstance(output_rank, int) or output_rank < 1
+    ):
+        raise ValueError("Output rank must be a positive integer.")
     config = copy.deepcopy(config)
     matches = [head for head in config.get("heads", ()) if head.get("id") == head_id]
     if len(matches) != 1:
@@ -37,6 +42,30 @@ def make_gene_only_config(
     head["resolutions"] = [128]
     head["double_centered_correlation_loss_weight"] = correlation_loss_weight
     head["row_centered_correlation_loss_weight"] = row_correlation_loss_weight
+    if output_rank is not None:
+        head["output_rank"] = output_rank
+    return config
+
+
+def set_head_output_rank(
+    config: dict[str, Any],
+    *,
+    head_id: str,
+    output_rank: int,
+) -> dict[str, Any]:
+    """Copy a target manifest and factorize one RNA head's output projection."""
+    if not isinstance(output_rank, int) or output_rank < 1:
+        raise ValueError("Output rank must be a positive integer.")
+    config = copy.deepcopy(config)
+    matches = [head for head in config.get("heads", ()) if head.get("id") == head_id]
+    if len(matches) != 1:
+        raise ValueError(f'Expected exactly one head named "{head_id}", found {len(matches)}.')
+    head = matches[0]
+    if str(head.get("kind", "")).lower() != "rna_seq":
+        raise ValueError("Output factorization is currently supported only for RNA-seq heads.")
+    if output_rank >= len(head.get("targets", ())):
+        raise ValueError("Output rank must be smaller than the RNA track count.")
+    head["output_rank"] = output_rank
     return config
 
 
@@ -131,4 +160,5 @@ __all__ = [
     "build_head_config",
     "make_gene_only_config",
     "retain_target_heads",
+    "set_head_output_rank",
 ]

@@ -23,6 +23,7 @@ def main() -> None:
     parser.add_argument("--head", required=True)
     parser.add_argument("--correlation-loss-weight", type=float, default=0.0)
     parser.add_argument("--row-correlation-loss-weight", type=float, default=0.0)
+    parser.add_argument("--output-rank", type=int)
     args = parser.parse_args()
 
     source_path = args.input.expanduser().resolve()
@@ -37,6 +38,7 @@ def main() -> None:
             head_id=args.head,
             correlation_loss_weight=args.correlation_loss_weight,
             row_correlation_loss_weight=args.row_correlation_loss_weight,
+            output_rank=args.output_rank,
         )
         species_dir = args.output_dir / str(entry["name"])
         species_dir.mkdir(parents=True, exist_ok=True)

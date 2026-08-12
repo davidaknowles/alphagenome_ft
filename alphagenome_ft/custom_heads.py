@@ -21,6 +21,7 @@ import enum
 from typing import Any, TypeAlias
 
 import haiku as hk
+import jax
 import jax.numpy as jnp
 from jaxtyping import Array, Float, Int, PyTree
 import pandas as pd
@@ -67,6 +68,86 @@ HeadNameLike: TypeAlias = str | enum.Enum
 HeadConfigLike: TypeAlias = PredefinedHeadConfig | CustomHeadConfig
 HeadLike: TypeAlias = "predefined_heads.Head | CustomHead"
 HeadFactory: TypeAlias = Callable[[HeadConfigLike, Mapping | None, int], HeadLike]
+
+
+@dataclass
+class FactorizedGenomeTracksHeadConfig(predefined_heads.GenomeTracksHeadConfig):
+    """Genome-track head configuration with a low-rank output projection."""
+
+    output_rank: int
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.output_rank, int) or self.output_rank < 1:
+            raise ValueError("output_rank must be a positive integer.")
+
+
+class _FactorizedMultiOrganismLinear(hk.Module):
+    """Organism-specific ``D x R x C`` linear projection."""
+
+    def __init__(
+        self,
+        output_size: int,
+        num_organisms: int,
+        rank: int,
+        name: str | None = "factorized_multi_organism_linear",
+    ) -> None:
+        super().__init__(name=name)
+        self._output_size = output_size
+        self._num_organisms = num_organisms
+        self._rank = rank
+
+    def __call__(self, x, organism_index):
+        input_weights = hk.get_parameter(
+            "factor_in_w",
+            (self._num_organisms, x.shape[-1], self._rank),
+            init=hk.initializers.TruncatedNormal(stddev=x.shape[-1] ** -0.5),
+        ).astype(x.dtype)
+        output_weights = hk.get_parameter(
+            "factor_out_w",
+            (self._num_organisms, self._rank, self._output_size),
+            init=hk.initializers.TruncatedNormal(stddev=self._rank ** -0.5),
+        ).astype(x.dtype)
+        bias = hk.get_parameter(
+            "b",
+            (self._num_organisms, self._output_size),
+            init=jnp.zeros,
+        ).astype(x.dtype)
+        input_weights = predefined_heads._get_param_for_index(input_weights, organism_index)
+        output_weights = predefined_heads._get_param_for_index(output_weights, organism_index)
+        bias = predefined_heads._get_param_for_index(bias, organism_index)
+        latent = jnp.einsum(
+            "b...i,bir->b...r", x, input_weights, preferred_element_type=jnp.float32
+        )
+        output = jnp.einsum(
+            "b...r,brj->b...j", latent, output_weights, preferred_element_type=jnp.float32
+        )
+        target_bias_shape = (bias.shape[0],) + (1,) * (x.ndim - 2) + (bias.shape[1],)
+        return output + bias.reshape(target_bias_shape)
+
+
+class FactorizedGenomeTracksHead(predefined_heads.GenomeTracksHead):
+    """Predefined genome-track head with a factorized final projection."""
+
+    def __init__(self, *, output_rank: int, **kwargs) -> None:
+        super().__init__(**kwargs)
+        self._output_rank = output_rank
+
+    @hk.transparent
+    def _predict(self, x, organism_index):
+        x = _FactorizedMultiOrganismLinear(
+            self.num_tracks,
+            self._num_organisms,
+            self._output_rank,
+        )(x, organism_index)
+        residual_scales = hk.get_parameter(
+            "learnt_scale",
+            (self._num_organisms, self.num_tracks),
+            init=jnp.ones,
+        ).astype(x.dtype)
+        residual_scale = predefined_heads._get_param_for_index(
+            residual_scales, organism_index
+        )
+        return jax.nn.softplus(x) * jax.nn.softplus(residual_scale[:, None, :])
 
 
 class CustomHead(ABC, hk.Module):
@@ -403,7 +484,7 @@ def register_predefined_head(
                 f"Expected predefined head config for '{normalized_name}', got {type(cfg)!r}."
             )
         num_organisms = _required_num_organisms(metadata, _num_organisms)
-        return predefined_heads.create_head(
+        return create_predefined_head_from_config(
             cfg,
             metadata,
             num_organisms=num_organisms,
@@ -428,6 +509,7 @@ def get_predefined_head_config(
     apply_squashing: bool | None = None,
     embedding_channels: int | None = None,
     num_tissues: int | None = None,
+    output_rank: int | None = None,
 ) -> PredefinedHeadConfig:
     """Build a predefined head config with required num_tracks and safe overrides."""
     kind_enum = _normalize_predefined_head_name(head_name)
@@ -460,7 +542,12 @@ def get_predefined_head_config(
     _maybe_override("embedding_channels", embedding_channels)
     _maybe_override("num_tissues", num_tissues)
 
-    return replace(base_config, **overrides)
+    config = replace(base_config, **overrides)
+    if output_rank is None:
+        return config
+    if not isinstance(config, predefined_heads.GenomeTracksHeadConfig):
+        raise ValueError("output_rank is supported only for genome-track heads.")
+    return FactorizedGenomeTracksHeadConfig(**config.__dict__, output_rank=output_rank)
 
 
 def deserialize_predefined_head_config(
@@ -482,32 +569,55 @@ def deserialize_predefined_head_config(
     head_type = _coerce_enum(config_dict["type"], predefined_heads.HeadType)
     output_type = _coerce_enum(config_dict["output_type"], dna_output.OutputType)
     name = config_dict["name"]
-    num_tracks = int(config_dict["num_tracks"])
+    loss_weight = float(config_dict.get("loss_weight", 1.0))
+    num_tracks = (
+        int(config_dict["num_tracks"])
+        if config_dict.get("num_tracks") is not None
+        else None
+    )
 
     if head_type == predefined_heads.HeadType.GENOME_TRACKS:
         bundle = _coerce_enum(config_dict["bundle"], bundles.BundleName)
-        return predefined_heads.GenomeTracksHeadConfig(
+        config_class = (
+            FactorizedGenomeTracksHeadConfig
+            if config_dict.get("output_rank") is not None
+            else predefined_heads.GenomeTracksHeadConfig
+        )
+        kwargs = dict(
             type=head_type,
             name=name,
             output_type=output_type,
-            num_tracks=num_tracks,
+            loss_weight=loss_weight,
             resolutions=list(config_dict["resolutions"]),
             apply_squashing=bool(config_dict["apply_squashing"]),
             bundle=bundle,
         )
+        if "num_tracks" in config_class.__dataclass_fields__:
+            if num_tracks is None:
+                raise ValueError("Serialized head config is missing num_tracks.")
+            kwargs["num_tracks"] = num_tracks
+        if config_dict.get("output_rank") is not None:
+            kwargs["output_rank"] = int(config_dict["output_rank"])
+        return config_class(**kwargs)
     if head_type == predefined_heads.HeadType.SPLICE_SITES_JUNCTION:
+        if num_tracks is None:
+            raise ValueError("Serialized head config is missing num_tracks.")
         return predefined_heads.SpliceSitesJunctionHeadConfig(
             type=head_type,
             name=name,
             output_type=output_type,
+            loss_weight=loss_weight,
             num_tracks=num_tracks,
             embedding_channels=int(config_dict["embedding_channels"]),
             num_tissues=int(config_dict["num_tissues"]),
         )
+    if num_tracks is None:
+        raise ValueError("Serialized head config is missing num_tracks.")
     return predefined_heads.HeadConfig(
         type=head_type,
         name=name,
         output_type=output_type,
+        loss_weight=loss_weight,
         num_tracks=num_tracks,
     )
 
@@ -515,12 +625,30 @@ def deserialize_predefined_head_config(
 def create_predefined_head_from_config(
     config: PredefinedHeadConfig,
     metadata: Mapping,
+    *,
+    num_organisms: int | None = None,
 ) -> predefined_heads.Head:
     """Instantiate a predefined head from an explicit config."""
+    resolved_num_organisms = (
+        _required_num_organisms(metadata)
+        if num_organisms is None
+        else num_organisms
+    )
+    if isinstance(config, FactorizedGenomeTracksHeadConfig):
+        return FactorizedGenomeTracksHead(
+            name=config.name,
+            output_type=config.output_type,
+            metadata=metadata,
+            resolutions=config.resolutions,
+            apply_squashing=config.apply_squashing,
+            bundle=config.bundle,
+            num_organisms=resolved_num_organisms,
+            output_rank=config.output_rank,
+        )
     return predefined_heads.create_head(
         config,
         metadata,
-        num_organisms=_required_num_organisms(metadata),
+        num_organisms=resolved_num_organisms,
     )
 
 

@@ -47,6 +47,17 @@ def test_make_gene_only_config_can_set_row_correlation() -> None:
     assert result["heads"][1]["row_centered_correlation_loss_weight"] == 1.0
 
 
+def test_make_gene_only_config_can_factorize_output() -> None:
+    result = make_gene_only_config(
+        _config(),
+        head_id="rna",
+        correlation_loss_weight=0.0,
+        output_rank=1,
+    )
+
+    assert result["heads"][1]["output_rank"] == 1
+
+
 def test_make_gene_only_config_can_replace_supervision_path() -> None:
     result = make_gene_only_config(
         _config(),

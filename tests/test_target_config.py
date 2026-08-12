@@ -12,6 +12,7 @@ from alphagenome_ft.finetune.config import (
     prepare_head_specs,
     validate_head_specs,
 )
+from alphagenome_ft.custom_heads import FactorizedGenomeTracksHeadConfig
 
 
 def test_track_metadata_preserves_strands(tmp_path: Path):
@@ -90,6 +91,52 @@ def test_prepare_head_specs_parses_row_correlation_weight(tmp_path: Path):
     )
 
     assert specs[0].row_centered_correlation_loss_weight == 2.0
+
+
+def test_prepare_head_specs_parses_factorized_rna_output(tmp_path: Path):
+    tracks = []
+    for index in range(20):
+        path = tmp_path / f"track{index}.bw"
+        path.touch()
+        tracks.append({"path": str(path), "strand": "+" if index % 2 == 0 else "-"})
+    specs = prepare_head_specs(
+        {
+            "heads": [
+                {
+                    "id": "example_rna",
+                    "source": "predefined",
+                    "kind": "rna_seq",
+                    "output_rank": 16,
+                    "targets": tracks,
+                }
+            ]
+        },
+        organism="HOMO_SAPIENS",
+    )
+
+    assert specs[0].output_rank == 16
+    assert isinstance(specs[0].config, FactorizedGenomeTracksHeadConfig)
+    assert specs[0].config.output_rank == 16
+
+
+def test_prepare_head_specs_rejects_factorized_atac_output(tmp_path: Path):
+    track = tmp_path / "track.bw"
+    track.touch()
+    with pytest.raises(ValueError, match="only for RNA-seq"):
+        prepare_head_specs(
+            {
+                "heads": [
+                    {
+                        "id": "example_atac",
+                        "source": "predefined",
+                        "kind": "atac",
+                        "output_rank": 1,
+                        "targets": [{"path": str(track)}, {"path": str(track)}],
+                    }
+                ]
+            },
+            organism="HOMO_SAPIENS",
+        )
 
 
 @pytest.mark.parametrize("weight", [0.0, -1.0, float("inf"), float("nan")])

@@ -82,6 +82,7 @@ class HeadSpec:
     coverage_loss_weight: float = 1.0
     double_centered_correlation_loss_weight: float = 0.0
     row_centered_correlation_loss_weight: float = 0.0
+    output_rank: int | None = None
     target_transform_path: Path | None = None
 
 
@@ -400,6 +401,14 @@ def prepare_head_specs(
             kind_name = entry.get("kind")
             if not kind_name:
                 raise ValueError(f'Predefined head "{head_id}" must include "kind".')
+            output_rank = entry.get("output_rank")
+            if output_rank is not None:
+                if not isinstance(output_rank, int) or output_rank < 1:
+                    raise ValueError("output_rank must be a positive integer.")
+                if str(kind_name).lower() != "rna_seq":
+                    raise ValueError("output_rank is currently supported only for RNA-seq heads.")
+                if output_rank >= len(tracks):
+                    raise ValueError("output_rank must be smaller than the RNA track count.")
             overrides = {
                 field: entry.get(field)
                 for field in (
@@ -431,6 +440,7 @@ def prepare_head_specs(
                 apply_squashing=overrides.get("apply_squashing"),
                 embedding_channels=overrides.get("embedding_channels"),
                 num_tissues=overrides.get("num_tissues"),
+                output_rank=output_rank,
             )
             metadata = _build_track_metadata(tracks, organism_enum, head_config.output_type)
             specs.append(
@@ -451,6 +461,7 @@ def prepare_head_specs(
                     row_centered_correlation_loss_weight=(
                         row_centered_correlation_loss_weight
                     ),
+                    output_rank=output_rank,
                     target_transform_path=target_transform_path,
                 )
             )
@@ -490,6 +501,10 @@ def validate_head_specs(specs: Sequence[HeadSpec]) -> None:
                 f'Head "{spec.head_id}" row-centered correlation loss weight '
                 "must be finite and non-negative."
             )
+        if spec.output_rank is not None and (
+            not isinstance(spec.output_rank, int) or spec.output_rank < 1
+        ):
+            raise ValueError(f'Head "{spec.head_id}" output rank must be a positive integer.')
 
         if not spec.tracks:
             raise ValueError(f'Head "{spec.head_id}" must include at least one target track.')

@@ -2,10 +2,18 @@
 Tests for custom head registration and functionality.
 """
 import pytest
+import haiku as hk
+import jax
+import jax.numpy as jnp
+import pandas as pd
+from alphagenome_research.model import embeddings as embeddings_module
+from alphagenome_research.model.metadata import metadata as metadata_lib
 from alphagenome.models import dna_client, dna_output
 from alphagenome_ft import custom_heads
 from alphagenome_ft import (
     CustomHead,
+    FactorizedGenomeTracksHead,
+    FactorizedGenomeTracksHeadConfig,
     HeadConfig,
     HeadType,
     create_registered_head,
@@ -14,6 +22,7 @@ from alphagenome_ft import (
     get_registered_head_config,
     register_predefined_head,
     register_custom_head,
+    deserialize_predefined_head_config,
     is_custom_head,
     get_custom_head_config,
     list_custom_heads,
@@ -162,6 +171,80 @@ class TestPredefinedHeadAliases:
         registered = get_registered_head_config(alias)
 
         assert registered.name == alias
+
+    def test_factorized_predefined_head_uses_ranked_projection(self):
+        cfg = get_predefined_head_config("rna_seq", num_tracks=6, output_rank=3)
+        assert isinstance(cfg, FactorizedGenomeTracksHeadConfig)
+
+        def forward(x, organism_index):
+            return custom_heads._FactorizedMultiOrganismLinear(6, 2, 3)(x, organism_index)
+
+        transformed = hk.without_apply_rng(hk.transform(forward))
+        params = transformed.init(
+            jax.random.PRNGKey(1),
+            jnp.ones((2, 4, 8), dtype=jnp.float32),
+            jnp.asarray([0, 1]),
+        )
+        output = transformed.apply(
+            params,
+            jnp.ones((2, 4, 8), dtype=jnp.float32),
+            jnp.asarray([0, 1]),
+        )
+
+        assert output.shape == (2, 4, 6)
+        leaves = params["factorized_multi_organism_linear"]
+        assert leaves["factor_in_w"].shape == (2, 8, 3)
+        assert leaves["factor_out_w"].shape == (2, 3, 6)
+
+    def test_factorized_config_round_trips_serialized_fields(self):
+        cfg = get_predefined_head_config("rna_seq", num_tracks=6, output_rank=3)
+        serialized = {
+            field: getattr(cfg, field)
+            for field in cfg.__dataclass_fields__
+        }
+        serialized["num_tracks"] = 6
+
+        restored = deserialize_predefined_head_config(serialized)
+
+        assert isinstance(restored, FactorizedGenomeTracksHeadConfig)
+        assert restored.output_rank == 3
+
+    def test_factorized_predefined_head_preserves_prediction_contract(self):
+        cfg = get_predefined_head_config(
+            "rna_seq",
+            num_tracks=6,
+            resolutions=[128],
+            output_rank=3,
+        )
+        frame = pd.DataFrame(
+            {
+                "name": [f"track{index}" for index in range(6)],
+                "strand": ["+", "-", "+", "-", "+", "-"],
+                "nonzero_mean": [1.0] * 6,
+            }
+        )
+        metadata = {
+            dna_client.Organism.HOMO_SAPIENS: metadata_lib.AlphaGenomeOutputMetadata(
+                rna_seq=frame
+            )
+        }
+
+        def forward(x):
+            head = create_predefined_head_from_config(cfg, metadata)
+            embeddings = embeddings_module.Embeddings(embeddings_128bp=x)
+            return head.predict(embeddings, jnp.asarray([0]))
+
+        transformed = hk.without_apply_rng(hk.transform(forward))
+        x = jnp.ones((1, 4, 3072), dtype=jnp.float32)
+        params = transformed.init(jax.random.PRNGKey(2), x)
+        predictions = transformed.apply(params, x)
+
+        assert isinstance(
+            create_predefined_head_from_config(cfg, metadata),
+            FactorizedGenomeTracksHead,
+        )
+        assert predictions["scaled_predictions_128bp"].shape == (1, 4, 6)
+        assert predictions["predictions_128bp"].shape == (1, 4, 6)
 
     @pytest.mark.parametrize(
         ("organism", "expected_num_organisms"),

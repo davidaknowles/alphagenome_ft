@@ -9,6 +9,7 @@ from alphagenome_ft.finetune.target_manifest import (
     bigwig_nonzero_mean,
     build_head_config,
     retain_target_heads,
+    set_head_output_rank,
 )
 
 
@@ -19,6 +20,20 @@ def test_retain_target_heads_preserves_source_order_without_mutation() -> None:
 
     assert result["heads"] == [{"id": "rna"}]
     assert source["heads"] == [{"id": "atac"}, {"id": "rna"}]
+
+
+def test_set_head_output_rank_changes_only_requested_rna_head() -> None:
+    source = {
+        "heads": [
+            {"id": "atac", "kind": "atac", "targets": [{}, {}]},
+            {"id": "rna", "kind": "rna_seq", "targets": [{}, {}, {}, {}]},
+        ]
+    }
+
+    result = set_head_output_rank(source, head_id="rna", output_rank=2)
+
+    assert result["heads"][1]["output_rank"] == 2
+    assert "output_rank" not in source["heads"][1]
 
 
 def _write_bigwig(path: Path) -> None:

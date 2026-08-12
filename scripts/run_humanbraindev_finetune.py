@@ -609,6 +609,13 @@ def main() -> None:
             for spec in head_specs
         ]
     validate_head_specs(head_specs)
+    if args.pretrained_head_initialization != "none" and any(
+        spec.output_rank is not None for spec in head_specs
+    ):
+        raise ValueError(
+            "Factorized output heads currently require random initialization; "
+            "pretrained channel bootstrap expects a full feature-to-track weight."
+        )
     active_coverage_tracks = sum(
         len(spec.tracks)
         for spec in head_specs
@@ -639,6 +646,7 @@ def main() -> None:
                 spec.coverage_loss_weight,
                 spec.double_centered_correlation_loss_weight,
                 spec.row_centered_correlation_loss_weight,
+                spec.output_rank,
             )
             for spec in head_specs
         ]
@@ -675,6 +683,7 @@ def main() -> None:
                     spec.coverage_loss_weight,
                     spec.double_centered_correlation_loss_weight,
                     spec.row_centered_correlation_loss_weight,
+                    spec.output_rank,
                 )
                 for spec in species_specs
             ]

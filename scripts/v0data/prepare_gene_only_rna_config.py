@@ -23,6 +23,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--correlation-loss-weight", type=float, default=0.0)
     parser.add_argument("--row-correlation-loss-weight", type=float, default=0.0)
     parser.add_argument("--gene-supervision-path", type=Path)
+    parser.add_argument("--output-rank", type=int)
     return parser.parse_args()
 
 
@@ -39,6 +40,7 @@ def main() -> None:
             if args.gene_supervision_path is not None
             else None
         ),
+        output_rank=args.output_rank,
     )
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(config, indent=2) + "\n")

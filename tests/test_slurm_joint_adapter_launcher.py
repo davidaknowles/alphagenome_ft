@@ -143,3 +143,13 @@ def test_liu_row_objective_uses_corrected_gene_only_targets() -> None:
     assert '--row-correlation-loss-weight "$weight"' in script
     assert "BALANCE_GENE_WINDOWS=1" in script
     assert 'sbatch_bin="${SBATCH_BIN:-sbatch}"' in script
+
+
+def test_hda_factorized_rna_screen_changes_only_the_rna_projection() -> None:
+    script = Path("scripts/v0data/submit_hda_factorized_rna_screen.sh").read_text()
+
+    assert "prepare_factorized_head_config.py" in script
+    assert "--head hda_rna" in script
+    assert 'rank="${RNA_OUTPUT_RANK:-16}"' in script
+    assert '--nice="${NICE:-100}"' in script
+    assert 'dependency="afterok:${smoke}_*"' in script
