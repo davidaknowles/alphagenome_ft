@@ -1628,7 +1628,9 @@ def prepare_batch(
         "negative_strand_mask": jnp.asarray(batch["negative_strand_mask"]),
     }
     for head_name in head_names:
-        prepared[f"targets_{head_name}"] = jnp.asarray(batch[f"targets_{head_name}"])
+        target_key = f"targets_{head_name}"
+        if target_key in batch:
+            prepared[target_key] = jnp.asarray(batch[target_key])
         for key in ("weights", "targets", "strands", "valid"):
             batch_key = f"gene_{key}_{head_name}"
             if batch_key in batch:

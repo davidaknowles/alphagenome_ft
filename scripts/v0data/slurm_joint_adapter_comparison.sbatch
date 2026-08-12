@@ -33,7 +33,7 @@ test -f "$targets"
 
 EXTRA_ARGS=(--num-epochs "${NUM_EPOCHS:-100}")
 if [[ "${SMOKE:-0}" == "1" ]]; then
-  EXTRA_ARGS=(--num-epochs 1 --max-train-steps 1 --limit-train 2 --limit-valid 2 --limit-test 2)
+  EXTRA_ARGS=(--num-epochs 1 --max-train-steps 1 --limit-train 16 --limit-valid 16 --limit-test 16)
 fi
 if [[ -n "${WANDB_PROJECT:-}" ]]; then
   EXTRA_ARGS+=(--wandb-project "$WANDB_PROJECT" --wandb-run-name "$run_name")
