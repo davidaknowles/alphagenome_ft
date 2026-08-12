@@ -159,6 +159,21 @@ _HEAD_CONFIG_REGISTRY: dict[str, HeadConfigLike] = {}
 _HEAD_METADATA_REGISTRY: dict[str, Mapping | None] = {}
 
 
+def _required_num_organisms(metadata: Mapping, maximum: int = _NUM_ORGANISMS) -> int:
+    """Return the row count needed to represent every metadata organism index."""
+    if not metadata:
+        raise ValueError("Predefined heads require organism metadata.")
+    required = 1 + max(
+        dna_model.convert_to_organism_index(organism) for organism in metadata
+    )
+    if required > maximum:
+        raise ValueError(
+            f"Head metadata requires {required} organism rows, but the model "
+            f"supports {maximum}."
+        )
+    return required
+
+
 # --- Normalization and classification helpers ---
 def _normalize_predefined_head_name(head_name: HeadNameLike) -> PredefinedHeadName | None:
     if isinstance(head_name, predefined_heads.HeadName):
@@ -387,16 +402,7 @@ def register_predefined_head(
             raise TypeError(
                 f"Expected predefined head config for '{normalized_name}', got {type(cfg)!r}."
             )
-        if not metadata:
-            raise ValueError(f"Predefined head '{normalized_name}' requires organism metadata.")
-        num_organisms = 1 + max(
-            dna_model.convert_to_organism_index(organism) for organism in metadata
-        )
-        if num_organisms > _num_organisms:
-            raise ValueError(
-                f"Head '{normalized_name}' requires {num_organisms} organism rows, "
-                f"but the model supports {_num_organisms}."
-            )
+        num_organisms = _required_num_organisms(metadata, _num_organisms)
         return predefined_heads.create_head(
             cfg,
             metadata,
@@ -511,7 +517,11 @@ def create_predefined_head_from_config(
     metadata: Mapping,
 ) -> predefined_heads.Head:
     """Instantiate a predefined head from an explicit config."""
-    return predefined_heads.create_head(config, metadata)
+    return predefined_heads.create_head(
+        config,
+        metadata,
+        num_organisms=_required_num_organisms(metadata),
+    )
 
 
 def create_predefined_head(

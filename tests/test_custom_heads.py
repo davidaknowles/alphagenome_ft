@@ -9,6 +9,7 @@ from alphagenome_ft import (
     HeadConfig,
     HeadType,
     create_registered_head,
+    create_predefined_head_from_config,
     get_predefined_head_config,
     get_registered_head_config,
     register_predefined_head,
@@ -192,6 +193,38 @@ class TestPredefinedHeadAliases:
         register_predefined_head(alias, cfg, metadata=metadata)
 
         create_registered_head(alias, metadata=metadata)
+
+        assert observed["metadata"] == metadata
+        assert observed["num_organisms"] == expected_num_organisms
+
+    @pytest.mark.parametrize(
+        ("organism", "expected_num_organisms"),
+        [
+            (dna_client.Organism.HOMO_SAPIENS, 1),
+            (dna_client.Organism.MUS_MUSCULUS, 2),
+        ],
+    )
+    def test_explicit_predefined_head_allocates_through_organism_index(
+        self,
+        monkeypatch,
+        organism,
+        expected_num_organisms,
+    ):
+        cfg = get_predefined_head_config("rna_seq", num_tracks=2)
+        metadata = {organism: object()}
+        observed = {}
+
+        def fake_create_head(config, passed_metadata, *, num_organisms):
+            observed.update(
+                config=config,
+                metadata=passed_metadata,
+                num_organisms=num_organisms,
+            )
+            return object()
+
+        monkeypatch.setattr(custom_heads.predefined_heads, "create_head", fake_create_head)
+
+        create_predefined_head_from_config(cfg, metadata)
 
         assert observed["metadata"] == metadata
         assert observed["num_organisms"] == expected_num_organisms
