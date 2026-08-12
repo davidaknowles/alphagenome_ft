@@ -23,7 +23,11 @@ A valid sequence-to-signal target here means an experimentally measured signal a
 | `zemke2023Conserved` | Yes, 20 published cell types per species | Yes, 20 published cell types per species | Hi-C and methylation | Chandelier-cell ATAC and RNA tracks were not published; do not treat them as failed required downloads |
 | `zemke2024Epigenetic` | Yes, released pseudobulks or targets reconstructed from fragments | Yes, released pseudobulk BigWigs, plus gene-level matrices | None in the core release | Some age-by-cell-type combinations are absent and require a validity mask rather than zero targets |
 
-All four studies therefore provide useful measured prediction targets, but only `zemke2023Conserved` and `zemke2024Epigenetic` provide released coordinate-resolved RNA tracks. For joint training, target transformations, genome assemblies, strand conventions, cell-group definitions, and missing-channel masks must be represented explicitly.
+All four GRR studies therefore provide useful measured prediction targets, but only `zemke2023Conserved` and `zemke2024Epigenetic` provide released coordinate-resolved RNA tracks. The fine-tuning comparison also includes the external Mannens first-trimester human-brain atlas described below. For joint training, target transformations, genome assemblies, strand conventions, cell-group definitions, and missing-channel masks must be represented explicitly.
+
+### Mannens first-trimester human-brain atlas
+
+Mannens et al., *Chromatin accessibility during human first-trimester neurodevelopment*, profiled the whole human brain from 6 to 13 post-conception weeks with single-cell ATAC sequencing and 10x Genomics multiome assays. The study defined 135 cell clusters and released cluster-level chromatin-accessibility tracks plus raw and normalized gene-expression pseudobulks. The current paired experiment models the 134 groups shared by both modalities. This dataset is called `hda` or `hda-joint` in historical run identifiers, where HDA means Human Developmental Atlas. It is not the Liu Human Development Multiomic Atlas, HDMA, and it is not one of the four single-cell GRR directories summarized above. The source study and release are linked from the [first-trimester brain article](https://www.nature.com/articles/s41586-024-07234-1).
 
 ### `johansen2025Crossspecies`
 
