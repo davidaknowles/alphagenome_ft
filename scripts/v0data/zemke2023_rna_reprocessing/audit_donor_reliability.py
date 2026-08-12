@@ -139,20 +139,42 @@ def audit_reliability(
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--matrix", required=True, type=Path)
-    parser.add_argument("--barcodes", required=True, type=Path)
-    parser.add_argument("--features", required=True, type=Path)
-    parser.add_argument("--metadata", required=True, type=Path)
-    parser.add_argument("--supervision", required=True, type=Path)
+    parser.add_argument("--manifest", type=Path)
+    parser.add_argument("--matrix", type=Path)
+    parser.add_argument("--barcodes", type=Path)
+    parser.add_argument("--features", type=Path)
+    parser.add_argument("--metadata", type=Path)
+    parser.add_argument("--supervision", type=Path)
     parser.add_argument("--species", required=True)
     parser.add_argument("--output", required=True, type=Path)
     args = parser.parse_args()
+    paths = {
+        "matrix": args.matrix,
+        "barcodes": args.barcodes,
+        "features": args.features,
+        "metadata": args.metadata,
+        "supervision": args.supervision,
+    }
+    if args.manifest is not None:
+        if any(path is not None for path in paths.values()):
+            parser.error("--manifest cannot be combined with explicit input paths")
+        manifest = json.loads(args.manifest.read_text())
+        paths = {
+            "matrix": Path(manifest["matrix"]),
+            "barcodes": Path(manifest["barcodes"]),
+            "features": Path(manifest["features"]),
+            "metadata": Path(manifest["metadata"]),
+            "supervision": Path(manifest["gene_supervision"]),
+        }
+    missing = [name for name, path in paths.items() if path is None]
+    if missing:
+        parser.error(f"Missing input paths: {', '.join(missing)}")
     result = audit_reliability(
-        matrix_path=args.matrix,
-        barcode_path=args.barcodes,
-        feature_path=args.features,
-        metadata_path=args.metadata,
-        supervision_path=args.supervision,
+        matrix_path=paths["matrix"],
+        barcode_path=paths["barcodes"],
+        feature_path=paths["features"],
+        metadata_path=paths["metadata"],
+        supervision_path=paths["supervision"],
         species=args.species,
     )
     args.output.parent.mkdir(parents=True, exist_ok=True)

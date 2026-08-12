@@ -20,9 +20,5 @@ manifest="outputs/v0data/zemke2023-gene-supervision/${name}/manifest.json"
 
 "${HOME}/venv/jax/bin/python" scripts/v0data/zemke2023_rna_reprocessing/audit_donor_reliability.py \
   --species "$name" \
-  --matrix "$(jq -r .matrix "$manifest")" \
-  --barcodes "$(jq -r .barcodes "$manifest")" \
-  --features "$(jq -r .features "$manifest")" \
-  --metadata "$(jq -r .metadata "$manifest")" \
-  --supervision "$(jq -r .gene_supervision "$manifest")" \
+  --manifest "$manifest" \
   --output "results/v0data_zemke2023_${name}_rna_donor_reliability.json"
