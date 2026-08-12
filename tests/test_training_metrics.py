@@ -17,6 +17,7 @@ from alphagenome_ft.finetune.train import (
     _is_lora_path,
     _r2_stats,
     _restore_optimizer_state,
+    _save_gradient_diagnostics,
     _save_optimizer_state,
     train,
 )
@@ -165,6 +166,18 @@ def test_train_reports_per_head_gradient_norms_once(capsys, tmp_path):
         rna["weighted_adapter_gradient_norm"],
         5.0 * rna["adapter_gradient_norm"],
     )
+    diagnostics_dir = tmp_path / "diagnostics"
+    diagnostics_dir.mkdir()
+    _save_gradient_diagnostics(
+        diagnostics_dir,
+        diagnostics,
+        epoch=1,
+        global_step=0,
+    )
+    persisted = json.loads((diagnostics_dir / "gradient_diagnostics.json").read_text())
+    assert persisted["epoch"] == 1
+    assert persisted["global_step_before_update"] == 0
+    assert persisted["heads"] == diagnostics["heads"]
 
     evaluation_model = DummyModel()
     original_params = jax.tree_util.tree_map(np.asarray, evaluation_model._params)

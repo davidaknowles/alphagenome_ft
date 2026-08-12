@@ -451,6 +451,25 @@ def _gradient_l2_norm(gradients, predicate) -> jax.Array:
     return jnp.sqrt(jnp.maximum(squared_norm, 0.0))
 
 
+def _save_gradient_diagnostics(
+    checkpoint_dir: Path | None,
+    diagnostics: Mapping[str, Any],
+    *,
+    epoch: int,
+    global_step: int,
+) -> None:
+    if checkpoint_dir is None:
+        return
+    payload = {
+        "epoch": epoch,
+        "global_step_before_update": global_step,
+        **diagnostics,
+    }
+    (checkpoint_dir / "gradient_diagnostics.json").write_text(
+        json.dumps(payload, indent=2, sort_keys=True) + "\n"
+    )
+
+
 def _save_optimizer_state(path: Path, opt_state) -> None:
     checkpointer = ocp.StandardCheckpointer()
     checkpointer.save(str(path), opt_state, force=True)
@@ -1361,6 +1380,12 @@ def train(
                         raw_diagnostics,
                     )
                     print("Head gradient diagnostics: " + json.dumps(diagnostics, sort_keys=True))
+                    _save_gradient_diagnostics(
+                        checkpoint_dir,
+                        diagnostics,
+                        epoch=epoch,
+                        global_step=global_step,
+                    )
                     gradient_diagnostics_reported = True
                 step_start = time.perf_counter()
                 (
