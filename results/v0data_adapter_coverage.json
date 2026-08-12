@@ -1,4 +1,88 @@
 {
+  "primary_studies": [
+    {
+      "study": "Mannens HDA",
+      "canonical_dataset": "hda-joint",
+      "canonical_status": "matched result available",
+      "expected_native_species": [],
+      "missing_native_evaluations": {
+        "lora": [],
+        "lora+locon": []
+      },
+      "status": "comparison coverage complete"
+    },
+    {
+      "study": "Johansen 2025",
+      "canonical_dataset": "johansen_joint",
+      "canonical_status": "missing lora, lora+locon",
+      "expected_native_species": [
+        "human",
+        "macaque",
+        "marmoset"
+      ],
+      "missing_native_evaluations": {
+        "lora": [
+          "human",
+          "macaque",
+          "marmoset"
+        ],
+        "lora+locon": [
+          "human",
+          "macaque",
+          "marmoset"
+        ]
+      },
+      "status": "missing lora, lora+locon"
+    },
+    {
+      "study": "Liu HDMA",
+      "canonical_dataset": "liu-hdma",
+      "canonical_status": "missing lora, lora+locon",
+      "expected_native_species": [],
+      "missing_native_evaluations": {
+        "lora": [],
+        "lora+locon": []
+      },
+      "status": "missing lora, lora+locon"
+    },
+    {
+      "study": "Zemke 2023",
+      "canonical_dataset": "zemke2023_joint",
+      "canonical_status": "matched result available",
+      "expected_native_species": [
+        "human",
+        "macaque",
+        "marmoset",
+        "mouse"
+      ],
+      "missing_native_evaluations": {
+        "lora": [
+          "human",
+          "macaque",
+          "marmoset",
+          "mouse"
+        ],
+        "lora+locon": [
+          "human",
+          "macaque",
+          "marmoset",
+          "mouse"
+        ]
+      },
+      "status": "missing native evaluations"
+    },
+    {
+      "study": "Zemke 2024",
+      "canonical_dataset": "zemke2024-all",
+      "canonical_status": "matched result available",
+      "expected_native_species": [],
+      "missing_native_evaluations": {
+        "lora": [],
+        "lora+locon": []
+      },
+      "status": "comparison coverage complete"
+    }
+  ],
   "datasets": [
     {
       "dataset": "hda",

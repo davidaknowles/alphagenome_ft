@@ -11,6 +11,31 @@ def _write_epoch(root: Path, run: str, epoch: int) -> None:
         handle.write(json.dumps({"epoch": epoch, "metrics": {"valid": {"head": {}}}}) + "\n")
 
 
+def _write_native_evaluation(
+    root: Path,
+    *,
+    dataset: str,
+    species: str,
+    strategy: str,
+) -> None:
+    strategy_name = strategy.replace("+", "_")
+    if dataset == "zemke2023_joint":
+        run = f"zemke2023_{species}_{strategy_name}_joint_epoch1_eval"
+    else:
+        run = f"johansen_joint_{strategy_name}_{species}_eval"
+    path = root / run / "evaluation.json"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        json.dumps(
+            {
+                "source_epoch": 1,
+                "metrics": {"valid": {"head": {"differential_pearson_r": 0.5}}},
+            }
+        )
+        + "\n"
+    )
+
+
 def test_audit_coverage_distinguishes_matched_and_missing_runs(tmp_path: Path) -> None:
     _write_epoch(tmp_path, "complete_lora", 1)
     _write_epoch(tmp_path, "complete_lora", 2)
@@ -45,3 +70,37 @@ def test_audit_coverage_uses_corrected_reconstructed_run_names(tmp_path: Path) -
     result = audit_coverage(tmp_path, expected_datasets=("liu-hdma",))
 
     assert result["datasets"][0]["highest_matched_epoch"] == 1
+
+
+def test_primary_cross_species_study_requires_every_native_evaluation(tmp_path: Path) -> None:
+    _write_epoch(tmp_path, "johansen_joint_lora_rawcount_geneonly_corrw1", 1)
+    _write_epoch(tmp_path, "johansen_joint_lora_locon_rawcount_geneonly_corrw1", 1)
+    for strategy in ("lora", "lora+locon"):
+        for species in ("human", "macaque"):
+            _write_native_evaluation(
+                tmp_path,
+                dataset="johansen_joint",
+                species=species,
+                strategy=strategy,
+            )
+
+    studies = (
+        {
+            "study": "Johansen",
+            "canonical_dataset": "johansen_joint",
+            "native_species": ("human", "macaque", "marmoset"),
+        },
+    )
+    result = audit_coverage(
+        tmp_path,
+        expected_datasets=("johansen_joint",),
+        primary_studies=studies,
+    )
+
+    assert result["primary_studies"][0]["canonical_status"] == "matched result available"
+    assert result["primary_studies"][0]["status"] == "missing native evaluations"
+    assert result["primary_studies"][0]["missing_native_evaluations"] == {
+        "lora": ["marmoset"],
+        "lora+locon": ["marmoset"],
+    }
+    assert "## Primary studies" in render_markdown(result)
