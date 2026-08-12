@@ -1,6 +1,6 @@
 #!/bin/bash
 #SBATCH --job-name=liu_rna_reliability
-#SBATCH --partition=cpu
+#SBATCH --partition=io
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=64G
 #SBATCH --time=02:00:00
@@ -12,6 +12,7 @@ set -euo pipefail
 cd /gpfs/commons/home/daknowles/projects/alphagenome_fp4
 mkdir -p logs/v0data results
 export PYTHONPATH="$PWD:${PYTHONPATH:-}"
+export LD_LIBRARY_PATH="/nfs/sw/easybuild/software/Python/3.12.3-GCCcore-13.3.0/lib:${LD_LIBRARY_PATH:-}"
 
 "${HOME}/venv/jax/bin/python" scripts/v0data/liu_hdma/audit_rna_reliability.py \
   --sample-dir outputs/v0data/liu-hdma/rna_samples \
