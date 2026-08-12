@@ -12,6 +12,7 @@ set -euo pipefail
 cd /gpfs/commons/home/daknowles/projects/alphagenome_fp4
 mkdir -p logs/v0data outputs/v0data/johansen-rna-corrected
 export PYTHONPATH="$PWD:${PYTHONPATH:-}"
+export LD_LIBRARY_PATH="/nfs/sw/easybuild/software/Python/3.12.3-GCCcore-13.3.0/lib:${LD_LIBRARY_PATH:-}"
 
 python_bin="${HOME}/venv/jax/bin/python"
 rna_root=/gpfs/commons/datasets/controlled/NYGC_AI_Initiative/AllenBrainMultiome/RNA
