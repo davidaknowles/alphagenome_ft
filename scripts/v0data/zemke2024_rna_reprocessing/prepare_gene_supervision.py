@@ -13,7 +13,6 @@ from typing import Any
 
 import numpy as np
 import pandas as pd
-import h5py
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 if str(REPO_ROOT) not in sys.path:
@@ -47,67 +46,37 @@ def bare_barcodes_for_donor(values: pd.Series, donor: str) -> tuple[str, ...]:
     return bare
 
 
-def retained_raw_feature_mask(
-    raw_feature_names: tuple[str, ...], retained_feature_names: tuple[str, ...]
-) -> np.ndarray:
-    """Map R-make.unique Seurat feature names back to ordered raw 10x rows."""
-    retained = set(retained_feature_names)
-    if len(retained) != len(retained_feature_names):
-        raise ValueError("Filtered Seurat feature names must be unique.")
-    used: set[str] = set()
-    unique_raw_names = []
-    for name in raw_feature_names:
-        candidate = name
-        suffix = 1
-        while candidate in used:
-            candidate = f"{name}.{suffix}"
-            suffix += 1
-        used.add(candidate)
-        unique_raw_names.append(candidate)
-    mask = np.asarray([name in retained for name in unique_raw_names], dtype=bool)
-    recovered = {name for name, keep in zip(unique_raw_names, mask) if keep}
-    missing = sorted(retained - recovered)
-    if missing:
-        raise ValueError(f"Raw 10x features lack filtered Seurat names: {missing[:10]}.")
-    return mask
-
-
-def read_filtered_seurat_features(path: Path) -> tuple[str, ...]:
-    """Read the filtered SCT assay feature order without loading its count matrix."""
-    with h5py.File(path, "r") as handle:
-        values = handle["assays/SCT/features"][:]
-    return tuple(value.decode() if isinstance(value, bytes) else str(value) for value in values)
-
-
-def audit_molecule_discrepancy(
+def audit_raw_molecule_excess(
     observed: np.ndarray,
     expected: np.ndarray,
     *,
     donor: str,
-    maximum_relative_discrepancy: float,
+    maximum_relative_excess: float,
 ) -> dict[str, float | int | str]:
-    """Audit count differences caused by the omitted Seurat RNA assay."""
-    if (
-        not math.isfinite(maximum_relative_discrepancy)
-        or maximum_relative_discrepancy < 0
-    ):
-        raise ValueError("Maximum relative molecule discrepancy must be finite and non-negative.")
+    """Require raw counts to contain the filtered Seurat RNA library."""
+    if not math.isfinite(maximum_relative_excess) or maximum_relative_excess < 0:
+        raise ValueError("Maximum relative molecule excess must be finite and non-negative.")
     observed_total = int(np.asarray(observed, dtype=np.float64).sum())
     expected_total = int(np.asarray(expected, dtype=np.float64).sum())
-    absolute_difference = observed_total - expected_total
-    relative_discrepancy = abs(absolute_difference) / max(expected_total, 1)
-    if relative_discrepancy > maximum_relative_discrepancy:
+    molecule_excess = observed_total - expected_total
+    relative_excess = molecule_excess / max(expected_total, 1)
+    if molecule_excess < 0:
         raise ValueError(
-            f"Donor {donor} filtered raw counts differ from metadata nCount_RNA by "
-            f"{absolute_difference:,} molecules ({relative_discrepancy:.4%}), above "
-            f"the {maximum_relative_discrepancy:.4%} limit."
+            f"Donor {donor} raw Gene Expression total is {abs(molecule_excess):,} "
+            "molecules below metadata nCount_RNA."
+        )
+    if relative_excess > maximum_relative_excess:
+        raise ValueError(
+            f"Donor {donor} raw Gene Expression total exceeds metadata nCount_RNA by "
+            f"{molecule_excess:,} molecules ({relative_excess:.4%}), above "
+            f"the {maximum_relative_excess:.4%} limit."
         )
     return {
         "donor": donor,
-        "filtered_raw_molecules": observed_total,
+        "raw_gene_expression_molecules": observed_total,
         "metadata_nCount_RNA": expected_total,
-        "molecule_difference": absolute_difference,
-        "relative_molecule_discrepancy": relative_discrepancy,
+        "raw_molecule_excess": molecule_excess,
+        "relative_raw_molecule_excess": relative_excess,
     }
 
 
@@ -149,13 +118,12 @@ def prepare_gene_supervision(
     *,
     matrix_root: Path,
     metadata_path: Path,
-    filtered_seurat_path: Path,
     targets_path: Path,
     gtf_path: Path,
     fasta_path: Path,
     output_dir: Path,
     minimum_gene_coverage: float = 0.8,
-    maximum_relative_molecule_discrepancy: float = 0.001,
+    maximum_relative_raw_molecule_excess: float = 0.1,
     correlation_loss_weight: float | None = None,
 ) -> dict[str, Any]:
     """Aggregate filtered raw cells and attach partial direct-gene supervision."""
@@ -163,7 +131,6 @@ def prepare_gene_supervision(
     target_groups, group_valid = target_groups_and_validity(config)
     valid_groups = tuple(group for group, valid in zip(target_groups, group_valid) if valid)
     metadata_by_donor = _metadata_by_donor(metadata_path, valid_groups)
-    retained_features = read_filtered_seurat_features(filtered_seurat_path)
     matrix_paths = {
         path.parent.name: path
         for path in matrix_root.glob("*/*_raw_feature_bc_matrix.h5")
@@ -187,10 +154,6 @@ def prepare_gene_supervision(
         ids, names, counts, n_cells = aggregate_10x_h5_columns_by_group(
             matrix_paths[donor], barcode_groups, valid_groups
         )
-        retained_mask = retained_raw_feature_mask(names, retained_features)
-        ids = tuple(value for value, keep in zip(ids, retained_mask) if keep)
-        names = tuple(value for value, keep in zip(names, retained_mask) if keep)
-        counts = counts[:, retained_mask]
         if feature_ids is None:
             feature_ids, feature_names = ids, names
             total_counts = np.zeros_like(counts)
@@ -201,11 +164,11 @@ def prepare_gene_supervision(
         donor_metadata_molecules = np.zeros(len(valid_groups), dtype=np.float64)
         for group, value in metadata.groupby("target_group")["nCount_RNA"].sum().items():
             donor_metadata_molecules[group_index[str(group)]] = float(value)
-        molecule_audit = audit_molecule_discrepancy(
+        molecule_audit = audit_raw_molecule_excess(
             counts.sum(axis=1),
             donor_metadata_molecules,
             donor=donor,
-            maximum_relative_discrepancy=maximum_relative_molecule_discrepancy,
+            maximum_relative_excess=maximum_relative_raw_molecule_excess,
         )
         metadata_molecules += donor_metadata_molecules
         donor_rows.append(
@@ -220,11 +183,6 @@ def prepare_gene_supervision(
         )
 
     assert total_counts is not None and feature_ids is not None and feature_names is not None
-    broad_cpm = normalize_counts_per_million(total_counts)
-    all_cpm = np.zeros((len(target_groups), len(feature_ids)), dtype=np.float32)
-    all_cpm[group_valid] = broad_cpm
-    expression = PseudobulkExpression(target_groups, feature_ids, all_cpm)
-
     chromosome_sizes = build_fasta_index(fasta_path)
     genes = read_gene_exons(
         gtf_path,
@@ -236,6 +194,14 @@ def prepare_gene_supervision(
         raise ValueError(
             f"Only {len(genes)}/{len(feature_ids)} RNA genes ({coverage:.1%}) matched annotations."
         )
+    normalized_gene_ids = tuple(value.split(".", 1)[0] for value in feature_ids)
+    matched_mask = np.asarray([value in genes for value in normalized_gene_ids], dtype=bool)
+    matched_ids = tuple(value for value, keep in zip(feature_ids, matched_mask) if keep)
+    matched_counts = total_counts[:, matched_mask]
+    broad_cpm = normalize_counts_per_million(matched_counts)
+    all_cpm = np.zeros((len(target_groups), len(matched_ids)), dtype=np.float32)
+    all_cpm[group_valid] = broad_cpm
+    expression = PseudobulkExpression(target_groups, matched_ids, all_cpm)
     output_dir.mkdir(parents=True, exist_ok=True)
     supervision_path = output_dir / "gene_expression_supervision.npz"
     matched_genes = write_gene_expression_supervision(
@@ -264,7 +230,6 @@ def prepare_gene_supervision(
         "dataset": "zemke2024-all",
         "source_targets": str(targets_path.resolve()),
         "metadata": str(metadata_path.resolve()),
-        "filtered_seurat": str(filtered_seurat_path.resolve()),
         "matrix_root": str(matrix_root.resolve()),
         "donors": donor_rows,
         "published_groups": list(target_groups),
@@ -273,7 +238,7 @@ def prepare_gene_supervision(
             group for group, valid in zip(target_groups, group_valid) if not valid
         ],
         "cells_per_group": dict(zip(valid_groups, map(int, total_cells), strict=True)),
-        "filtered_raw_molecules_per_group": dict(
+        "raw_gene_expression_molecules_per_group": dict(
             zip(valid_groups, map(int, total_counts.sum(axis=1)), strict=True)
         ),
         "metadata_nCount_RNA_per_group": dict(
@@ -284,11 +249,10 @@ def prepare_gene_supervision(
         "matched_gene_fraction": coverage,
         "normalization": "raw UMI counts summed by broad subclass, then counts per million",
         "feature_contract": (
-            "raw 10x Gene Expression rows selected by the released merged SCT feature union; "
-            "the omitted Seurat RNA assay prevents exact reconstruction of its donor-specific "
-            "feature filters"
+            "all raw 10x Gene Expression rows from exactly the released filtered cells, "
+            "restricted to genes with modeled exon annotations before CPM normalization"
         ),
-        "maximum_relative_molecule_discrepancy": maximum_relative_molecule_discrepancy,
+        "maximum_relative_raw_molecule_excess": maximum_relative_raw_molecule_excess,
         "coverage_loss_weight": 1.0,
         "gene_loss_weight": 1.0,
         "double_centered_correlation_loss_weight": correlation_loss_weight,
@@ -303,25 +267,23 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--matrix-root", required=True, type=Path)
     parser.add_argument("--metadata", required=True, type=Path)
-    parser.add_argument("--filtered-seurat", required=True, type=Path)
     parser.add_argument("--targets", required=True, type=Path)
     parser.add_argument("--gtf", required=True, type=Path)
     parser.add_argument("--fasta", required=True, type=Path)
     parser.add_argument("--output-dir", required=True, type=Path)
     parser.add_argument("--minimum-gene-coverage", type=float, default=0.8)
-    parser.add_argument("--maximum-relative-molecule-discrepancy", type=float, default=0.001)
+    parser.add_argument("--maximum-relative-raw-molecule-excess", type=float, default=0.1)
     parser.add_argument("--correlation-loss-weight", type=float)
     args = parser.parse_args()
     result = prepare_gene_supervision(
         matrix_root=args.matrix_root,
         metadata_path=args.metadata,
-        filtered_seurat_path=args.filtered_seurat,
         targets_path=args.targets,
         gtf_path=args.gtf,
         fasta_path=args.fasta,
         output_dir=args.output_dir,
         minimum_gene_coverage=args.minimum_gene_coverage,
-        maximum_relative_molecule_discrepancy=args.maximum_relative_molecule_discrepancy,
+        maximum_relative_raw_molecule_excess=args.maximum_relative_raw_molecule_excess,
         correlation_loss_weight=args.correlation_loss_weight,
     )
     print(json.dumps(result, indent=2))

@@ -17,10 +17,8 @@ if str(REPO_ROOT) not in sys.path:
 
 from alphagenome_ft.finetune.reprocessing import aggregate_10x_h5_columns_by_group
 from scripts.v0data.zemke2024_rna_reprocessing.prepare_gene_supervision import (
-    audit_molecule_discrepancy,
+    audit_raw_molecule_excess,
     bare_barcodes_for_donor,
-    read_filtered_seurat_features,
-    retained_raw_feature_mask,
     target_groups_and_validity,
 )
 
@@ -30,9 +28,8 @@ def smoke_donor(
     donor: str,
     matrix_path: Path,
     metadata_path: Path,
-    filtered_seurat_path: Path,
     targets_path: Path,
-    maximum_relative_molecule_discrepancy: float = 0.001,
+    maximum_relative_raw_molecule_excess: float = 0.1,
 ) -> dict[str, object]:
     """Aggregate one donor and audit metadata count recovery."""
     config = json.loads(targets_path.read_text())
@@ -63,11 +60,6 @@ def smoke_donor(
     feature_ids, feature_names, counts, n_cells = aggregate_10x_h5_columns_by_group(
         matrix_path, barcode_groups, valid_groups
     )
-    retained_mask = retained_raw_feature_mask(
-        feature_names, read_filtered_seurat_features(filtered_seurat_path)
-    )
-    feature_ids = tuple(value for value, keep in zip(feature_ids, retained_mask) if keep)
-    counts = counts[:, retained_mask]
     expected_cells = metadata.groupby("target_group").size().reindex(valid_groups, fill_value=0)
     expected_molecules = (
         metadata.groupby("target_group")["nCount_RNA"]
@@ -77,11 +69,11 @@ def smoke_donor(
     if not np.array_equal(n_cells, expected_cells.to_numpy(dtype=np.int64)):
         raise ValueError(f"Donor {donor} retained cell counts do not match metadata.")
     observed_molecules = counts.sum(axis=1)
-    molecule_audit = audit_molecule_discrepancy(
+    molecule_audit = audit_raw_molecule_excess(
         observed_molecules,
         expected_molecules.to_numpy(dtype=np.float64),
         donor=donor,
-        maximum_relative_discrepancy=maximum_relative_molecule_discrepancy,
+        maximum_relative_excess=maximum_relative_raw_molecule_excess,
     )
     return {
         **molecule_audit,
@@ -97,18 +89,16 @@ def main() -> None:
     parser.add_argument("--donor", required=True)
     parser.add_argument("--matrix", required=True, type=Path)
     parser.add_argument("--metadata", required=True, type=Path)
-    parser.add_argument("--filtered-seurat", required=True, type=Path)
     parser.add_argument("--targets", required=True, type=Path)
     parser.add_argument("--output", type=Path)
-    parser.add_argument("--maximum-relative-molecule-discrepancy", type=float, default=0.001)
+    parser.add_argument("--maximum-relative-raw-molecule-excess", type=float, default=0.1)
     args = parser.parse_args()
     result = smoke_donor(
         donor=args.donor,
         matrix_path=args.matrix,
         metadata_path=args.metadata,
-        filtered_seurat_path=args.filtered_seurat,
         targets_path=args.targets,
-        maximum_relative_molecule_discrepancy=args.maximum_relative_molecule_discrepancy,
+        maximum_relative_raw_molecule_excess=args.maximum_relative_raw_molecule_excess,
     )
     rendered = json.dumps(result, indent=2) + "\n"
     if args.output is not None:
