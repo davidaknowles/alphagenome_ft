@@ -9,6 +9,7 @@
 
 set -euo pipefail
 cd "$(dirname "$0")/../../.."
+export LD_LIBRARY_PATH="/nfs/sw/easybuild/software/Python/3.12.3-GCCcore-13.3.0/lib:${LD_LIBRARY_PATH:-}"
 source ~/venv/jax/bin/activate
 
 python scripts/v0data/zemke2024_rna_reprocessing/prepare_gene_supervision.py \

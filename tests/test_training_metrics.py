@@ -466,6 +466,19 @@ def test_r2_stats_sum_pool_targets_for_lower_resolution_prediction():
     assert np.isclose(metrics["r2_global"], 1.0)
 
 
+def test_r2_stats_bins_matching_one_base_prediction_for_differential_metric():
+    values = jnp.arange(8192 * 3, dtype=jnp.float32).reshape(1, 8192, 3)
+    targets = jnp.sin(values / 17.0) + jnp.cos(values / 31.0)
+
+    stats = jax.tree_util.tree_map(
+        np.asarray,
+        _r2_stats({"predictions_1bp": targets}, targets),
+    )
+    metrics = _finalize_r2_stats(stats)
+
+    np.testing.assert_allclose(metrics["differential_pearson_r"], 1.0, rtol=1e-6)
+
+
 def test_masked_r2_ignores_padded_genes():
     targets = jnp.asarray([[[1.0, 3.0], [2.0, 4.0], [99.0, 99.0]]])
     predictions = jnp.asarray([[[1.0, 3.0], [2.0, 4.0], [-99.0, -99.0]]])

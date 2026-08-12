@@ -302,7 +302,15 @@ def _r2_stats(prediction, targets, observation_mask=None):
     target_bins = _maybe_bin_128bp_jax(targets)
     pred_matrix = prediction_bins.reshape((-1, prediction_bins.shape[-1]))
     target_matrix = target_bins.reshape((-1, target_bins.shape[-1]))
-    differential_mask = mask_channels.reshape((-1, mask_channels.shape[-1]))
+    if observation_mask is None:
+        differential_mask = jnp.ones_like(pred_matrix, dtype=jnp.float32)
+    else:
+        differential_mask = mask_channels.reshape((-1, mask_channels.shape[-1]))
+        if differential_mask.shape != pred_matrix.shape:
+            raise ValueError(
+                f"Binned observation mask shape {differential_mask.shape} does not match "
+                f"prediction shape {pred_matrix.shape}."
+            )
     pred_matrix = pred_matrix * differential_mask
     target_matrix = target_matrix * differential_mask
     pred_row_sum = jnp.sum(pred_matrix, axis=-1)
