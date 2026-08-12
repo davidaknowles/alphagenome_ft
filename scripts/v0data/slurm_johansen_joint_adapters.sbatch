@@ -22,6 +22,9 @@ export MPLCONFIGDIR="${MPLCONFIGDIR:-/tmp/matplotlib-${USER}}"
 STRATEGIES=(lora lora+locon)
 strategy="${STRATEGIES[$SLURM_ARRAY_TASK_ID]}"
 run_name="johansen_joint_${strategy//+/_}${RUN_SUFFIX:-}"
+if [[ "${SMOKE:-0}" == "1" && "$run_name" != *_smoke ]]; then
+  run_name="${run_name}_smoke"
+fi
 species_config="${SPECIES_CONFIG:-outputs/v0data/johansen-fragment-joint-depth-filtered/species.json}"
 num_devices="${NUM_DEVICES:-${SLURM_GPUS_ON_NODE:-1}}"
 test -f "$species_config"

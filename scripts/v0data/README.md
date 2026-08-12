@@ -2,6 +2,8 @@
 
 This directory contains dataset-specific preparation and experiment launchers for comparing low-rank adaptation, LoRA, with LoRA plus low-rank convolution adaptation, LoCon. All comparisons use the same 131,072 bp chromosome holdouts, initialization, optimizer settings, and signed double-centered Pearson correlation for model selection.
 
+Every launcher appends `_smoke` to its checkpoint and Weights & Biases run name when `SMOKE=1`. Smoke checkpoints are therefore isolated from full-data histories even when a caller does not provide a distinct run suffix.
+
 The current machine-readable and Markdown snapshots are `results/v0data_adapter_comparisons.json` and `results/v0data_adapter_comparisons.md`. Regenerate both with `collate_adapter_comparisons.py` after an evaluation checkpoint completes. The headline table uses the highest epoch completed by both strategies. A separate table reports independently selected checkpoints, where each epoch maximizes that run's mean validation signed double-centered correlation across heads. Scientific optimization variants are written separately to `results/v0data_objective_screens.json` and `results/v0data_objective_screens.md`, while native-species joint evaluations are written to `results/v0data_joint_species_evaluations.json` and `results/v0data_joint_species_evaluations.md`.
 
 `audit_adapter_coverage.py` writes `results/v0data_adapter_coverage.json` and `results/v0data_adapter_coverage.md`. This report checks the canonical non-ENCODE experiment matrix for missing strategies and identifies the highest epoch completed by both strategies. A matched epoch is evidence that a comparison can be made at that depth, not that early stopping completed or that the target correlation was reached.

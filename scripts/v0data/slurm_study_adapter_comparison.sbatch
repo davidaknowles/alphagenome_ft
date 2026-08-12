@@ -25,7 +25,10 @@ STRATEGIES=(lora lora+locon lora lora+locon lora lora+locon)
 DATASET="${DATASETS[$SLURM_ARRAY_TASK_ID]}"
 STRATEGY="${STRATEGIES[$SLURM_ARRAY_TASK_ID]}"
 TARGETS_CONFIG="${TARGETS_CONFIG:-outputs/v0data/${DATASET}/targets.json}"
-RUN_NAME="${DATASET}_${STRATEGY//+/_}"
+RUN_NAME="${DATASET}_${STRATEGY//+/_}${RUN_SUFFIX:-}"
+if [[ "${SMOKE:-0}" == "1" && "$RUN_NAME" != *_smoke ]]; then
+  RUN_NAME="${RUN_NAME}_smoke"
+fi
 CANONICAL_CHROMS=chr1,chr2,chr3,chr4,chr5,chr6,chr7,chr8,chr9,chr10,chr11,chr12,chr13,chr14,chr15,chr16,chr17,chr18,chr19,chr20,chr21,chr22,chrX
 
 if [[ ! -f "${TARGETS_CONFIG}" ]]; then
@@ -76,7 +79,7 @@ fi
   --fasta-path "${FASTA_PATH:-/gpfs/commons/home/daknowles/knowles_lab/index/hg38/hg38.fa}" \
   --include-chroms "${CANONICAL_CHROMS}" \
   --checkpoint-path "${CHECKPOINT_PATH:-/gpfs/commons/home/daknowles/.cache/kagglehub/models/google/alphagenome/jax/all_folds/1}" \
-  --checkpoint-dir "checkpoints/v0data/${RUN_NAME}${RUN_SUFFIX:-}" \
+  --checkpoint-dir "checkpoints/v0data/${RUN_NAME}" \
   --pretrained-head-initialization "${PRETRAINED_HEAD_INITIALIZATION:-none}" \
   --head-id "${DATASET//-/_}" \
   --split-source chromosome \

@@ -45,6 +45,9 @@ case "$species" in
 esac
 targets="${TARGETS_CONFIG:-outputs/v0data/zemke2023-${species}/targets.json}"
 run_name="zemke2023_${species}_${strategy//+/_}${RUN_SUFFIX:-}"
+if [[ "${SMOKE:-0}" == "1" && "$run_name" != *_smoke ]]; then
+  run_name="${run_name}_smoke"
+fi
 test -f "$fasta"
 test -f "$targets"
 

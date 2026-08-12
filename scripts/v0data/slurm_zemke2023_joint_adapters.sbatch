@@ -22,6 +22,9 @@ export MPLCONFIGDIR="${MPLCONFIGDIR:-/tmp/matplotlib-${USER}}"
 STRATEGIES=(lora lora+locon)
 strategy="${STRATEGIES[$SLURM_ARRAY_TASK_ID]}"
 run_name="zemke2023_joint_${strategy//+/_}${RUN_SUFFIX:-}"
+if [[ "${SMOKE:-0}" == "1" && "$run_name" != *_smoke ]]; then
+  run_name="${run_name}_smoke"
+fi
 species_config=outputs/v0data/zemke2023-species/species.json
 test -f "$species_config"
 
