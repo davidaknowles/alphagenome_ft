@@ -474,6 +474,22 @@ def validate_head_specs(specs: Sequence[HeadSpec]) -> None:
 
         if not math.isfinite(spec.loss_weight) or spec.loss_weight <= 0:
             raise ValueError(f'Head "{spec.head_id}" loss weight must be finite and positive.')
+        if (
+            not math.isfinite(spec.double_centered_correlation_loss_weight)
+            or spec.double_centered_correlation_loss_weight < 0
+        ):
+            raise ValueError(
+                f'Head "{spec.head_id}" double-centered correlation loss weight '
+                "must be finite and non-negative."
+            )
+        if (
+            not math.isfinite(spec.row_centered_correlation_loss_weight)
+            or spec.row_centered_correlation_loss_weight < 0
+        ):
+            raise ValueError(
+                f'Head "{spec.head_id}" row-centered correlation loss weight '
+                "must be finite and non-negative."
+            )
 
         if not spec.tracks:
             raise ValueError(f'Head "{spec.head_id}" must include at least one target track.')

@@ -1,3 +1,4 @@
+import dataclasses
 from pathlib import Path
 
 import pytest
@@ -9,6 +10,7 @@ from alphagenome_ft.finetune.config import (
     _build_track_metadata,
     load_targets_config,
     prepare_head_specs,
+    validate_head_specs,
 )
 
 
@@ -132,3 +134,33 @@ def test_prepare_head_specs_rejects_invalid_row_correlation_weight(
             },
             organism="HOMO_SAPIENS",
         )
+
+
+@pytest.mark.parametrize(
+    ("field", "message"),
+    [
+        ("double_centered_correlation_loss_weight", "double-centered"),
+        ("row_centered_correlation_loss_weight", "row-centered"),
+    ],
+)
+def test_validate_head_specs_rejects_invalid_correlation_weight(
+    tmp_path: Path, field: str, message: str
+):
+    track_path = tmp_path / "track.bw"
+    track_path.touch()
+    spec = prepare_head_specs(
+        {
+            "heads": [
+                {
+                    "id": "example_atac",
+                    "source": "predefined",
+                    "kind": "atac",
+                    "targets": [{"path": str(track_path)}],
+                }
+            ]
+        },
+        organism="HOMO_SAPIENS",
+    )[0]
+
+    with pytest.raises(ValueError, match=message):
+        validate_head_specs([dataclasses.replace(spec, **{field: float("nan")})])
