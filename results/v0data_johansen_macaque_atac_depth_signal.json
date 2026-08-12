@@ -1,0 +1,355 @@
+{
+  "manifest": "outputs/v0data/johansen-fragment-joint-depth-filtered/macaque/targets.json",
+  "depths": "outputs/v0data/johansen-fragment-atac/macaque/shards/NC_041754.1_100bp.npz",
+  "head_id": "allen_atac",
+  "num_windows": 16,
+  "window_size": 131072,
+  "num_bins_per_window": 1024,
+  "num_tracks": 47,
+  "depth_quantiles": {
+    "0.0": 2938160.0,
+    "0.1": 9161833.0,
+    "0.25": 44437199.0,
+    "0.5": 152996582.0,
+    "0.75": 360958089.0,
+    "0.9": 785592637.7999998,
+    "1.0": 3310478806.0
+  },
+  "groups_below_5m": 1,
+  "groups_below_10m": 6,
+  "groups_below_25m": 10,
+  "spearman_log_depth_vs_log_rms": -0.2635291396854764,
+  "spearman_log_depth_vs_nonzero_fraction": 0.9905455910599523,
+  "spearman_log_depth_vs_median_track_correlation": 0.5371184088806661,
+  "tracks": [
+    {
+      "label": "AMY-SLEA-BNST GABA",
+      "fragments": 177682681,
+      "rms": 0.09899040303918266,
+      "nonzero_fraction": 0.9937744140625,
+      "median_other_track_correlation": 0.8478486207025238
+    },
+    {
+      "label": "Astrocyte",
+      "fragments": 1054319498,
+      "rms": 0.13482607024760163,
+      "nonzero_fraction": 0.99774169921875,
+      "median_other_track_correlation": 0.7562227661578602
+    },
+    {
+      "label": "BAM",
+      "fragments": 8172214,
+      "rms": 0.19911789762577256,
+      "nonzero_fraction": 0.466064453125,
+      "median_other_track_correlation": 0.5317598661944637
+    },
+    {
+      "label": "BF SKOR1 Glut",
+      "fragments": 159063881,
+      "rms": 0.10270522788789661,
+      "nonzero_fraction": 0.98968505859375,
+      "median_other_track_correlation": 0.8001708582278648
+    },
+    {
+      "label": "COP",
+      "fragments": 6609838,
+      "rms": 0.15229385096268525,
+      "nonzero_fraction": 0.4208984375,
+      "median_other_track_correlation": 0.61578962839583
+    },
+    {
+      "label": "Endo",
+      "fragments": 45273000,
+      "rms": 0.1583163024027216,
+      "nonzero_fraction": 0.92236328125,
+      "median_other_track_correlation": 0.6698405118681223
+    },
+    {
+      "label": "Ependymal",
+      "fragments": 43601398,
+      "rms": 0.14473583470523563,
+      "nonzero_fraction": 0.87677001953125,
+      "median_other_track_correlation": 0.7093484661323863
+    },
+    {
+      "label": "GPe MEIS2-SOX6 GABA",
+      "fragments": 152996582,
+      "rms": 0.10666539497894999,
+      "nonzero_fraction": 0.98809814453125,
+      "median_other_track_correlation": 0.8009475939691983
+    },
+    {
+      "label": "GPe SOX6-CTXND1 GABA",
+      "fragments": 264941035,
+      "rms": 0.1108759204555216,
+      "nonzero_fraction": 0.99609375,
+      "median_other_track_correlation": 0.7580403125436332
+    },
+    {
+      "label": "GPe-NDB-SI LHX6-LHX8-GBX1 GABA",
+      "fragments": 423807370,
+      "rms": 0.10264845111785487,
+      "nonzero_fraction": 0.99761962890625,
+      "median_other_track_correlation": 0.7983322481494628
+    },
+    {
+      "label": "GPi Core",
+      "fragments": 253183532,
+      "rms": 0.108349205027289,
+      "nonzero_fraction": 0.99517822265625,
+      "median_other_track_correlation": 0.749027689161107
+    },
+    {
+      "label": "GPi Shell",
+      "fragments": 57340403,
+      "rms": 0.11545520151005921,
+      "nonzero_fraction": 0.94482421875,
+      "median_other_track_correlation": 0.6592282314503088
+    },
+    {
+      "label": "GPin-BF Cholinergic GABA",
+      "fragments": 113860551,
+      "rms": 0.10667770447485597,
+      "nonzero_fraction": 0.98565673828125,
+      "median_other_track_correlation": 0.7397849903358816
+    },
+    {
+      "label": "LAMP5-CXCL14 GABA",
+      "fragments": 112174211,
+      "rms": 0.09936498944418083,
+      "nonzero_fraction": 0.97698974609375,
+      "median_other_track_correlation": 0.7803776337507542
+    },
+    {
+      "label": "LAMP5-LHX6 GABA",
+      "fragments": 81822697,
+      "rms": 0.1013158587988889,
+      "nonzero_fraction": 0.96624755859375,
+      "median_other_track_correlation": 0.7334121902332387
+    },
+    {
+      "label": "Microglia",
+      "fragments": 617582511,
+      "rms": 0.18366536731591965,
+      "nonzero_fraction": 0.9970703125,
+      "median_other_track_correlation": 0.6430901011469501
+    },
+    {
+      "label": "OB Dopa-GABA",
+      "fragments": 9821579,
+      "rms": 0.12329036775171104,
+      "nonzero_fraction": 0.55133056640625,
+      "median_other_track_correlation": 0.6754212871580624
+    },
+    {
+      "label": "OB FRMD7 GABA",
+      "fragments": 11258389,
+      "rms": 0.13106834281786123,
+      "nonzero_fraction": 0.54949951171875,
+      "median_other_track_correlation": 0.7110161207965737
+    },
+    {
+      "label": "OPC",
+      "fragments": 162655917,
+      "rms": 0.14201497865001408,
+      "nonzero_fraction": 0.98724365234375,
+      "median_other_track_correlation": 0.7685008420007934
+    },
+    {
+      "label": "OT D1 ICj",
+      "fragments": 105769574,
+      "rms": 0.11358587486525232,
+      "nonzero_fraction": 0.97442626953125,
+      "median_other_track_correlation": 0.7784597359549262
+    },
+    {
+      "label": "Oligo PLEKHG1",
+      "fragments": 743062027,
+      "rms": 0.15732217586734334,
+      "nonzero_fraction": 0.99725341796875,
+      "median_other_track_correlation": 0.6322240836006332
+    },
+    {
+      "label": "Pericyte",
+      "fragments": 12383157,
+      "rms": 0.16639700229571117,
+      "nonzero_fraction": 0.5638427734375,
+      "median_other_track_correlation": 0.6405668256667143
+    },
+    {
+      "label": "SMC",
+      "fragments": 2938160,
+      "rms": 0.16538252088001643,
+      "nonzero_fraction": 0.2288818359375,
+      "median_other_track_correlation": 0.48832505456224784
+    },
+    {
+      "label": "SN SOX6 Dopa",
+      "fragments": 274611871,
+      "rms": 0.10584280788837222,
+      "nonzero_fraction": 0.99627685546875,
+      "median_other_track_correlation": 0.7402958752814993
+    },
+    {
+      "label": "SN-VTR CALB1 Dopa",
+      "fragments": 6274575,
+      "rms": 0.12577945252424444,
+      "nonzero_fraction": 0.48333740234375,
+      "median_other_track_correlation": 0.5188094653753101
+    },
+    {
+      "label": "SN-VTR GAD2 Dopa",
+      "fragments": 8012775,
+      "rms": 0.12052225272212914,
+      "nonzero_fraction": 0.518310546875,
+      "median_other_track_correlation": 0.61090570178018
+    },
+    {
+      "label": "SN-VTR-HTH GATA3-TCF7L2 GABA",
+      "fragments": 88428494,
+      "rms": 0.10637894570202443,
+      "nonzero_fraction": 0.979248046875,
+      "median_other_track_correlation": 0.8004322365059122
+    },
+    {
+      "label": "STH PVALB-PITX2 Glut",
+      "fragments": 387370217,
+      "rms": 0.1101939748565736,
+      "nonzero_fraction": 0.99761962890625,
+      "median_other_track_correlation": 0.7805356875255995
+    },
+    {
+      "label": "STR Cholinergic GABA",
+      "fragments": 27820008,
+      "rms": 0.10832375651760108,
+      "nonzero_fraction": 0.85760498046875,
+      "median_other_track_correlation": 0.6923848872656704
+    },
+    {
+      "label": "STR D1D2 Hybrid MSN",
+      "fragments": 752583343,
+      "rms": 0.11417975351370137,
+      "nonzero_fraction": 0.9981689453125,
+      "median_other_track_correlation": 0.7458321233432708
+    },
+    {
+      "label": "STR LYPD6-RSPO2 GABA",
+      "fragments": 78137471,
+      "rms": 0.10106838967428894,
+      "nonzero_fraction": 0.97052001953125,
+      "median_other_track_correlation": 0.786148294676167
+    },
+    {
+      "label": "STR SST-ADARB2 GABA",
+      "fragments": 13569406,
+      "rms": 0.11574116226725298,
+      "nonzero_fraction": 0.67669677734375,
+      "median_other_track_correlation": 0.6984213155468839
+    },
+    {
+      "label": "STR SST-CHODL GABA",
+      "fragments": 228811062,
+      "rms": 0.1035332035996394,
+      "nonzero_fraction": 0.993896484375,
+      "median_other_track_correlation": 0.8087156811158518
+    },
+    {
+      "label": "STR SST-RSPO2 GABA",
+      "fragments": 111258901,
+      "rms": 0.10551182676477566,
+      "nonzero_fraction": 0.980224609375,
+      "median_other_track_correlation": 0.7884141182248571
+    },
+    {
+      "label": "STR TAC3-PLPP4 GABA",
+      "fragments": 389467645,
+      "rms": 0.10387353804732541,
+      "nonzero_fraction": 0.9954833984375,
+      "median_other_track_correlation": 0.7820434215451879
+    },
+    {
+      "label": "STR-BF TAC3-PLPP4-LHX8 GABA",
+      "fragments": 57970010,
+      "rms": 0.10650815053640256,
+      "nonzero_fraction": 0.92230224609375,
+      "median_other_track_correlation": 0.7560909151620604
+    },
+    {
+      "label": "STRd Cholinergic GABA",
+      "fragments": 75682163,
+      "rms": 0.10137647270175745,
+      "nonzero_fraction": 0.97021484375,
+      "median_other_track_correlation": 0.7277976399891051
+    },
+    {
+      "label": "STRd D1 Striosome MSN",
+      "fragments": 908485285,
+      "rms": 0.11730459809240831,
+      "nonzero_fraction": 0.9974365234375,
+      "median_other_track_correlation": 0.7407846467025799
+    },
+    {
+      "label": "STRd D2 Matrix MSN",
+      "fragments": 3310478806,
+      "rms": 0.1195119795944695,
+      "nonzero_fraction": 0.9991455078125,
+      "median_other_track_correlation": 0.7507256654649388
+    },
+    {
+      "label": "STRd D2 StrioMat Hybrid MSN",
+      "fragments": 214822100,
+      "rms": 0.11987101642697173,
+      "nonzero_fraction": 0.99505615234375,
+      "median_other_track_correlation": 0.7287748727183689
+    },
+    {
+      "label": "STRv D1 MSN",
+      "fragments": 1156290956,
+      "rms": 0.11468086577815872,
+      "nonzero_fraction": 0.9984130859375,
+      "median_other_track_correlation": 0.7715363263167979
+    },
+    {
+      "label": "STRv D1 NUDAP MSN",
+      "fragments": 466531821,
+      "rms": 0.10511125600293224,
+      "nonzero_fraction": 0.99725341796875,
+      "median_other_track_correlation": 0.7894049321454468
+    },
+    {
+      "label": "STRv D2 MSN",
+      "fragments": 835106580,
+      "rms": 0.10879084301339331,
+      "nonzero_fraction": 0.99761962890625,
+      "median_other_track_correlation": 0.7624453222785548
+    },
+    {
+      "label": "VIP GABA",
+      "fragments": 161952606,
+      "rms": 0.09903246825011124,
+      "nonzero_fraction": 0.990478515625,
+      "median_other_track_correlation": 0.8079714935369262
+    },
+    {
+      "label": "VLMC",
+      "fragments": 24253465,
+      "rms": 0.168534757207954,
+      "nonzero_fraction": 0.81243896484375,
+      "median_other_track_correlation": 0.630972995620134
+    },
+    {
+      "label": "VTR-HTH Glut",
+      "fragments": 246736444,
+      "rms": 0.10006427291211574,
+      "nonzero_fraction": 0.9952392578125,
+      "median_other_track_correlation": 0.8327864094684347
+    },
+    {
+      "label": "ZI-HTH GABA",
+      "fragments": 334545961,
+      "rms": 0.10964856887641908,
+      "nonzero_fraction": 0.99700927734375,
+      "median_other_track_correlation": 0.8227200257959719
+    }
+  ]
+}

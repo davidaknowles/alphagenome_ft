@@ -34,3 +34,16 @@ HDA RNA retains 91.0% of centered variance after double centering, compared with
 Released Zemke RNA is an order of magnitude denser than synthetic exon-density RNA. That difference reflects target representation rather than a recoverable scalar mismatch. For datasets measured only at gene level, direct 128 bp gene aggregation is the defensible primary objective; synthetic exon density is at most an auxiliary localization term. The queued gene-only comparisons test this conclusion without discarding measured expression counts.
 
 ATAC units differ across source pipelines, but their scale-free structure also provides no single normalization rule. HDA and Johansen human have similar DC variance fractions despite a large SD difference, while Liu has the largest DC fraction and the lowest median cross-track correlation. This supports retaining each study's native library-normalized units and evaluating preprocessing through held-out DC Pearson correlation rather than forcing matched marginal distributions.
+
+## Pseudobulk depth
+
+Normalized target quality remains depth-dependent. Across Liu and each Johansen species, Spearman correlation between log10 fragment depth and nonzero 128 bp coverage is 0.95 to 0.99. Correlation with each track's median correlation to the other tracks is 0.48 to 0.62. In contrast, log depth has a weakly negative correlation, -0.15 to -0.42, with log root mean square signal, consistent with signal-per-million normalization amplifying sampling noise in shallow pseudobulks rather than restoring their information content.
+
+| Dataset | Tracks | <5M fragments | <10M | <25M | Depth vs nonzero | Depth vs track R | Depth vs RMS |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| Liu human | 186 | 15 | 46 | 95 | 0.953 | 0.618 | -0.152 |
+| Johansen human | 47 | 3 | 3 | 10 | 0.992 | 0.500 | -0.183 |
+| Johansen macaque | 47 | 1 | 6 | 10 | 0.991 | 0.537 | -0.264 |
+| Johansen marmoset | 47 | 2 | 6 | 14 | 0.992 | 0.480 | -0.418 |
+
+HDA peak-calling pseudobulks were downsampled to 25 million fragments, but imposing that threshold on these datasets would retain only 91 Liu groups and 29 Johansen groups shared across species. A conservative 10-million-fragment screen retains 140 Liu groups and 38 Johansen groups. It filters ATAC and paired RNA channels synchronously, retains the corresponding direct gene-expression rows, and combines the filter with gene-only RNA supervision. This is an explicit target-quality experiment rather than an attempt to rescale low-depth observations.
