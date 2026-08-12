@@ -61,7 +61,8 @@ def test_johansen_joint_evaluator_uses_corrected_checkpoints() -> None:
     assert "submit_evaluation 0 lora" in script
     assert "submit_evaluation 1 lora_locon" in script
     assert "johansen_joint_${strategy}_rawcount_geneonly_corrw1/best" in script
-    assert 'dependency="afterok:${source_job}_${task}"' in script
+    assert 'if [[ -n "$source_job" ]]' in script
+    assert 'sbatch_args+=(--dependency="afterok:${source_job}_${task}")' in script
     assert "EVALUATE_SPECIES=${species}" in script
 
 
