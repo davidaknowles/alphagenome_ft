@@ -72,6 +72,7 @@ def test_zemke_species_continuation_requires_optimizer_state_by_default() -> Non
     assert '"${REQUIRE_OPTIMIZER_STATE:-1}" == "1"' in script
     assert 'test -d "$source/optimizer_state"' in script
     assert "RESUME_FROM=${source}" in script
+    assert 'sbatch_args+=(--dependency="$DEPENDENCY")' in script
 
 
 def test_johansen_joint_continuation_requires_corrected_state() -> None:
@@ -84,6 +85,7 @@ def test_johansen_joint_continuation_requires_corrected_state() -> None:
     assert 'test -d "$source/optimizer_state"' in script
     assert "RESUME_FROM=${source}" in script
     assert "RUN_SUFFIX=_rawcount_geneonly_corrw1" in script
+    assert 'sbatch_args+=(--dependency="$DEPENDENCY")' in script
 
 
 def test_hda_joint_epoch_three_matches_the_optimizer_reset_boundary() -> None:

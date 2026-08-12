@@ -30,8 +30,12 @@ for task in "${selected_tasks[@]}"; do
   if [[ "${REQUIRE_OPTIMIZER_STATE:-1}" == "1" ]]; then
     test -d "$source/optimizer_state"
   fi
+  sbatch_args=(--parsable --nice="${NICE:-40}" --array="$task")
+  if [[ -n "${DEPENDENCY:-}" ]]; then
+    sbatch_args+=(--dependency="$DEPENDENCY")
+  fi
   job=$(
-    "$sbatch_bin" --parsable --nice="${NICE:-40}" --array="$task" \
+    "$sbatch_bin" "${sbatch_args[@]}" \
       --export="ALL,RESUME_FROM=${source},NUM_EPOCHS=${NUM_EPOCHS:-100}" \
       scripts/v0data/slurm_zemke2023_adapter_matrix.sbatch
   )
