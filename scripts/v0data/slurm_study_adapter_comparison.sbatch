@@ -3,7 +3,7 @@
 #SBATCH --partition=gpu
 #SBATCH --gres=gpu:b6k:1
 #SBATCH --cpus-per-task=24
-#SBATCH --mem=96G
+#SBATCH --mem=32G
 #SBATCH --time=2-00:00:00
 #SBATCH --array=0-5
 #SBATCH --output=logs/v0data/v0data_adapters-%A_%a.out

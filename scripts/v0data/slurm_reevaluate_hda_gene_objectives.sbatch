@@ -3,7 +3,7 @@
 #SBATCH --partition=gpu
 #SBATCH --gres=gpu:l40s:2
 #SBATCH --cpus-per-task=24
-#SBATCH --mem=96G
+#SBATCH --mem=32G
 #SBATCH --time=01:00:00
 #SBATCH --array=0-3%2
 #SBATCH --output=logs/v0data/hda_objective_eval-%A_%a.out
