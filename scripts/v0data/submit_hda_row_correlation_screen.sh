@@ -17,7 +17,7 @@ targets="outputs/v0data/hda-joint/targets_geneonly_rowcorrw${suffix}.json"
   --row-correlation-loss-weight "$weight"
 
 exports="ALL,DATASET=hda-joint,TARGETS_CONFIG=${targets},RUN_SUFFIX=_geneonly_rowcorrw${suffix}_screen,NUM_EPOCHS=1"
-smoke=$(sbatch --parsable --time=00:30:00 --array=0-1%2 \
+smoke=$(sbatch --parsable --time=00:30:00 --cpus-per-task=8 --array=0-1%2 \
   --export="${exports},SMOKE=1" scripts/v0data/slurm_joint_adapter_comparison.sbatch)
 full=$(sbatch --parsable --time=08:00:00 --array=0-1%2 \
   --dependency="afterok:${smoke}_*" --export="$exports" \
