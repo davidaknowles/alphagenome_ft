@@ -313,6 +313,17 @@ def test_row_centered_correlation_loss_has_finite_gradient_without_variance():
     np.testing.assert_array_equal(gradient, np.zeros_like(gradient))
 
 
+def test_row_centered_correlation_loss_has_signal_for_one_gene() -> None:
+    prediction = jnp.asarray([[[1.0, 4.0, 2.0]]], dtype=jnp.float32)
+    targets = jnp.asarray([[[1.0, 2.0, 4.0]]], dtype=jnp.float32)
+
+    loss, gradient = jax.value_and_grad(_row_centered_correlation_loss)(prediction, targets)
+
+    assert float(loss) > 0
+    assert np.all(np.isfinite(gradient))
+    assert np.linalg.norm(gradient) > 0
+
+
 def test_row_centered_correlation_loss_uses_global_pmap_batch():
     device_count = jax.local_device_count()
     targets = jnp.square(jnp.arange(device_count * 24, dtype=jnp.float32)).reshape(
