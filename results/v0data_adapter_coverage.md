@@ -18,7 +18,7 @@ The primary table covers each requested non-ENCODE study. Cross-species studies 
 |---|---:|---:|---:|---|
 | `hda` | 4 | 4 | 4 | matched result available |
 | `hda-joint` | 3 | 3 | 3 | matched result available |
-| `johansen-human` | 4 | 4 | 4 | matched result available |
+| `johansen-human` | 4 | 5 | 4 | matched result available |
 | `johansen_joint` | 1 | 1 | 1 | matched result available |
 | `liu-hdma` | 2 | 2 | 2 | matched result available |
 | `zemke2023-human` | 4 | 4 | 4 | matched result available |
