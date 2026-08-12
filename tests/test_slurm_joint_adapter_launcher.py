@@ -44,3 +44,14 @@ def test_zemke_joint_evaluator_covers_each_species_and_strategy() -> None:
     assert "RUN_SUFFIX=_joint_epoch${epoch}_eval" in script
     assert "EVALUATE_ONLY=1" in script
     assert 'sbatch_bin="${SBATCH_BIN:-sbatch}"' in script
+
+
+def test_johansen_joint_evaluator_uses_corrected_checkpoints() -> None:
+    script = Path("scripts/v0data/submit_johansen_joint_native_evaluations.sh").read_text()
+
+    assert "for species in human macaque marmoset" in script
+    assert "submit_evaluation 0 lora" in script
+    assert "submit_evaluation 1 lora_locon" in script
+    assert "johansen_joint_${strategy}_rawcount_geneonly_corrw1/best" in script
+    assert 'dependency="afterok:${source_job}_${task}"' in script
+    assert "EVALUATE_SPECIES=${species}" in script
