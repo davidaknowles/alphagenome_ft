@@ -20,6 +20,8 @@ The final evaluation collator fails if any strategy-by-source artifact is absent
 
 The first L40S joint smoke request remained pending despite idle nodes because its original Blackwell launcher requested 32 CPU cores, while each L40S node has 24. Slurm exposed the impossible request as `Priority` rather than `Resources`. Pending array 19936245 and the reusable launcher now request 24 cores, two L40S GPUs, 48 GB host memory, and a two-hour limit. The corrected request has 24 CPUs in both requested resources and per-task resources and can fit an idle L40S node.
 
+The native-source evaluation route was validated against Zemke 2023 mouse with all ten union heads loaded. Host selection retained only `zemke2023:mouse`, assigned one limited train, validation, and test batch, and preserved the full union model contract. The five-dataset configuration still validated all ten source manifests before selection, so a source-specific evaluation cannot bypass an incompatible checkpoint head layout. The joint smoke's continuing `Priority` state after correcting resources reflects account fair-share rather than another unsatisfiable request.
+
 ## Multi-study adapter comparison
 
 The fine-tuning comparison uses signed double-centered Pearson correlation, (R), for checkpoint selection. For a prediction matrix (Y \in \mathbb{R}^{L \times C}), (L) is the number of genomic loci and (C) is the number of target channels. Predictions and targets are centered over loci and channels before their Pearson correlation is calculated. This is not the global coefficient of determination reported by some earlier runs. Validation now records a mean of each metric across heads so joint ATAC and ribonucleic-acid, RNA, runs do not select checkpoints from only the first head.
