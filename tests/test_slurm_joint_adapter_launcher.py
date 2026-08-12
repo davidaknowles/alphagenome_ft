@@ -174,6 +174,17 @@ def test_zemke_direct_gene_screen_requires_complete_target_agreement() -> None:
     assert 'dependency="afterok:${smoke}_*"' in script
 
 
+def test_zemke_published_gene_screen_reports_direct_and_coordinate_metrics() -> None:
+    script = Path("scripts/v0data/submit_zemke2023_published_gene_screen.sh").read_text()
+
+    assert "zemke2023-published-gene-supervision/human/targets.json" in script
+    assert 'dependency="afterok:${source_job}_0"' in script
+    assert 'dependency="afterok:${smoke}_*"' in script
+    assert "zemke2023-species/human/targets.json" in script
+    assert "EVALUATE_ONLY=1" in script
+    assert 'dependency="afterok:${full}_${task}"' in script
+
+
 def test_zemke2024_direct_gene_screen_requires_supported_group_agreement() -> None:
     script = Path("scripts/v0data/submit_zemke2024_direct_gene_screen.sh").read_text()
 
