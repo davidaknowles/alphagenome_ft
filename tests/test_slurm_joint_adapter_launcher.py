@@ -168,6 +168,19 @@ def test_liu_row_objective_uses_corrected_gene_only_targets() -> None:
     assert 'sbatch_bin="${SBATCH_BIN:-sbatch}"' in script
 
 
+def test_reconstructed_row_sweep_has_matched_ordering_controls() -> None:
+    script = Path(
+        "scripts/v0data/submit_reconstructed_row_correlation_sweeps.sh"
+    ).read_text()
+
+    assert "weights=(0 0.1 1 10)" in script
+    assert "suffixes=(0 0p1 1 10)" in script
+    assert "prepare_reconstructed_row_sweeps.py" in script
+    assert script.count("BALANCE_GENE_WINDOWS=1") == 2
+    assert script.count("--array=0") == 4
+    assert script.count('dependency="afterok:${') == 2
+
+
 def test_hda_factorized_rna_screen_changes_only_the_rna_projection() -> None:
     script = Path("scripts/v0data/submit_hda_factorized_rna_screen.sh").read_text()
 
