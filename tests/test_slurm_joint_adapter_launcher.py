@@ -116,3 +116,20 @@ def test_hda_rna_only_screen_is_deterministically_initialized() -> None:
     assert "PRETRAINED_HEAD_INITIALIZATION=neural_accessibility_bootstrap" in script
     assert "RUN_SUFFIX=_rna_only_neural_accessibility_bootstrap_screen" in script
     assert 'dependency="afterok:${smoke}_*"' in script
+
+
+def test_johansen_row_objective_uses_corrected_raw_count_targets() -> None:
+    script = Path("scripts/v0data/submit_johansen_row_correlation_screen.sh").read_text()
+
+    assert "johansen-rna-corrected/geneonly-corrw1/species.json" in script
+    assert "johansen-rna-corrected/geneonly-rowcorrw" in script
+    assert "johansen-fragment-joint-depth-filtered/species.json" not in script
+    assert 'sbatch_bin="${SBATCH_BIN:-sbatch}"' in script
+    assert 'smoke=$("$sbatch_bin"' in script
+
+
+def test_hda_row_objective_supports_scheduler_dry_run() -> None:
+    script = Path("scripts/v0data/submit_hda_row_correlation_screen.sh").read_text()
+
+    assert 'sbatch_bin="${SBATCH_BIN:-sbatch}"' in script
+    assert 'smoke=$("$sbatch_bin"' in script
