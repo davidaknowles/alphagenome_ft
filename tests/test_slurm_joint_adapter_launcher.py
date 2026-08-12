@@ -64,3 +64,14 @@ def test_zemke_species_continuation_requires_optimizer_state_by_default() -> Non
     assert '"${REQUIRE_OPTIMIZER_STATE:-1}" == "1"' in script
     assert 'test -d "$source/optimizer_state"' in script
     assert "RESUME_FROM=${source}" in script
+
+
+def test_hda_joint_epoch_three_matches_the_optimizer_reset_boundary() -> None:
+    script = Path("scripts/v0data/submit_hda_joint_matched_epoch3.sh").read_text()
+
+    assert "hda-joint_lora/last/metrics.json" in script
+    assert "hda-joint_lora_locon/last" in script
+    assert 'test "$(jq -er \'.epoch\' "$lora_metrics")" -eq 3' in script
+    assert 'test "$(jq -er \'.epoch\' "$locon_source/metrics.json")" -eq 2' in script
+    assert "DATASET=hda-joint" in script
+    assert "NUM_EPOCHS=3" in script

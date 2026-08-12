@@ -62,4 +62,6 @@ The study, species, and joint launchers accept `CORRELATION_LOSS_WEIGHT` as an o
 
 `submit_zemke_species_continuations.sh` resumes selected canonical species tasks and requires saved optimizer state by default. Its default task set is the matched macaque pair, which has only one completed epoch and retains AdamW state. Marmoset is not included by default because its older checkpoint lacks optimizer state and requires an explicit optimizer-reset decision.
 
+`submit_hda_joint_matched_epoch3.sh` completes the missing LoRA plus LoCon HDA joint epoch three. It verifies that LoRA has already completed epoch three, LoRA plus LoCon is at epoch two, and the latter checkpoint has no optimizer state. The resulting AdamW restart matches the boundary used for the existing LoRA epoch-three continuation.
+
 Each head may also define a positive `loss_weight`, which defaults to 1. This outer weight rescales the head's complete optimization objective when heads are summed; it does not change the reported per-head loss or metric. For gene-supervised RNA, the existing `gene_supervision.loss_weight` and `coverage_loss_weight` still control the relative gene and exon-coverage terms inside the RNA head. `prepare_head_loss_weight_config.py` copies a canonical manifest and sets one outer head weight so modality-balancing screens do not alter baseline manifests.
