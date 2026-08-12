@@ -1,4 +1,68 @@
 {
   "selection_metric": "mean valid differential_pearson_r",
-  "runs": []
+  "runs": [
+    {
+      "dataset": "zemke2023-human",
+      "strategy": "lora",
+      "variant": "rnaw5",
+      "selected_epoch": 1,
+      "global_step": 2619,
+      "selection_mean_valid_r": 0.5471908770603605,
+      "heads": [
+        {
+          "head": "zemke2023_atac",
+          "valid_r": 0.6637365211542443,
+          "test_r": 0.6789572737116124
+        },
+        {
+          "head": "zemke2023_rna",
+          "valid_r": 0.4306452329664767,
+          "test_r": 0.3871034484069231
+        }
+      ],
+      "metrics_path": "checkpoints/v0data/zemke2023-human_lora_rnaw5/metrics.jsonl"
+    },
+    {
+      "dataset": "zemke2023_macaque",
+      "strategy": "lora",
+      "variant": "fold_chr10_chr11",
+      "selected_epoch": 1,
+      "global_step": 2488,
+      "selection_mean_valid_r": 0.37811918138519796,
+      "heads": [
+        {
+          "head": "zemke2023_atac",
+          "valid_r": 0.48572115407389005,
+          "test_r": 0.6249656770535725
+        },
+        {
+          "head": "zemke2023_rna",
+          "valid_r": 0.2705172086965058,
+          "test_r": 0.3799459212016921
+        }
+      ],
+      "metrics_path": "checkpoints/v0data/zemke2023_macaque_lora_fold_chr10_chr11/metrics.jsonl"
+    },
+    {
+      "dataset": "zemke2024-all",
+      "strategy": "lora",
+      "variant": "rnaw5",
+      "selected_epoch": 1,
+      "global_step": 2619,
+      "selection_mean_valid_r": 0.5580103206932858,
+      "heads": [
+        {
+          "head": "zemke2024_all_atac",
+          "valid_r": 0.7148602805897513,
+          "test_r": 0.7239321353385432
+        },
+        {
+          "head": "zemke2024_all_rna",
+          "valid_r": 0.4011603607968203,
+          "test_r": 0.2481373438301827
+        }
+      ],
+      "metrics_path": "checkpoints/v0data/zemke2024-all_lora_rnaw5/metrics.jsonl"
+    }
+  ]
 }

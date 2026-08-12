@@ -27,3 +27,11 @@ def test_audit_coverage_distinguishes_matched_and_missing_runs(tmp_path: Path) -
     assert missing["highest_matched_epoch"] is None
     assert missing["status"] == "missing lora+locon"
     assert "does not imply that early stopping completed" in render_markdown(result)
+
+
+def test_audit_coverage_excludes_superseded_johansen_checkpoint(tmp_path: Path) -> None:
+    _write_epoch(tmp_path, "johansen_joint_lora_locon", 1)
+
+    result = audit_coverage(tmp_path, expected_datasets=("johansen_joint",))
+
+    assert result["datasets"][0]["status"] == "missing lora, lora+locon"

@@ -71,6 +71,12 @@ def test_canonical_and_variant_collation_are_disjoint(tmp_path: Path) -> None:
     ]
 
 
+def test_superseded_johansen_checkpoint_is_excluded(tmp_path: Path) -> None:
+    _write_metrics(tmp_path, "johansen_joint_lora_locon", 0.8, 0.8)
+
+    assert collate(tmp_path)["runs"] == []
+
+
 def test_matched_comparison_uses_highest_common_epoch(tmp_path: Path) -> None:
     _write_metrics(tmp_path, "study_lora", 0.6, 0.5)
     _append_metrics(tmp_path, "study_lora", 2, 0.9, 0.8)

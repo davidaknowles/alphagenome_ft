@@ -4,3 +4,9 @@ These non-canonical runs test one change at a time. Each run is selected by mean
 
 | Dataset | Strategy | Variant | Epoch | Head | Validation R | Test R |
 |---|---|---|---:|---|---:|---:|
+| `zemke2023-human` | `lora` | `rnaw5` | 1 | `zemke2023_atac` | 0.6637 | 0.6790 |
+| `zemke2023-human` | `lora` | `rnaw5` | 1 | `zemke2023_rna` | 0.4306 | 0.3871 |
+| `zemke2023_macaque` | `lora` | `fold_chr10_chr11` | 1 | `zemke2023_atac` | 0.4857 | 0.6250 |
+| `zemke2023_macaque` | `lora` | `fold_chr10_chr11` | 1 | `zemke2023_rna` | 0.2705 | 0.3799 |
+| `zemke2024-all` | `lora` | `rnaw5` | 1 | `zemke2024_all_atac` | 0.7149 | 0.7239 |
+| `zemke2024-all` | `lora` | `rnaw5` | 1 | `zemke2024_all_rna` | 0.4012 | 0.2481 |

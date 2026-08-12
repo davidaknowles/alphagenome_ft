@@ -27,9 +27,17 @@ STRATEGY_SUFFIXES = {
     "lora": "_lora",
     "lora+locon": "_lora_locon",
 }
+SUPERSEDED_RUNS = frozenset(
+    {
+        # This checkpoint used summed per-cell-normalized Johansen expression.
+        "johansen_joint_lora_locon",
+    }
+)
 
 
 def _completed_epochs(path: Path) -> list[int]:
+    if path.parent.name in SUPERSEDED_RUNS:
+        return []
     if not path.exists():
         return []
     epochs = set()

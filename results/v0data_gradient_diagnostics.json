@@ -1,0 +1,129 @@
+{
+  "runs": [
+    {
+      "run": "hda-joint_lora_gradnorm",
+      "epoch": 1,
+      "global_step_before_update": 0,
+      "heads": {
+        "hda_atac": {
+          "adapter_gradient_norm": 0.00431844312697649,
+          "head_gradient_norm": 1.774983286857605,
+          "loss": 4.516829490661621,
+          "loss_weight": 1.0,
+          "weighted_adapter_gradient_norm": 0.00431844312697649
+        },
+        "hda_rna": {
+          "adapter_gradient_norm": 0.003266962943598628,
+          "head_gradient_norm": 2.353088855743408,
+          "loss": 4.057307243347168,
+          "loss_weight": 1.0,
+          "weighted_adapter_gradient_norm": 0.003266962943598628
+        }
+      },
+      "adapter_gradient_cosines": {
+        "hda_atac__hda_rna": 0.1502918154001236
+      },
+      "path": "checkpoints/v0data/hda-joint_lora_gradnorm/gradient_diagnostics.json"
+    },
+    {
+      "run": "liu-hdma_lora_gradnorm",
+      "epoch": 1,
+      "global_step_before_update": 0,
+      "heads": {
+        "liu_atac": {
+          "adapter_gradient_norm": 0.00570951821282506,
+          "head_gradient_norm": 1.5080119371414185,
+          "loss": 4.9076948165893555,
+          "loss_weight": 1.0,
+          "weighted_adapter_gradient_norm": 0.00570951821282506
+        },
+        "liu_rna": {
+          "adapter_gradient_norm": 0.003919458482414484,
+          "head_gradient_norm": 2.700195074081421,
+          "loss": 5.474157810211182,
+          "loss_weight": 1.0,
+          "weighted_adapter_gradient_norm": 0.003919458482414484
+        }
+      },
+      "adapter_gradient_cosines": {
+        "liu_atac__liu_rna": 0.07793381810188293
+      },
+      "path": "checkpoints/v0data/liu-hdma_lora_gradnorm/gradient_diagnostics.json"
+    },
+    {
+      "run": "zemke2023_human_lora_gradnorm",
+      "epoch": 1,
+      "global_step_before_update": 0,
+      "heads": {
+        "zemke2023_atac": {
+          "adapter_gradient_norm": 0.055519767105579376,
+          "head_gradient_norm": 73.50694274902344,
+          "loss": 573.9849243164062,
+          "loss_weight": 1.0,
+          "weighted_adapter_gradient_norm": 0.055519767105579376
+        },
+        "zemke2023_rna": {
+          "adapter_gradient_norm": 0.006106176413595676,
+          "head_gradient_norm": 4.068474769592285,
+          "loss": 13.76280403137207,
+          "loss_weight": 1.0,
+          "weighted_adapter_gradient_norm": 0.006106176413595676
+        }
+      },
+      "adapter_gradient_cosines": {
+        "zemke2023_atac__zemke2023_rna": 0.18304088711738586
+      },
+      "path": "checkpoints/v0data/zemke2023_human_lora_gradnorm/gradient_diagnostics.json"
+    },
+    {
+      "run": "zemke2023_mouse_lora_gradnorm",
+      "epoch": 1,
+      "global_step_before_update": 0,
+      "heads": {
+        "zemke2023_atac": {
+          "adapter_gradient_norm": 0.010119271464645863,
+          "head_gradient_norm": 0.0,
+          "loss": 1.7371898889541626,
+          "loss_weight": 1.0,
+          "weighted_adapter_gradient_norm": 0.010119271464645863
+        },
+        "zemke2023_rna": {
+          "adapter_gradient_norm": 0.01907232403755188,
+          "head_gradient_norm": 0.0,
+          "loss": 2.157557487487793,
+          "loss_weight": 1.0,
+          "weighted_adapter_gradient_norm": 0.01907232403755188
+        }
+      },
+      "adapter_gradient_cosines": {
+        "zemke2023_atac__zemke2023_rna": -0.21111024916172028
+      },
+      "path": "checkpoints/v0data/zemke2023_mouse_lora_gradnorm/gradient_diagnostics.json"
+    },
+    {
+      "run": "zemke2024-all_lora_gradnorm",
+      "epoch": 1,
+      "global_step_before_update": 0,
+      "heads": {
+        "zemke2024_all_atac": {
+          "adapter_gradient_norm": 0.020357778295874596,
+          "head_gradient_norm": 11.95906925201416,
+          "loss": 262.40234375,
+          "loss_weight": 1.0,
+          "weighted_adapter_gradient_norm": 0.020357778295874596
+        },
+        "zemke2024_all_rna": {
+          "adapter_gradient_norm": 0.0036793467588722706,
+          "head_gradient_norm": 3.796595573425293,
+          "loss": 17.663650512695312,
+          "loss_weight": 1.0,
+          "weighted_adapter_gradient_norm": 0.0036793467588722706
+        }
+      },
+      "adapter_gradient_cosines": {
+        "zemke2024_all_atac__zemke2024_all_rna": 0.13283178210258484
+      },
+      "path": "checkpoints/v0data/zemke2024-all_lora_gradnorm/gradient_diagnostics.json"
+    }
+  ]
+}

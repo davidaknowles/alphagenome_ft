@@ -24,6 +24,12 @@ TECHNICAL_VARIANT_MARKERS = (
     "rngfix",
     "runtimefix",
 )
+SUPERSEDED_RUNS = frozenset(
+    {
+        # This checkpoint used summed per-cell-normalized Johansen expression.
+        "johansen_joint_lora_locon",
+    }
+)
 
 
 def _run_identity(name: str) -> tuple[str, str] | None:
@@ -80,6 +86,8 @@ def collate(checkpoint_root: Path) -> dict[str, Any]:
     runs = []
     histories: dict[str, dict[str, tuple[Path, list[dict[str, Any]]]]] = {}
     for metrics_path in sorted(checkpoint_root.glob("*/metrics.jsonl")):
+        if metrics_path.parent.name in SUPERSEDED_RUNS:
+            continue
         identity = _run_identity(metrics_path.parent.name)
         if identity is None:
             continue
@@ -175,6 +183,8 @@ def collate_variants(checkpoint_root: Path) -> dict[str, Any]:
     """Collate scientific optimization variants separately from canonical runs."""
     runs = []
     for metrics_path in sorted(checkpoint_root.glob("*/metrics.jsonl")):
+        if metrics_path.parent.name in SUPERSEDED_RUNS:
+            continue
         identity = _variant_run_identity(metrics_path.parent.name)
         if identity is None:
             continue
