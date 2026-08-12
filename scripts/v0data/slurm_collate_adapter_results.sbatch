@@ -23,6 +23,10 @@ export LD_LIBRARY_PATH="/nfs/sw/easybuild/software/Python/3.12.3-GCCcore-13.3.0/
   --json-output results/v0data_adapter_coverage.json \
   --markdown-output results/v0data_adapter_coverage.md
 
+"${HOME}/venv/torchfix/bin/python" scripts/v0data/audit_metric_targets.py \
+  --json-output results/v0data_metric_targets.json \
+  --markdown-output results/v0data_metric_targets.md
+
 "${HOME}/venv/torchfix/bin/python" scripts/v0data/collate_joint_species_evaluations.py \
   --json-output results/v0data_joint_species_evaluations.json \
   --markdown-output results/v0data_joint_species_evaluations.md
@@ -31,4 +35,4 @@ export LD_LIBRARY_PATH="/nfs/sw/easybuild/software/Python/3.12.3-GCCcore-13.3.0/
   --json-output results/v0data_gradient_diagnostics.json \
   --markdown-output results/v0data_gradient_diagnostics.md
 
-echo "Regenerated canonical, screen, coverage, and native-species results."
+echo "Regenerated canonical, screen, coverage, target, and native-species results."

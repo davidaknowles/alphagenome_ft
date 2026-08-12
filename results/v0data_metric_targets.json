@@ -1,0 +1,217 @@
+{
+  "metric": "validation signed double-centered Pearson R",
+  "rows": [
+    {
+      "dataset": "hda",
+      "modality": "ATAC",
+      "threshold": 0.8,
+      "status": "target reached",
+      "gap_to_target": 0.0,
+      "strategy": "lora+locon",
+      "selected_epoch": 4,
+      "head": "hda_atac",
+      "valid_r": 0.8086177748033316,
+      "test_r": 0.8166213460585934
+    },
+    {
+      "dataset": "hda-joint",
+      "modality": "ATAC",
+      "threshold": 0.8,
+      "status": "below target",
+      "gap_to_target": 0.004284170790891495,
+      "strategy": "lora+locon",
+      "selected_epoch": 2,
+      "head": "hda_atac",
+      "valid_r": 0.7957158292091085,
+      "test_r": 0.8049405699637187
+    },
+    {
+      "dataset": "hda-joint",
+      "modality": "RNA",
+      "threshold": 0.8,
+      "status": "below target",
+      "gap_to_target": 0.27592190818864537,
+      "strategy": "lora+locon",
+      "selected_epoch": 2,
+      "head": "hda_rna",
+      "valid_r": 0.5240780918113547,
+      "test_r": 0.6222448794886353
+    },
+    {
+      "dataset": "johansen-human",
+      "modality": "ATAC",
+      "threshold": 0.8,
+      "status": "missing evidence",
+      "gap_to_target": null
+    },
+    {
+      "dataset": "johansen-human",
+      "modality": "RNA",
+      "threshold": 0.8,
+      "status": "missing evidence",
+      "gap_to_target": null
+    },
+    {
+      "dataset": "johansen_joint",
+      "modality": "ATAC",
+      "threshold": 0.8,
+      "status": "missing evidence",
+      "gap_to_target": null
+    },
+    {
+      "dataset": "johansen_joint",
+      "modality": "RNA",
+      "threshold": 0.8,
+      "status": "missing evidence",
+      "gap_to_target": null
+    },
+    {
+      "dataset": "liu-hdma",
+      "modality": "ATAC",
+      "threshold": 0.8,
+      "status": "missing evidence",
+      "gap_to_target": null
+    },
+    {
+      "dataset": "liu-hdma",
+      "modality": "RNA",
+      "threshold": 0.8,
+      "status": "missing evidence",
+      "gap_to_target": null
+    },
+    {
+      "dataset": "zemke2023-human",
+      "modality": "ATAC",
+      "threshold": 0.8,
+      "status": "below target",
+      "gap_to_target": 0.10290863875422784,
+      "strategy": "lora+locon",
+      "selected_epoch": 4,
+      "head": "zemke2023_atac",
+      "valid_r": 0.6970913612457722,
+      "test_r": 0.7150634916478276
+    },
+    {
+      "dataset": "zemke2023-human",
+      "modality": "RNA",
+      "threshold": 0.8,
+      "status": "below target",
+      "gap_to_target": 0.30127395065986273,
+      "strategy": "lora+locon",
+      "selected_epoch": 4,
+      "head": "zemke2023_rna",
+      "valid_r": 0.4987260493401373,
+      "test_r": 0.4099395039994433
+    },
+    {
+      "dataset": "zemke2023_macaque",
+      "modality": "ATAC",
+      "threshold": 0.8,
+      "status": "below target",
+      "gap_to_target": 0.5945506235143082,
+      "strategy": "lora+locon",
+      "selected_epoch": 1,
+      "head": "zemke2023_atac",
+      "valid_r": 0.2054493764856918,
+      "test_r": 0.5870972016496331
+    },
+    {
+      "dataset": "zemke2023_macaque",
+      "modality": "RNA",
+      "threshold": 0.8,
+      "status": "below target",
+      "gap_to_target": 0.559873367245411,
+      "strategy": "lora",
+      "selected_epoch": 1,
+      "head": "zemke2023_rna",
+      "valid_r": 0.24012663275458906,
+      "test_r": 0.28627238673591077
+    },
+    {
+      "dataset": "zemke2023_marmoset",
+      "modality": "ATAC",
+      "threshold": 0.8,
+      "status": "below target",
+      "gap_to_target": 0.22012477972784972,
+      "strategy": "lora+locon",
+      "selected_epoch": 1,
+      "head": "zemke2023_atac",
+      "valid_r": 0.5798752202721503,
+      "test_r": 0.5526957911912707
+    },
+    {
+      "dataset": "zemke2023_marmoset",
+      "modality": "RNA",
+      "threshold": 0.8,
+      "status": "below target",
+      "gap_to_target": 0.5200199550595872,
+      "strategy": "lora+locon",
+      "selected_epoch": 1,
+      "head": "zemke2023_rna",
+      "valid_r": 0.2799800449404129,
+      "test_r": 0.1917560651348435
+    },
+    {
+      "dataset": "zemke2023_mouse",
+      "modality": "ATAC",
+      "threshold": 0.8,
+      "status": "missing evidence",
+      "gap_to_target": null
+    },
+    {
+      "dataset": "zemke2023_mouse",
+      "modality": "RNA",
+      "threshold": 0.8,
+      "status": "missing evidence",
+      "gap_to_target": null
+    },
+    {
+      "dataset": "zemke2023_joint",
+      "modality": "ATAC",
+      "threshold": 0.8,
+      "status": "below target",
+      "gap_to_target": 0.36670262803458054,
+      "strategy": "lora+locon",
+      "selected_epoch": 1,
+      "head": "zemke2023_atac",
+      "valid_r": 0.4332973719654195,
+      "test_r": 0.6539546867547638
+    },
+    {
+      "dataset": "zemke2023_joint",
+      "modality": "RNA",
+      "threshold": 0.8,
+      "status": "below target",
+      "gap_to_target": 0.5049520068631703,
+      "strategy": "lora",
+      "selected_epoch": 1,
+      "head": "zemke2023_rna",
+      "valid_r": 0.2950479931368298,
+      "test_r": 0.19896710443406693
+    },
+    {
+      "dataset": "zemke2024-all",
+      "modality": "ATAC",
+      "threshold": 0.8,
+      "status": "below target",
+      "gap_to_target": 0.050097720708183524,
+      "strategy": "lora+locon",
+      "selected_epoch": 4,
+      "head": "zemke2024_all_atac",
+      "valid_r": 0.7499022792918165,
+      "test_r": 0.7599342328402221
+    },
+    {
+      "dataset": "zemke2024-all",
+      "modality": "RNA",
+      "threshold": 0.8,
+      "status": "below target",
+      "gap_to_target": 0.324112440385759,
+      "strategy": "lora",
+      "selected_epoch": 5,
+      "head": "zemke2024_all_rna",
+      "valid_r": 0.47588755961424106,
+      "test_r": 0.2925294389282555
+    }
+  ]
+}

@@ -8,6 +8,8 @@ The current machine-readable and Markdown snapshots are `results/v0data_adapter_
 
 `audit_adapter_coverage.py` writes `results/v0data_adapter_coverage.json` and `results/v0data_adapter_coverage.md`. This report checks the canonical non-ENCODE experiment matrix for missing strategies and identifies the highest epoch completed by both strategies. A matched epoch is evidence that a comparison can be made at that depth, not that early stopping completed or that the target correlation was reached.
 
+`audit_metric_targets.py` writes a separate modality-level audit against validation signed double-centered correlation 0.8. It distinguishes missing canonical evidence from a completed result below target and reports the stronger strategy-selected checkpoint without selecting separate favorable epochs for individual heads.
+
 Canonical Liu and Johansen identities resolve only to the corrected raw-count, gene-only RNA runs with correlation weight one. The legacy Liu exon-plus-gene checkpoint is retained only as an explicitly labeled objective variant, while Johansen checkpoints based on per-cell-normalized expression are excluded because their targets are defective. Corrected run-directory aliases are mapped back to the study names in canonical coverage and result tables.
 
 Each new `best` and `last` checkpoint stores optimizer state as well as model parameters and metrics. Continuation restores AdamW moments when that artifact is present. Older parameter-only checkpoints remain supported and start with a fresh optimizer state, which is reported explicitly in the training log.
