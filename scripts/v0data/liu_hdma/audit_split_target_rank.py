@@ -67,6 +67,9 @@ def audit_chromosomes(
         }
     return {
         "definition": "Optimal singular-value approximation after centering genes and cell groups within each chromosome.",
+        "support": (
+            "fixed_window_full_span" if fasta_index_path else "all_supervision_genes"
+        ),
         "gene_supervision": str(path),
         "chromosomes": results,
     }
@@ -75,6 +78,8 @@ def audit_chromosomes(
 def render_markdown(result: dict[str, object]) -> str:
     lines = [
         "# Liu held-out chromosome RNA target rank",
+        "",
+        f"Support: `{result['support']}`.",
         "",
         "For each target matrix $Y\\in\\mathbb{R}^{G\\times C}$, $G$ is genes on one chromosome and $C$ is modeled cell groups. Both axes are centered before singular-value decomposition. Rank ceilings describe target structure, not achievable sequence-model accuracy.",
     ]

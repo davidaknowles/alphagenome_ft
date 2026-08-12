@@ -29,3 +29,15 @@ export LD_LIBRARY_PATH="/nfs/sw/easybuild/software/Python/3.12.3-GCCcore-13.3.0/
   --window-size 131072 \
   --json-output results/v0data_liu_split_target_rank.json \
   --markdown-output results/v0data_liu_split_target_rank.md
+
+"${HOME}/venv/jax/bin/python" scripts/v0data/liu_hdma/audit_rna_reliability.py \
+  --sample-dir outputs/v0data/liu-hdma/rna_samples \
+  --gene-supervision outputs/v0data/liu-hdma/joint/gene_expression_supervision.npz \
+  --json-output results/v0data_liu_expanded_split_half_reliability.json \
+  --markdown-output results/v0data_liu_expanded_split_half_reliability.md
+
+"${HOME}/venv/jax/bin/python" scripts/v0data/liu_hdma/audit_split_target_rank.py \
+  --gene-supervision outputs/v0data/liu-hdma/joint/gene_expression_supervision.npz \
+  --chromosomes chr8,chr9 \
+  --json-output results/v0data_liu_expanded_target_rank.json \
+  --markdown-output results/v0data_liu_expanded_target_rank.md

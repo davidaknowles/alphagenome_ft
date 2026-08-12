@@ -154,6 +154,9 @@ def main() -> None:
     per_group_r = _row_correlations(np.log1p(first_cpm), np.log1p(second_cpm))
     quantiles = (0.0, 0.05, 0.25, 0.5, 0.75, 0.95, 1.0)
     result = {
+        "support": (
+            "fixed_window_full_span" if args.fasta_index else "all_supervision_genes"
+        ),
         "samples": len(paths),
         "groups": len(groups),
         "genes": len(genes),
@@ -183,6 +186,7 @@ def main() -> None:
     args.json_output.write_text(json.dumps(result, indent=2) + "\n")
     markdown = (
         "# Liu RNA split-half reliability\n\n"
+        f"Support: `{result['support']}`.\n\n"
         "Biological samples were assigned independently for each cell group to two greedily library-depth-balanced halves. Counts were summed and normalized to counts per million, CPM, within each half. The Spearman-Brown correction estimates reliability of the complete pseudobulk from equal-half correlation.\n\n"
         "| Quantity | Value |\n|---|---:|\n"
         f"| Samples | {result['samples']} |\n"
