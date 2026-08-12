@@ -706,19 +706,19 @@
     {
       "dataset": "zemke2023_macaque",
       "strategy": "lora",
-      "selected_epoch": 1,
-      "global_step": 2443,
-      "selection_mean_valid_r": 0.22004948260184976,
+      "selected_epoch": 2,
+      "global_step": 4886,
+      "selection_mean_valid_r": 0.27272669242194325,
       "heads": [
         {
           "head": "zemke2023_atac",
-          "valid_r": 0.19997233244911047,
-          "test_r": 0.5818535789557847
+          "valid_r": 0.26032300246405043,
+          "test_r": 0.6016219925251798
         },
         {
           "head": "zemke2023_rna",
-          "valid_r": 0.24012663275458906,
-          "test_r": 0.28627238673591077
+          "valid_r": 0.285130382379836,
+          "test_r": 0.300399918154409
         }
       ],
       "metrics_path": "checkpoints/v0data/zemke2023_macaque_lora/metrics.jsonl"

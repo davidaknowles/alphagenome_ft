@@ -22,7 +22,7 @@ The primary table covers each requested non-ENCODE study. Cross-species studies 
 | `johansen_joint` | 1 | 1 | 1 | matched result available |
 | `liu-hdma` | 2 | 2 | 2 | matched result available |
 | `zemke2023-human` | 4 | 4 | 4 | matched result available |
-| `zemke2023_macaque` | 1 | 1 | 1 | matched result available |
+| `zemke2023_macaque` | 2 | 1 | 1 | matched result available |
 | `zemke2023_marmoset` | 1 | 1 | 1 | matched result available |
 | `zemke2023_mouse` | 2 | 1 | 1 | matched result available |
 | `zemke2023_joint` | 1 | 1 | 1 | matched result available |

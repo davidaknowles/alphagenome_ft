@@ -15,8 +15,8 @@ The table reports the stronger of the two strategy-selected canonical checkpoint
 | `liu-hdma` | RNA | `lora` | 1 | 0.5231 | 0.4445 | 0.2769 | below target |
 | `zemke2023-human` | ATAC | `lora+locon` | 4 | 0.6971 | 0.7151 | 0.1029 | below target |
 | `zemke2023-human` | RNA | `lora+locon` | 4 | 0.4987 | 0.4099 | 0.3013 | below target |
-| `zemke2023_macaque` | ATAC | `lora+locon` | 1 | 0.2054 | 0.5871 | 0.5946 | below target |
-| `zemke2023_macaque` | RNA | `lora` | 1 | 0.2401 | 0.2863 | 0.5599 | below target |
+| `zemke2023_macaque` | ATAC | `lora` | 2 | 0.2603 | 0.6016 | 0.5397 | below target |
+| `zemke2023_macaque` | RNA | `lora` | 2 | 0.2851 | 0.3004 | 0.5149 | below target |
 | `zemke2023_marmoset` | ATAC | `lora+locon` | 1 | 0.5799 | 0.5527 | 0.2201 | below target |
 | `zemke2023_marmoset` | RNA | `lora+locon` | 1 | 0.2800 | 0.1918 | 0.5200 | below target |
 | `zemke2023_mouse` | ATAC | `lora` | 2 | 0.6886 | 0.6871 | 0.1114 | below target |

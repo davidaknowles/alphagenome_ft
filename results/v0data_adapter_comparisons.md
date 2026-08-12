@@ -79,8 +79,8 @@ The first table compares strategies at the highest epoch completed by both. The 
 | `zemke2023_joint` | `lora` | 1 | `zemke2023_rna` | 0.2950 | 0.1990 |
 | `zemke2023_joint` | `lora+locon` | 1 | `zemke2023_atac` | 0.4333 | 0.6540 |
 | `zemke2023_joint` | `lora+locon` | 1 | `zemke2023_rna` | 0.2835 | 0.2152 |
-| `zemke2023_macaque` | `lora` | 1 | `zemke2023_atac` | 0.2000 | 0.5819 |
-| `zemke2023_macaque` | `lora` | 1 | `zemke2023_rna` | 0.2401 | 0.2863 |
+| `zemke2023_macaque` | `lora` | 2 | `zemke2023_atac` | 0.2603 | 0.6016 |
+| `zemke2023_macaque` | `lora` | 2 | `zemke2023_rna` | 0.2851 | 0.3004 |
 | `zemke2023_macaque` | `lora+locon` | 1 | `zemke2023_atac` | 0.2054 | 0.5871 |
 | `zemke2023_macaque` | `lora+locon` | 1 | `zemke2023_rna` | 0.2371 | 0.2839 |
 | `zemke2023_marmoset` | `lora` | 1 | `zemke2023_atac` | 0.5754 | 0.5495 |
