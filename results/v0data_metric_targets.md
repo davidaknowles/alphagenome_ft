@@ -9,8 +9,8 @@ The table reports the stronger of the two strategy-selected canonical checkpoint
 | `hda-joint` | RNA | `lora+locon` | 3 | 0.5190 | 0.6089 | 0.2810 | below target |
 | `johansen-human` | ATAC | `lora+locon` | 3 | 0.5886 | 0.6218 | 0.2114 | below target |
 | `johansen-human` | RNA | `lora+locon` | 3 | 0.5237 | 0.4588 | 0.2763 | below target |
-| `johansen_joint` | ATAC | `lora` | 1 | 0.5270 | 0.4840 | 0.2730 | below target |
-| `johansen_joint` | RNA | `lora` | 1 | 0.2406 | 0.3564 | 0.5594 | below target |
+| `johansen_joint` | ATAC | `lora+locon` | 1 | 0.5339 | 0.4926 | 0.2661 | below target |
+| `johansen_joint` | RNA | `lora+locon` | 1 | 0.2667 | 0.3933 | 0.5333 | below target |
 | `liu-hdma` | ATAC | `lora+locon` | 1 | 0.7629 | 0.7795 | 0.0371 | below target |
 | `liu-hdma` | RNA | `lora` | 1 | 0.5231 | 0.4445 | 0.2769 | below target |
 | `zemke2023-human` | ATAC | `lora+locon` | 4 | 0.6971 | 0.7151 | 0.1029 | below target |

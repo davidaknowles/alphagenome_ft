@@ -112,6 +112,46 @@
       "metrics_path": "checkpoints/v0data/johansen-human_lora_locon_rawcount_geneonly_corrw1/metrics.jsonl"
     },
     {
+      "dataset": "johansen_joint",
+      "strategy": "lora",
+      "matched_epoch": 1,
+      "global_step": 14529,
+      "selection_mean_valid_r": 0.3838398058504198,
+      "heads": [
+        {
+          "head": "allen_atac",
+          "valid_r": 0.527034718738019,
+          "test_r": 0.48399966980188547
+        },
+        {
+          "head": "allen_rna",
+          "valid_r": 0.24064489296282066,
+          "test_r": 0.3564027256720903
+        }
+      ],
+      "metrics_path": "checkpoints/v0data/johansen_joint_lora_rawcount_geneonly_corrw1/metrics.jsonl"
+    },
+    {
+      "dataset": "johansen_joint",
+      "strategy": "lora+locon",
+      "matched_epoch": 1,
+      "global_step": 14529,
+      "selection_mean_valid_r": 0.40031932190051195,
+      "heads": [
+        {
+          "head": "allen_atac",
+          "valid_r": 0.5339368304774783,
+          "test_r": 0.4925914376461088
+        },
+        {
+          "head": "allen_rna",
+          "valid_r": 0.2667018133235456,
+          "test_r": 0.3933299437647753
+        }
+      ],
+      "metrics_path": "checkpoints/v0data/johansen_joint_lora_locon_rawcount_geneonly_corrw1/metrics.jsonl"
+    },
+    {
       "dataset": "liu-hdma",
       "strategy": "lora",
       "matched_epoch": 2,
@@ -502,6 +542,26 @@
         }
       ],
       "metrics_path": "checkpoints/v0data/johansen-human_lora_rawcount_geneonly_corrw1/metrics.jsonl"
+    },
+    {
+      "dataset": "johansen_joint",
+      "strategy": "lora+locon",
+      "selected_epoch": 1,
+      "global_step": 14529,
+      "selection_mean_valid_r": 0.40031932190051195,
+      "heads": [
+        {
+          "head": "allen_atac",
+          "valid_r": 0.5339368304774783,
+          "test_r": 0.4925914376461088
+        },
+        {
+          "head": "allen_rna",
+          "valid_r": 0.2667018133235456,
+          "test_r": 0.3933299437647753
+        }
+      ],
+      "metrics_path": "checkpoints/v0data/johansen_joint_lora_locon_rawcount_geneonly_corrw1/metrics.jsonl"
     },
     {
       "dataset": "johansen_joint",

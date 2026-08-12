@@ -14,7 +14,7 @@
     {
       "study": "Johansen 2025",
       "canonical_dataset": "johansen_joint",
-      "canonical_status": "missing lora+locon",
+      "canonical_status": "matched result available",
       "expected_native_species": [
         "human",
         "macaque",
@@ -32,7 +32,7 @@
           "marmoset"
         ]
       },
-      "status": "missing lora+locon"
+      "status": "missing native evaluations"
     },
     {
       "study": "Liu HDMA",
@@ -150,12 +150,14 @@
         "lora": [
           1
         ],
-        "lora+locon": []
+        "lora+locon": [
+          1
+        ]
       },
       "latest_lora_epoch": 1,
-      "latest_lora_locon_epoch": null,
-      "highest_matched_epoch": null,
-      "status": "missing lora+locon"
+      "latest_lora_locon_epoch": 1,
+      "highest_matched_epoch": 1,
+      "status": "matched result available"
     },
     {
       "dataset": "liu-hdma",

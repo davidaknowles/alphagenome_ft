@@ -10,6 +10,10 @@ These non-canonical runs test one change at a time. Paired strategies are compar
 | `zemke2023-human` | `lora` | `corrw10` | 4 | `zemke2023_rna` | 0.5704 | 0.4399 |
 | `zemke2023-human` | `lora+locon` | `corrw10` | 4 | `zemke2023_atac` | 0.6998 | 0.7217 |
 | `zemke2023-human` | `lora+locon` | `corrw10` | 4 | `zemke2023_rna` | 0.5298 | 0.4452 |
+| `zemke2024-all` | `lora` | `rna_corrw10` | 1 | `zemke2024_all_atac` | 0.7073 | 0.7117 |
+| `zemke2024-all` | `lora` | `rna_corrw10` | 1 | `zemke2024_all_rna` | 0.4916 | 0.2590 |
+| `zemke2024-all` | `lora+locon` | `rna_corrw10` | 1 | `zemke2024_all_atac` | 0.7079 | 0.7125 |
+| `zemke2024-all` | `lora+locon` | `rna_corrw10` | 1 | `zemke2024_all_rna` | 0.4800 | 0.2510 |
 
 ## Independently selected checkpoints
 
@@ -37,5 +41,9 @@ These non-canonical runs test one change at a time. Paired strategies are compar
 | `zemke2023-human` | `lora` | `rnaw5` | 1 | `zemke2023_rna` | 0.4306 | 0.3871 |
 | `zemke2023_macaque` | `lora` | `fold_chr10_chr11` | 4 | `zemke2023_atac` | 0.5157 | 0.6356 |
 | `zemke2023_macaque` | `lora` | `fold_chr10_chr11` | 4 | `zemke2023_rna` | 0.3597 | 0.4539 |
+| `zemke2024-all` | `lora+locon` | `rna_corrw10` | 1 | `zemke2024_all_atac` | 0.7079 | 0.7125 |
+| `zemke2024-all` | `lora+locon` | `rna_corrw10` | 1 | `zemke2024_all_rna` | 0.4800 | 0.2510 |
+| `zemke2024-all` | `lora` | `rna_corrw10` | 1 | `zemke2024_all_atac` | 0.7073 | 0.7117 |
+| `zemke2024-all` | `lora` | `rna_corrw10` | 1 | `zemke2024_all_rna` | 0.4916 | 0.2590 |
 | `zemke2024-all` | `lora` | `rnaw5` | 1 | `zemke2024_all_atac` | 0.7149 | 0.7239 |
 | `zemke2024-all` | `lora` | `rnaw5` | 1 | `zemke2024_all_rna` | 0.4012 | 0.2481 |
