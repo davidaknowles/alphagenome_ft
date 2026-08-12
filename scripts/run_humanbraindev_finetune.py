@@ -551,6 +551,8 @@ def main() -> None:
             f"JAX precision preset {args.precision!r} is not implemented as a real "
             "transformer-linears-only quantized path. Use the torch backend for this preset."
         )
+    if args.backend == "torch" and args.defer_test_evaluation:
+        raise ValueError("--defer-test-evaluation is currently implemented for JAX only.")
 
     bigwig_dir = args.bigwig_dir.expanduser().resolve()
     fasta_path = args.fasta_path.expanduser().resolve()
