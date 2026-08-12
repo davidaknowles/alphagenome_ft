@@ -20,7 +20,11 @@ from alphagenome_research.model.metadata import metadata as metadata_lib
 from alphagenome_ft.custom_model import _neural_source_candidate_mask
 
 
-OUTPUT_TYPES = (dna_output.OutputType.ATAC, dna_output.OutputType.RNA_SEQ)
+OUTPUT_TYPES = (
+    dna_output.OutputType.ATAC,
+    dna_output.OutputType.DNASE,
+    dna_output.OutputType.RNA_SEQ,
+)
 
 
 def audit_organism(organism: dna_model.Organism) -> dict[str, Any]:

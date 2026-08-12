@@ -18,6 +18,37 @@
           ]
         },
         {
+          "assay": "dnase",
+          "valid_channels": 305,
+          "neural_channels": 18,
+          "valid_by_strand": {
+            ".": 305
+          },
+          "neural_by_strand": {
+            ".": 18
+          },
+          "neural_labels": [
+            "neuronal stem cell",
+            "astrocyte",
+            "glutamatergic neuron",
+            "smooth muscle cell of the brain vasculature",
+            "astrocyte of the cerebellum",
+            "astrocyte of the hippocampus",
+            "astrocyte of the spinal cord",
+            "neural crest cell",
+            "neural progenitor cell",
+            "brain pericyte",
+            "brain microvascular endothelial cell",
+            "ecto neural progenitor cell",
+            "brain",
+            "frontal cortex",
+            "cerebellum",
+            "cerebellar cortex",
+            "spinal cord",
+            "dorsolateral prefrontal cortex"
+          ]
+        },
+        {
           "assay": "rna_seq",
           "valid_channels": 667,
           "neural_channels": 41,
@@ -95,6 +126,29 @@
             "forebrain",
             "midbrain",
             "hindbrain"
+          ]
+        },
+        {
+          "assay": "dnase",
+          "valid_channels": 67,
+          "neural_channels": 10,
+          "valid_by_strand": {
+            ".": 67
+          },
+          "neural_by_strand": {
+            ".": 10
+          },
+          "neural_labels": [
+            "left cerebral cortex",
+            "right cerebral cortex",
+            "brain",
+            "neural tube",
+            "frontal cortex",
+            "forebrain",
+            "midbrain",
+            "hindbrain",
+            "cerebellum",
+            "layer of hippocampus"
           ]
         },
         {

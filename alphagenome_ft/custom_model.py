@@ -508,6 +508,7 @@ def _initialize_heads_from_pretrained_bootstrap(
     head_configs: Mapping[str, custom_heads_module.HeadConfigLike],
     pretrained_metadata: Mapping[dna_model.Organism, Any],
     neural_sources: bool = False,
+    dnase_for_atac: bool = False,
 ) -> dict[str, Any]:
     """Bootstrap new genomic heads from same-assay pretrained output channels."""
     organism_order = tuple(pretrained_metadata)
@@ -517,7 +518,12 @@ def _initialize_heads_from_pretrained_bootstrap(
         output_type = getattr(config, "output_type", None)
         if output_type is None:
             continue
-        source_prefix = f"alphagenome/head/{output_type.name.lower()}"
+        source_output_type = (
+            dna_output.OutputType.DNASE
+            if dnase_for_atac and output_type == dna_output.OutputType.ATAC
+            else output_type
+        )
+        source_prefix = f"alphagenome/head/{source_output_type.name.lower()}"
         target_prefix = f"head/{head_name}"
         target_metadata = _resolve_user_metadata(head_name=head_name, head_config=config)
         copied_modules = 0
@@ -553,7 +559,9 @@ def _initialize_heads_from_pretrained_bootstrap(
                         )
                     source_organism_index = matching_indices[0]
                     source_organism = organism_order[source_organism_index]
-                    source_frame = pretrained_metadata[source_organism].get(output_type)
+                    source_frame = pretrained_metadata[source_organism].get(
+                        source_output_type
+                    )
                     if source_frame is None or len(source_frame) != source_value.shape[-1]:
                         raise ValueError(
                             f"Pretrained metadata for {output_type.name} does not match "
@@ -578,7 +586,9 @@ def _initialize_heads_from_pretrained_bootstrap(
                     )
                     source_valid = tuple(
                         bool(value)
-                        for value in ~pretrained_metadata[source_organism].padding[output_type]
+                        for value in ~pretrained_metadata[source_organism].padding[
+                            source_output_type
+                        ]
                     )
                     source_valid_by_target = None
                     if neural_sources:
@@ -611,7 +621,13 @@ def _initialize_heads_from_pretrained_bootstrap(
         if copied_modules:
             initialized.append(head_name)
     if initialized:
-        source_description = "neural pretrained" if neural_sources else "pretrained"
+        source_description = (
+            "neural pretrained with DNase for ATAC"
+            if dnase_for_atac
+            else "neural pretrained"
+            if neural_sources
+            else "pretrained"
+        )
         print(f"Initialized heads from {source_description} output channels:", initialized)
     return params
 
@@ -2723,7 +2739,10 @@ def create_model_with_heads(
             genomic channel from a deterministic same-assay pretrained channel,
             respecting strand metadata. ``"neural_bootstrap"`` restricts each
             strand pool to neural source metadata when at least two eligible
-            channels remain. ``"none"`` keeps Haiku initialization.
+            channels remain. ``"neural_accessibility_bootstrap"`` additionally
+            initializes ATAC channels from neural DNase channels, which use the
+            same genome-track head architecture. ``"none"`` keeps Haiku
+            initialization.
 
     Returns:
         CustomAlphaGenomeModel with requested heads and pretrained backbone.
@@ -2764,10 +2783,15 @@ def create_model_with_heads(
         ```
     """
     normalized_heads = [custom_heads_module.normalize_head_name(name) for name in heads]
-    if pretrained_head_initialization not in {"none", "bootstrap", "neural_bootstrap"}:
+    if pretrained_head_initialization not in {
+        "none",
+        "bootstrap",
+        "neural_bootstrap",
+        "neural_accessibility_bootstrap",
+    }:
         raise ValueError(
             "pretrained_head_initialization must be 'none', 'bootstrap', or "
-            "'neural_bootstrap', got "
+            "a neural bootstrap variant, got "
             f"{pretrained_head_initialization!r}."
         )
 
@@ -2986,13 +3010,21 @@ def create_model_with_heads(
         head_name: custom_heads_module.get_registered_head_config(head_name)
         for head_name in normalized_heads
     }
-    if pretrained_head_initialization in {"bootstrap", "neural_bootstrap"}:
+    if pretrained_head_initialization in {
+        "bootstrap",
+        "neural_bootstrap",
+        "neural_accessibility_bootstrap",
+    }:
         merged_params = _initialize_heads_from_pretrained_bootstrap(
             merged_params,
             head_names=normalized_heads,
             head_configs=registered_head_configs,
             pretrained_metadata=metadata,
-            neural_sources=pretrained_head_initialization == "neural_bootstrap",
+            neural_sources=pretrained_head_initialization
+            in {"neural_bootstrap", "neural_accessibility_bootstrap"},
+            dnase_for_atac=(
+                pretrained_head_initialization == "neural_accessibility_bootstrap"
+            ),
         )
 
     print("✓ Parameters merged")

@@ -219,6 +219,56 @@ def test_neural_bootstrap_copies_only_neural_source_channels(monkeypatch) -> Non
     assert len(actual) == 2
 
 
+def test_neural_accessibility_bootstrap_copies_dnase_into_atac(monkeypatch) -> None:
+    target_output_type = dna_output.OutputType.ATAC
+    source_output_type = dna_output.OutputType.DNASE
+    source_frame = pd.DataFrame(
+        {
+            "strand": (".", ".", "."),
+            "biosample_name": ("brain", "motor neuron", "liver"),
+        }
+    )
+
+    class Metadata:
+        def __init__(self) -> None:
+            self.padding = {source_output_type: jnp.asarray((False, False, False))}
+
+        def get(self, requested):
+            return source_frame if requested == source_output_type else None
+
+    organism = dna_model.Organism.HOMO_SAPIENS
+    monkeypatch.setattr(
+        custom_model,
+        "_resolve_user_metadata",
+        lambda **_kwargs: {
+            organism: pd.DataFrame({"name": ("Astrocyte", "PVALB"), "strand": (".", ".")})
+        },
+    )
+    source = jnp.arange(3, dtype=jnp.float32).reshape((1, 1, 3))
+    params = {
+        "alphagenome/head/dnase/resolution_128/multi_organism_linear": {"w": source},
+        "head/study_atac/resolution_128/multi_organism_linear": {
+            "w": jnp.zeros((1, 1, 2), dtype=jnp.float32),
+        },
+    }
+
+    result = custom_model._initialize_heads_from_pretrained_bootstrap(
+        params,
+        head_names=("study_atac",),
+        head_configs={"study_atac": SimpleNamespace(output_type=target_output_type)},
+        pretrained_metadata={organism: Metadata()},
+        neural_sources=True,
+        dnase_for_atac=True,
+    )
+
+    actual = set(
+        result["head/study_atac/resolution_128/multi_organism_linear"]["w"]
+        .reshape(-1)
+        .tolist()
+    )
+    assert actual == {0.0, 1.0}
+
+
 def test_pretrained_bootstrap_unwraps_target_output_metadata(monkeypatch) -> None:
     output_type = dna_output.OutputType.RNA_SEQ
     organism = dna_model.Organism.HOMO_SAPIENS

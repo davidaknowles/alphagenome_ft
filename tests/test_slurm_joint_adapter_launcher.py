@@ -95,3 +95,14 @@ def test_zemke2024_all_head_correlation_screen_uses_global_override() -> None:
     assert "RUN_SUFFIX=_all_corrw${suffix}" in script
     assert "--array=4-5%2" in script
     assert 'dependency="afterok:${smoke}_*"' in script
+
+
+def test_pretrained_head_screen_supports_neural_accessibility_bootstrap() -> None:
+    script = Path("scripts/v0data/submit_pretrained_head_bootstrap_screens.sh").read_text()
+
+    assert "neural_accessibility_bootstrap)" in script
+    assert "_neural_accessibility_bootstrap_screen" in script
+    assert 'sbatch_bin="${SBATCH_BIN:-sbatch}"' in script
+    assert '"${SMOKE_GATE:-0}" == "1"' in script
+    assert '--nice="${NICE:-50}"' in script
+    assert 'dependency="afterok:${smoke}_*"' in script
