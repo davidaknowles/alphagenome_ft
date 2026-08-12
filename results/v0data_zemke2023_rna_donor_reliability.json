@@ -1,0 +1,81 @@
+{
+  "definition": "Donor-balanced split-half signed double-centered correlation over raw-count pseudobulk CPM restricted to retained groups and modeled genes.",
+  "audits": [
+    {
+      "species": "human",
+      "donors": 7,
+      "groups": 19,
+      "genes": 23264,
+      "groups_estimable_in_both_halves": 19,
+      "donor_support_quantiles": {
+        "0": 4.0,
+        "0.25": 6.0,
+        "0.5": 7.0,
+        "0.75": 7.0,
+        "1": 7.0
+      },
+      "raw_cpm_double_centered_r": 0.9211020047360979,
+      "raw_cpm_full_reliability_estimate": 0.9589308662062739,
+      "raw_cpm_model_correlation_ceiling_estimate": 0.9792501550708449,
+      "log1p_cpm_double_centered_r": 0.8424645989964861,
+      "log1p_cpm_full_reliability_estimate": 0.9144974611239115
+    },
+    {
+      "species": "macaque",
+      "donors": 4,
+      "groups": 19,
+      "genes": 15841,
+      "groups_estimable_in_both_halves": 19,
+      "donor_support_quantiles": {
+        "0": 4.0,
+        "0.25": 4.0,
+        "0.5": 4.0,
+        "0.75": 4.0,
+        "1": 4.0
+      },
+      "raw_cpm_double_centered_r": 0.937519697386026,
+      "raw_cpm_full_reliability_estimate": 0.9677524297181245,
+      "raw_cpm_model_correlation_ceiling_estimate": 0.9837440875136808,
+      "log1p_cpm_double_centered_r": 0.7626607196437565,
+      "log1p_cpm_full_reliability_estimate": 0.8653516937711013
+    },
+    {
+      "species": "marmoset",
+      "donors": 4,
+      "groups": 19,
+      "genes": 22046,
+      "groups_estimable_in_both_halves": 19,
+      "donor_support_quantiles": {
+        "0": 4.0,
+        "0.25": 4.0,
+        "0.5": 4.0,
+        "0.75": 4.0,
+        "1": 4.0
+      },
+      "raw_cpm_double_centered_r": 0.977376984302216,
+      "raw_cpm_full_reliability_estimate": 0.9885590780729314,
+      "raw_cpm_model_correlation_ceiling_estimate": 0.9942630829277186,
+      "log1p_cpm_double_centered_r": 0.8238042551419271,
+      "log1p_cpm_full_reliability_estimate": 0.9033910879628025
+    },
+    {
+      "species": "mouse",
+      "donors": 8,
+      "groups": 19,
+      "genes": 26291,
+      "groups_estimable_in_both_halves": 19,
+      "donor_support_quantiles": {
+        "0": 8.0,
+        "0.25": 8.0,
+        "0.5": 8.0,
+        "0.75": 8.0,
+        "1": 8.0
+      },
+      "raw_cpm_double_centered_r": 0.9707505389869766,
+      "raw_cpm_full_reliability_estimate": 0.9851582123488555,
+      "raw_cpm_model_correlation_ceiling_estimate": 0.9925513650934421,
+      "log1p_cpm_double_centered_r": 0.8030245633911627,
+      "log1p_cpm_full_reliability_estimate": 0.8907527714218367
+    }
+  ]
+}

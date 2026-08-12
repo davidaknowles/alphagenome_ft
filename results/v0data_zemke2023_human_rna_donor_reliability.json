@@ -1,0 +1,19 @@
+{
+  "species": "human",
+  "donors": 7,
+  "groups": 19,
+  "genes": 23264,
+  "groups_estimable_in_both_halves": 19,
+  "donor_support_quantiles": {
+    "0": 4.0,
+    "0.25": 6.0,
+    "0.5": 7.0,
+    "0.75": 7.0,
+    "1": 7.0
+  },
+  "raw_cpm_double_centered_r": 0.9211020047360979,
+  "raw_cpm_full_reliability_estimate": 0.9589308662062739,
+  "raw_cpm_model_correlation_ceiling_estimate": 0.9792501550708449,
+  "log1p_cpm_double_centered_r": 0.8424645989964861,
+  "log1p_cpm_full_reliability_estimate": 0.9144974611239115
+}

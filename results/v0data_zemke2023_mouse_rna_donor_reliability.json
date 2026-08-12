@@ -1,0 +1,19 @@
+{
+  "species": "mouse",
+  "donors": 8,
+  "groups": 19,
+  "genes": 26291,
+  "groups_estimable_in_both_halves": 19,
+  "donor_support_quantiles": {
+    "0": 8.0,
+    "0.25": 8.0,
+    "0.5": 8.0,
+    "0.75": 8.0,
+    "1": 8.0
+  },
+  "raw_cpm_double_centered_r": 0.9707505389869766,
+  "raw_cpm_full_reliability_estimate": 0.9851582123488555,
+  "raw_cpm_model_correlation_ceiling_estimate": 0.9925513650934421,
+  "log1p_cpm_double_centered_r": 0.8030245633911627,
+  "log1p_cpm_full_reliability_estimate": 0.8907527714218367
+}
