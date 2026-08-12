@@ -1,11 +1,11 @@
 {
   "donor": "hc11",
-  "filtered_raw_molecules": 7838066,
+  "raw_gene_expression_molecules": 8041445,
   "metadata_nCount_RNA": 7835184,
-  "molecule_difference": 2882,
-  "relative_molecule_discrepancy": 0.00036782799229730914,
+  "raw_molecule_excess": 206261,
+  "relative_raw_molecule_excess": 0.026324972074682613,
   "cells": 3143,
-  "gene_features": 31485,
+  "gene_features": 36601,
   "valid_groups": 18,
   "nonempty_groups": 13
 }
