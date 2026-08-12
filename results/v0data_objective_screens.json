@@ -5,19 +5,19 @@
       "dataset": "zemke2023-human",
       "strategy": "lora",
       "variant": "corrw10",
-      "matched_epoch": 2,
-      "global_step": 5238,
-      "selection_mean_valid_r": 0.5892297095379162,
+      "matched_epoch": 3,
+      "global_step": 7857,
+      "selection_mean_valid_r": 0.6177867450163332,
       "heads": [
         {
           "head": "zemke2023_atac",
-          "valid_r": 0.6949132977818295,
-          "test_r": 0.718290983721414
+          "valid_r": 0.6941605605867424,
+          "test_r": 0.7173632085974809
         },
         {
           "head": "zemke2023_rna",
-          "valid_r": 0.4835461212940029,
-          "test_r": 0.4052023048834604
+          "valid_r": 0.541412929445924,
+          "test_r": 0.43109719237278443
         }
       ],
       "metrics_path": "checkpoints/v0data/zemke2023-human_lora_corrw10/metrics.jsonl"
@@ -26,19 +26,19 @@
       "dataset": "zemke2023-human",
       "strategy": "lora+locon",
       "variant": "corrw10",
-      "matched_epoch": 2,
-      "global_step": 5238,
-      "selection_mean_valid_r": 0.5893634734486458,
+      "matched_epoch": 3,
+      "global_step": 7857,
+      "selection_mean_valid_r": 0.6180712613640055,
       "heads": [
         {
           "head": "zemke2023_atac",
-          "valid_r": 0.695543570284118,
-          "test_r": 0.7186420263527389
+          "valid_r": 0.6931414876888071,
+          "test_r": 0.7137492277155051
         },
         {
           "head": "zemke2023_rna",
-          "valid_r": 0.48318337661317373,
-          "test_r": 0.42325360811846613
+          "valid_r": 0.5430010350392038,
+          "test_r": 0.4555403929996615
         }
       ],
       "metrics_path": "checkpoints/v0data/zemke2023-human_lora_locon_corrw10/metrics.jsonl"
@@ -217,19 +217,19 @@
       "dataset": "zemke2023-human",
       "strategy": "lora+locon",
       "variant": "corrw10",
-      "selected_epoch": 2,
-      "global_step": 5238,
-      "selection_mean_valid_r": 0.5893634734486458,
+      "selected_epoch": 3,
+      "global_step": 7857,
+      "selection_mean_valid_r": 0.6180712613640055,
       "heads": [
         {
           "head": "zemke2023_atac",
-          "valid_r": 0.695543570284118,
-          "test_r": 0.7186420263527389
+          "valid_r": 0.6931414876888071,
+          "test_r": 0.7137492277155051
         },
         {
           "head": "zemke2023_rna",
-          "valid_r": 0.48318337661317373,
-          "test_r": 0.42325360811846613
+          "valid_r": 0.5430010350392038,
+          "test_r": 0.4555403929996615
         }
       ],
       "metrics_path": "checkpoints/v0data/zemke2023-human_lora_locon_corrw10/metrics.jsonl"

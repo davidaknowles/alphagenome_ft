@@ -6,10 +6,10 @@ These non-canonical runs test one change at a time. Paired strategies are compar
 
 | Dataset | Strategy | Variant | Epoch | Head | Validation R | Test R |
 |---|---|---|---:|---|---:|---:|
-| `zemke2023-human` | `lora` | `corrw10` | 2 | `zemke2023_atac` | 0.6949 | 0.7183 |
-| `zemke2023-human` | `lora` | `corrw10` | 2 | `zemke2023_rna` | 0.4835 | 0.4052 |
-| `zemke2023-human` | `lora+locon` | `corrw10` | 2 | `zemke2023_atac` | 0.6955 | 0.7186 |
-| `zemke2023-human` | `lora+locon` | `corrw10` | 2 | `zemke2023_rna` | 0.4832 | 0.4233 |
+| `zemke2023-human` | `lora` | `corrw10` | 3 | `zemke2023_atac` | 0.6942 | 0.7174 |
+| `zemke2023-human` | `lora` | `corrw10` | 3 | `zemke2023_rna` | 0.5414 | 0.4311 |
+| `zemke2023-human` | `lora+locon` | `corrw10` | 3 | `zemke2023_atac` | 0.6931 | 0.7137 |
+| `zemke2023-human` | `lora+locon` | `corrw10` | 3 | `zemke2023_rna` | 0.5430 | 0.4555 |
 
 ## Independently selected checkpoints
 
@@ -31,8 +31,8 @@ These non-canonical runs test one change at a time. Paired strategies are compar
 | `liu-hdma` | `lora` | `legacy_exon_plus_gene` | 1 | `liu_rna` | 0.4053 | 0.4390 |
 | `zemke2023-human` | `lora` | `corrw10` | 4 | `zemke2023_atac` | 0.6994 | 0.7220 |
 | `zemke2023-human` | `lora` | `corrw10` | 4 | `zemke2023_rna` | 0.5704 | 0.4399 |
-| `zemke2023-human` | `lora+locon` | `corrw10` | 2 | `zemke2023_atac` | 0.6955 | 0.7186 |
-| `zemke2023-human` | `lora+locon` | `corrw10` | 2 | `zemke2023_rna` | 0.4832 | 0.4233 |
+| `zemke2023-human` | `lora+locon` | `corrw10` | 3 | `zemke2023_atac` | 0.6931 | 0.7137 |
+| `zemke2023-human` | `lora+locon` | `corrw10` | 3 | `zemke2023_rna` | 0.5430 | 0.4555 |
 | `zemke2023-human` | `lora` | `rnaw5` | 1 | `zemke2023_atac` | 0.6637 | 0.6790 |
 | `zemke2023-human` | `lora` | `rnaw5` | 1 | `zemke2023_rna` | 0.4306 | 0.3871 |
 | `zemke2023_macaque` | `lora` | `fold_chr10_chr11` | 4 | `zemke2023_atac` | 0.5157 | 0.6356 |

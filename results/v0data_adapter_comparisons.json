@@ -74,19 +74,19 @@
     {
       "dataset": "johansen-human",
       "strategy": "lora",
-      "matched_epoch": 2,
-      "global_step": 5238,
-      "selection_mean_valid_r": 0.5480585074619331,
+      "matched_epoch": 3,
+      "global_step": 7857,
+      "selection_mean_valid_r": 0.5384921411439303,
       "heads": [
         {
           "head": "allen_atac",
-          "valid_r": 0.5817524696287191,
-          "test_r": 0.6139504554189119
+          "valid_r": 0.5861897888368607,
+          "test_r": 0.6180999404018637
         },
         {
           "head": "allen_rna",
-          "valid_r": 0.5143645452951471,
-          "test_r": 0.45425331175500067
+          "valid_r": 0.49079449345099996,
+          "test_r": 0.46920510518892705
         }
       ],
       "metrics_path": "checkpoints/v0data/johansen-human_lora_rawcount_geneonly_corrw1/metrics.jsonl"
@@ -94,19 +94,19 @@
     {
       "dataset": "johansen-human",
       "strategy": "lora+locon",
-      "matched_epoch": 2,
-      "global_step": 5238,
-      "selection_mean_valid_r": 0.5341443682438913,
+      "matched_epoch": 3,
+      "global_step": 7857,
+      "selection_mean_valid_r": 0.5561623952533862,
       "heads": [
         {
           "head": "allen_atac",
-          "valid_r": 0.5785572871298288,
-          "test_r": 0.6111232999851992
+          "valid_r": 0.5886034155535822,
+          "test_r": 0.6218159023517069
         },
         {
           "head": "allen_rna",
-          "valid_r": 0.4897314493579538,
-          "test_r": 0.46882831937939645
+          "valid_r": 0.5237213749531902,
+          "test_r": 0.45875350821282324
         }
       ],
       "metrics_path": "checkpoints/v0data/johansen-human_lora_locon_rawcount_geneonly_corrw1/metrics.jsonl"
@@ -426,19 +426,19 @@
     {
       "dataset": "johansen-human",
       "strategy": "lora+locon",
-      "selected_epoch": 2,
-      "global_step": 5238,
-      "selection_mean_valid_r": 0.5341443682438913,
+      "selected_epoch": 3,
+      "global_step": 7857,
+      "selection_mean_valid_r": 0.5561623952533862,
       "heads": [
         {
           "head": "allen_atac",
-          "valid_r": 0.5785572871298288,
-          "test_r": 0.6111232999851992
+          "valid_r": 0.5886034155535822,
+          "test_r": 0.6218159023517069
         },
         {
           "head": "allen_rna",
-          "valid_r": 0.4897314493579538,
-          "test_r": 0.46882831937939645
+          "valid_r": 0.5237213749531902,
+          "test_r": 0.45875350821282324
         }
       ],
       "metrics_path": "checkpoints/v0data/johansen-human_lora_locon_rawcount_geneonly_corrw1/metrics.jsonl"
@@ -462,6 +462,26 @@
         }
       ],
       "metrics_path": "checkpoints/v0data/johansen-human_lora_rawcount_geneonly_corrw1/metrics.jsonl"
+    },
+    {
+      "dataset": "johansen_joint",
+      "strategy": "lora",
+      "selected_epoch": 1,
+      "global_step": 14529,
+      "selection_mean_valid_r": 0.3838398058504198,
+      "heads": [
+        {
+          "head": "allen_atac",
+          "valid_r": 0.527034718738019,
+          "test_r": 0.48399966980188547
+        },
+        {
+          "head": "allen_rna",
+          "valid_r": 0.24064489296282066,
+          "test_r": 0.3564027256720903
+        }
+      ],
+      "metrics_path": "checkpoints/v0data/johansen_joint_lora_rawcount_geneonly_corrw1/metrics.jsonl"
     },
     {
       "dataset": "liu-hdma",
@@ -662,6 +682,26 @@
         }
       ],
       "metrics_path": "checkpoints/v0data/zemke2023_marmoset_lora_locon/metrics.jsonl"
+    },
+    {
+      "dataset": "zemke2023_mouse",
+      "strategy": "lora",
+      "selected_epoch": 1,
+      "global_step": 2269,
+      "selection_mean_valid_r": 0.43681335867768983,
+      "heads": [
+        {
+          "head": "zemke2023_atac",
+          "valid_r": 0.6641201345749081,
+          "test_r": 0.664230340479793
+        },
+        {
+          "head": "zemke2023_rna",
+          "valid_r": 0.20950658278047155,
+          "test_r": 0.23104843518844964
+        }
+      ],
+      "metrics_path": "checkpoints/v0data/zemke2023_mouse_lora/metrics.jsonl"
     },
     {
       "dataset": "zemke2024-all",

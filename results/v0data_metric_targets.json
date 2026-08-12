@@ -42,38 +42,48 @@
       "modality": "ATAC",
       "threshold": 0.8,
       "status": "below target",
-      "gap_to_target": 0.21824753037128097,
-      "strategy": "lora",
-      "selected_epoch": 2,
+      "gap_to_target": 0.21139658444641785,
+      "strategy": "lora+locon",
+      "selected_epoch": 3,
       "head": "allen_atac",
-      "valid_r": 0.5817524696287191,
-      "test_r": 0.6139504554189119
+      "valid_r": 0.5886034155535822,
+      "test_r": 0.6218159023517069
     },
     {
       "dataset": "johansen-human",
       "modality": "RNA",
       "threshold": 0.8,
       "status": "below target",
-      "gap_to_target": 0.28563545470485296,
-      "strategy": "lora",
-      "selected_epoch": 2,
+      "gap_to_target": 0.2762786250468099,
+      "strategy": "lora+locon",
+      "selected_epoch": 3,
       "head": "allen_rna",
-      "valid_r": 0.5143645452951471,
-      "test_r": 0.45425331175500067
+      "valid_r": 0.5237213749531902,
+      "test_r": 0.45875350821282324
     },
     {
       "dataset": "johansen_joint",
       "modality": "ATAC",
       "threshold": 0.8,
-      "status": "missing evidence",
-      "gap_to_target": null
+      "status": "below target",
+      "gap_to_target": 0.27296528126198105,
+      "strategy": "lora",
+      "selected_epoch": 1,
+      "head": "allen_atac",
+      "valid_r": 0.527034718738019,
+      "test_r": 0.48399966980188547
     },
     {
       "dataset": "johansen_joint",
       "modality": "RNA",
       "threshold": 0.8,
-      "status": "missing evidence",
-      "gap_to_target": null
+      "status": "below target",
+      "gap_to_target": 0.5593551070371794,
+      "strategy": "lora",
+      "selected_epoch": 1,
+      "head": "allen_rna",
+      "valid_r": 0.24064489296282066,
+      "test_r": 0.3564027256720903
     },
     {
       "dataset": "liu-hdma",
@@ -175,15 +185,25 @@
       "dataset": "zemke2023_mouse",
       "modality": "ATAC",
       "threshold": 0.8,
-      "status": "missing evidence",
-      "gap_to_target": null
+      "status": "below target",
+      "gap_to_target": 0.1358798654250919,
+      "strategy": "lora",
+      "selected_epoch": 1,
+      "head": "zemke2023_atac",
+      "valid_r": 0.6641201345749081,
+      "test_r": 0.664230340479793
     },
     {
       "dataset": "zemke2023_mouse",
       "modality": "RNA",
       "threshold": 0.8,
-      "status": "missing evidence",
-      "gap_to_target": null
+      "status": "below target",
+      "gap_to_target": 0.5904934172195285,
+      "strategy": "lora",
+      "selected_epoch": 1,
+      "head": "zemke2023_rna",
+      "valid_r": 0.20950658278047155,
+      "test_r": 0.23104843518844964
     },
     {
       "dataset": "zemke2023_joint",
