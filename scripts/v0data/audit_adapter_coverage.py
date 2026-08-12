@@ -12,6 +12,7 @@ from typing import Any
 EXPECTED_DATASETS = (
     "hda",
     "hda-joint",
+    "johansen-human",
     "johansen_joint",
     "liu-hdma",
     "zemke2023-human",

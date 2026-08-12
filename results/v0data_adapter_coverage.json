@@ -40,6 +40,17 @@
       "status": "matched result available"
     },
     {
+      "dataset": "johansen-human",
+      "completed_epochs": {
+        "lora": [],
+        "lora+locon": []
+      },
+      "latest_lora_epoch": null,
+      "latest_lora_locon_epoch": null,
+      "highest_matched_epoch": null,
+      "status": "missing lora, lora+locon"
+    },
+    {
       "dataset": "johansen_joint",
       "completed_epochs": {
         "lora": [],
