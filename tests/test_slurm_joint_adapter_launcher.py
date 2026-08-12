@@ -133,3 +133,13 @@ def test_hda_row_objective_supports_scheduler_dry_run() -> None:
 
     assert 'sbatch_bin="${SBATCH_BIN:-sbatch}"' in script
     assert 'smoke=$("$sbatch_bin"' in script
+
+
+def test_liu_row_objective_uses_corrected_gene_only_targets() -> None:
+    script = Path("scripts/v0data/submit_liu_row_correlation_screen.sh").read_text()
+
+    assert "liu-hdma/joint/targets_geneonly_corrw1.json" in script
+    assert "--head liu_rna" in script
+    assert '--row-correlation-loss-weight "$weight"' in script
+    assert "BALANCE_GENE_WINDOWS=1" in script
+    assert 'sbatch_bin="${SBATCH_BIN:-sbatch}"' in script
