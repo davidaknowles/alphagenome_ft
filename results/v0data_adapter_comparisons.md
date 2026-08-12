@@ -4,8 +4,8 @@ Each run is selected by the mean validation signed double-centered Pearson corre
 
 | Dataset | Strategy | Epoch | Head | Validation R | Test R |
 |---|---|---:|---|---:|---:|
-| `hda-joint` | `lora` | 2 | `hda_atac` | 0.7892 | 0.7990 |
-| `hda-joint` | `lora` | 2 | `hda_rna` | 0.5201 | 0.6182 |
+| `hda-joint` | `lora` | 3 | `hda_atac` | 0.7947 | 0.8061 |
+| `hda-joint` | `lora` | 3 | `hda_rna` | 0.5170 | 0.6181 |
 | `hda-joint` | `lora+locon` | 2 | `hda_atac` | 0.7957 | 0.8049 |
 | `hda-joint` | `lora+locon` | 2 | `hda_rna` | 0.5241 | 0.6222 |
 | `hda` | `lora` | 4 | `hda_atac` | 0.8053 | 0.8159 |
@@ -18,6 +18,10 @@ Each run is selected by the mean validation signed double-centered Pearson corre
 | `zemke2023_joint` | `lora` | 1 | `zemke2023_rna` | 0.2950 | 0.1990 |
 | `zemke2023_joint` | `lora+locon` | 1 | `zemke2023_atac` | 0.4333 | 0.6540 |
 | `zemke2023_joint` | `lora+locon` | 1 | `zemke2023_rna` | 0.2835 | 0.2152 |
+| `zemke2023_macaque` | `lora` | 1 | `zemke2023_atac` | 0.2000 | 0.5819 |
+| `zemke2023_macaque` | `lora` | 1 | `zemke2023_rna` | 0.2401 | 0.2863 |
+| `zemke2023_macaque` | `lora+locon` | 1 | `zemke2023_atac` | 0.2054 | 0.5871 |
+| `zemke2023_macaque` | `lora+locon` | 1 | `zemke2023_rna` | 0.2371 | 0.2839 |
 | `zemke2023_marmoset` | `lora` | 1 | `zemke2023_atac` | 0.5754 | 0.5495 |
 | `zemke2023_marmoset` | `lora` | 1 | `zemke2023_rna` | 0.2771 | 0.1549 |
 | `zemke2023_marmoset` | `lora+locon` | 1 | `zemke2023_atac` | 0.5799 | 0.5527 |

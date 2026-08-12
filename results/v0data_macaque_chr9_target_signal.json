@@ -1,0 +1,35 @@
+{
+  "audits": [
+    {
+      "manifest": "outputs/v0data/zemke2023-macaque/targets.json",
+      "dataset": "zemke2023-macaque",
+      "num_windows": 32,
+      "window_size": 131072,
+      "num_bins_per_window": 1024,
+      "heads": [
+        {
+          "id": "zemke2023_atac",
+          "kind": "atac",
+          "num_tracks": 20,
+          "num_observations": 32768,
+          "nonzero_fraction": 0.7798187255859375,
+          "standard_deviation": 11.714476108741543,
+          "double_centered_standard_deviation": 6.564629982226672,
+          "double_centered_variance_fraction": 0.3140326195443322,
+          "median_pairwise_track_correlation": 0.7408104328851233
+        },
+        {
+          "id": "zemke2023_rna",
+          "kind": "rna_seq",
+          "num_tracks": 20,
+          "num_observations": 32768,
+          "nonzero_fraction": 0.2884429931640625,
+          "standard_deviation": 6.7971925837984895,
+          "double_centered_standard_deviation": 4.202554727646149,
+          "double_centered_variance_fraction": 0.3822677018971489,
+          "median_pairwise_track_correlation": 0.7769086047528206
+        }
+      ]
+    }
+  ]
+}

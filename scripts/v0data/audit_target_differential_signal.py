@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import concurrent.futures
 import json
 from pathlib import Path
 from typing import Any
@@ -39,22 +40,32 @@ def _sample_head(
     num_bins: int,
     excluded_chromosomes: set[str],
     rng: np.random.Generator,
+    workers: int,
 ) -> dict[str, Any]:
     targets = head["targets"]
-    handles = [pyBigWig.open(target["path"]) for target in targets]
+    first_handle = pyBigWig.open(targets[0]["path"])
     try:
-        chrom_sizes = handles[0].chroms()
-        if any(handle.chroms() != chrom_sizes for handle in handles[1:]):
-            raise ValueError(f"Head {head['id']} contains tracks with different references.")
-        chromosomes, chromosome_probabilities = _canonical_chromosomes(
-            chrom_sizes, window_size, excluded_chromosomes
-        )
-        windows = []
-        for _ in range(num_windows):
-            chromosome = str(rng.choice(chromosomes, p=chromosome_probabilities))
-            start = int(rng.integers(0, chrom_sizes[chromosome] - window_size + 1))
-            columns = []
-            for handle in handles:
+        chrom_sizes = first_handle.chroms()
+    finally:
+        first_handle.close()
+    chromosomes, chromosome_probabilities = _canonical_chromosomes(
+        chrom_sizes, window_size, excluded_chromosomes
+    )
+    regions = []
+    for _ in range(num_windows):
+        chromosome = str(rng.choice(chromosomes, p=chromosome_probabilities))
+        start = int(rng.integers(0, chrom_sizes[chromosome] - window_size + 1))
+        regions.append((chromosome, start))
+
+    def read_target(target: dict[str, Any]) -> np.ndarray:
+        handle = pyBigWig.open(target["path"])
+        try:
+            if handle.chroms() != chrom_sizes:
+                raise ValueError(
+                    f"Head {head['id']} contains tracks with different references."
+                )
+            windows = []
+            for chromosome, start in regions:
                 values = handle.stats(
                     chromosome,
                     start,
@@ -63,14 +74,21 @@ def _sample_head(
                     type="mean",
                     exact=False,
                 )
-                columns.append(np.nan_to_num(np.asarray(values, dtype=np.float64), nan=0.0))
-            windows.append(np.stack(columns, axis=1))
-    finally:
-        for handle in handles:
+                windows.append(np.nan_to_num(np.asarray(values, dtype=np.float64), nan=0.0))
+            return np.stack(windows)
+        finally:
             handle.close()
 
-    # Y has dimensions [sampled genomic bins, target tracks].
-    values = np.concatenate(windows, axis=0)
+    if workers == 1:
+        track_windows = [read_target(target) for target in targets]
+    else:
+        with concurrent.futures.ThreadPoolExecutor(
+            max_workers=min(workers, len(targets))
+        ) as executor:
+            track_windows = list(executor.map(read_target, targets))
+
+    # values has dimensions [sampled genomic bins, target tracks].
+    values = np.stack(track_windows, axis=2).reshape(-1, len(targets))
     centered = values - values.mean()
     double_centered = (
         values
@@ -106,6 +124,7 @@ def audit_manifest(
     num_bins: int,
     excluded_chromosomes: set[str],
     seed: int,
+    workers: int = 1,
 ) -> dict[str, Any]:
     manifest = json.loads(path.read_text())
     rng = np.random.default_rng(seed)
@@ -123,6 +142,7 @@ def audit_manifest(
                 num_bins=num_bins,
                 excluded_chromosomes=excluded_chromosomes,
                 rng=rng,
+                workers=workers,
             )
             for head in manifest["heads"]
         ],
@@ -137,10 +157,16 @@ def main() -> None:
     parser.add_argument("--num-bins", type=int, default=1024)
     parser.add_argument("--exclude-chromosomes", default="chr8,chr9")
     parser.add_argument("--seed", type=int, default=7)
+    parser.add_argument("--workers", type=int, default=1)
     parser.add_argument("--output", type=Path)
     args = parser.parse_args()
-    if args.num_windows <= 0 or args.window_size <= 0 or args.num_bins <= 0:
-        parser.error("Window and bin counts must be positive.")
+    if (
+        args.num_windows <= 0
+        or args.window_size <= 0
+        or args.num_bins <= 0
+        or args.workers <= 0
+    ):
+        parser.error("Window, bin, and worker counts must be positive.")
     excluded = {item for item in args.exclude_chromosomes.split(",") if item}
     results = {
         "audits": [
@@ -151,6 +177,7 @@ def main() -> None:
                 num_bins=args.num_bins,
                 excluded_chromosomes=excluded,
                 seed=args.seed,
+                workers=args.workers,
             )
             for path in args.manifests
         ]

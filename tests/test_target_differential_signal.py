@@ -41,7 +41,7 @@ def test_audit_manifest_reports_finite_differential_signal(tmp_path: Path) -> No
         )
     )
 
-    result = audit_manifest(
+    serial = audit_manifest(
         manifest_path,
         num_windows=2,
         window_size=100,
@@ -49,8 +49,18 @@ def test_audit_manifest_reports_finite_differential_signal(tmp_path: Path) -> No
         excluded_chromosomes=set(),
         seed=3,
     )
+    parallel = audit_manifest(
+        manifest_path,
+        num_windows=2,
+        window_size=100,
+        num_bins=10,
+        excluded_chromosomes=set(),
+        seed=3,
+        workers=3,
+    )
 
-    head = result["heads"][0]
+    assert parallel == serial
+    head = serial["heads"][0]
     assert head["num_tracks"] == 3
     assert head["num_observations"] == 20
     assert 0 < head["double_centered_variance_fraction"] <= 1
