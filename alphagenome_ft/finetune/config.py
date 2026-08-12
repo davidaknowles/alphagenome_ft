@@ -84,6 +84,7 @@ class HeadSpec:
     row_centered_correlation_loss_weight: float = 0.0
     output_rank: int | None = None
     target_transform_path: Path | None = None
+    gene_window_assignment: str = "full_span"
 
 
 def _resolve_target_path(path_value: str, base_dir: Path | None) -> str:
@@ -341,6 +342,7 @@ def prepare_head_specs(
             raise ValueError("Head loss weight must be finite and positive.")
         gene_loss_weight = 0.0
         coverage_loss_weight = 1.0
+        gene_window_assignment = "full_span"
         double_centered_correlation_loss_weight = float(
             entry.get("double_centered_correlation_loss_weight", 0.0)
         )
@@ -365,6 +367,13 @@ def prepare_head_specs(
             gene_supervision_path = Path(str(gene_supervision["path"]))
             gene_loss_weight = float(gene_supervision.get("loss_weight", 1.0))
             coverage_loss_weight = float(gene_supervision.get("coverage_loss_weight", 0.1))
+            gene_window_assignment = str(
+                gene_supervision.get("window_assignment", "full_span")
+            )
+            if gene_window_assignment not in {"full_span", "max_exon_overlap_scaled"}:
+                raise ValueError(
+                    "Gene window assignment must be full_span or max_exon_overlap_scaled."
+                )
             if gene_loss_weight <= 0 or coverage_loss_weight < 0:
                 raise ValueError(
                     "Gene loss weight must be positive and coverage loss weight non-negative."
@@ -463,6 +472,7 @@ def prepare_head_specs(
                     ),
                     output_rank=output_rank,
                     target_transform_path=target_transform_path,
+                    gene_window_assignment=gene_window_assignment,
                 )
             )
         else:

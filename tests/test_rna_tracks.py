@@ -134,6 +134,43 @@ def test_gene_supervision_accepts_one_unstranded_track_per_group(tmp_path: Path)
     assert GeneExpressionSupervision(artifact, spec).stranded is False
 
 
+def test_gene_supervision_assigns_long_gene_to_best_exon_window(tmp_path: Path):
+    artifact = tmp_path / "long-gene.npz"
+    np.savez_compressed(
+        artifact,
+        gene_ids=np.asarray(["LONG"]),
+        chromosomes=np.asarray(["chr1"]),
+        starts=np.asarray([0]),
+        ends=np.asarray([220]),
+        strands=np.asarray(["+"]),
+        exon_offsets=np.asarray([0, 2]),
+        exon_starts=np.asarray([0, 200]),
+        exon_ends=np.asarray([10, 220]),
+        groups=np.asarray(["cell type"]),
+        cpm=np.asarray([[12.0]], dtype=np.float32),
+    )
+    spec = HeadSpec(
+        "rna",
+        "predefined",
+        "rna_seq",
+        (TrackInfo("cell type", tmp_path / "rna.bw", "."),),
+        gene_supervision_path=artifact,
+        gene_window_assignment="max_exon_overlap_scaled",
+    )
+    supervision = GeneExpressionSupervision(artifact, spec)
+    first = genome.Interval("chr1", 0, 128)
+    second = genome.Interval("chr1", 128, 256)
+    supervision.configure_windows({"train": [first, second]})
+
+    first_arrays = supervision.arrays_for_window(first, sequence_length=128, max_genes=1)
+    second_arrays = supervision.arrays_for_window(second, sequence_length=128, max_genes=1)
+
+    assert first_arrays["valid"].tolist() == [False]
+    assert second_arrays["valid"].tolist() == [True]
+    np.testing.assert_allclose(second_arrays["weights"].sum(), 30 / 128)
+    np.testing.assert_allclose(second_arrays["targets"][0], [12.0])
+
+
 def test_expression_remap_and_gtf_attribute_aliases(tmp_path: Path):
     expression = _tiny_expression(tmp_path)
     remapped = remap_expression_gene_ids(expression, {"ENSG1": "GENE1"})

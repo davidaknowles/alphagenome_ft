@@ -214,6 +214,17 @@ def test_liu_cosine_screen_uses_corrected_targets_and_is_staged() -> None:
     assert 'dependency="afterok:${smoke}_*"' in script
 
 
+def test_liu_exon_window_screen_is_lora_only_and_staged() -> None:
+    script = Path("scripts/v0data/submit_liu_exon_window_screen.sh").read_text()
+
+    assert "prepare_gene_window_assignment.py" in script
+    assert "max_exon_overlap_scaled" in script
+    assert "targets_geneonly_corrw1.json" in script
+    assert script.count("--array=0") == 2
+    assert "NUM_EPOCHS=1" in script
+    assert 'dependency="afterok:${smoke}_*"' in script
+
+
 def test_jax_launchers_expose_learning_rate_schedule() -> None:
     for path in LAUNCHERS:
         script = Path(path).read_text()

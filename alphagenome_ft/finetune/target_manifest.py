@@ -69,6 +69,26 @@ def set_head_output_rank(
     return config
 
 
+def set_gene_window_assignment(
+    config: dict[str, Any],
+    *,
+    head_id: str,
+    assignment: str,
+) -> dict[str, Any]:
+    """Copy a target manifest and set one head's direct-gene window assignment."""
+    if assignment not in {"full_span", "max_exon_overlap_scaled"}:
+        raise ValueError("Gene window assignment must be full_span or max_exon_overlap_scaled.")
+    config = copy.deepcopy(config)
+    matches = [head for head in config.get("heads", ()) if head.get("id") == head_id]
+    if len(matches) != 1:
+        raise ValueError(f'Expected exactly one head named "{head_id}", found {len(matches)}.')
+    gene_supervision = matches[0].get("gene_supervision")
+    if not isinstance(gene_supervision, dict):
+        raise ValueError(f'Head "{head_id}" does not define gene supervision.')
+    gene_supervision["window_assignment"] = assignment
+    return config
+
+
 def retain_target_heads(
     config: dict[str, Any],
     head_ids: Iterable[str],
@@ -160,5 +180,6 @@ __all__ = [
     "build_head_config",
     "make_gene_only_config",
     "retain_target_heads",
+    "set_gene_window_assignment",
     "set_head_output_rank",
 ]

@@ -9,6 +9,7 @@ from alphagenome_ft.finetune.target_manifest import (
     bigwig_nonzero_mean,
     build_head_config,
     retain_target_heads,
+    set_gene_window_assignment,
     set_head_output_rank,
 )
 
@@ -34,6 +35,26 @@ def test_set_head_output_rank_changes_only_requested_rna_head() -> None:
 
     assert result["heads"][1]["output_rank"] == 2
     assert "output_rank" not in source["heads"][1]
+
+
+def test_set_gene_window_assignment_changes_only_requested_gene_head() -> None:
+    source = {
+        "heads": [
+            {"id": "atac"},
+            {"id": "rna", "gene_supervision": {"path": "genes.npz"}},
+        ]
+    }
+
+    result = set_gene_window_assignment(
+        source,
+        head_id="rna",
+        assignment="max_exon_overlap_scaled",
+    )
+
+    assert result["heads"][1]["gene_supervision"]["window_assignment"] == (
+        "max_exon_overlap_scaled"
+    )
+    assert "window_assignment" not in source["heads"][1]["gene_supervision"]
 
 
 def _write_bigwig(path: Path) -> None:

@@ -79,6 +79,9 @@ class GeneExpressionSupervision:
             raise ValueError(f"Invalid group-valid shape {self.group_valid.shape} in {path}.")
         if not np.any(self.group_valid):
             raise ValueError(f"Gene supervision has no valid groups in {path}.")
+        self.window_assignment = spec.gene_window_assignment
+        self._assigned_indices: dict[tuple[str, int, int], np.ndarray] = {}
+        self._assigned_scales: dict[tuple[str, int, int], np.ndarray] = {}
         track_strands = tuple(track.strand for track in spec.tracks)
         paired_strands = tuple(strand for _ in self.groups for strand in ("+", "-"))
         if len(spec.tracks) == len(self.groups) and set(track_strands) <= {".", ""}:
@@ -106,10 +109,75 @@ class GeneExpressionSupervision:
             (self.starts[candidates] >= window.start) & (self.ends[candidates] <= window.end)
         ]
 
+    @staticmethod
+    def _window_key(window: genome.Interval) -> tuple[str, int, int]:
+        return window.chromosome, int(window.start), int(window.end)
+
+    def configure_windows(self, intervals: Mapping[str, Sequence[genome.Interval]]) -> None:
+        """Assign each gene once for partial-exon supervision."""
+        if self.window_assignment == "full_span":
+            return
+        windows_by_chromosome: dict[str, list[genome.Interval]] = defaultdict(list)
+        for split_windows in intervals.values():
+            for window in split_windows:
+                windows_by_chromosome[window.chromosome].append(window)
+        assigned: dict[tuple[str, int, int], list[tuple[int, float]]] = defaultdict(list)
+        for chromosome, windows in windows_by_chromosome.items():
+            windows.sort(key=lambda window: (window.start, window.end))
+            if any(left.end > right.start for left, right in zip(windows, windows[1:])):
+                raise ValueError(
+                    "max_exon_overlap_scaled requires non-overlapping sequence windows."
+                )
+            window_starts = np.asarray([window.start for window in windows], dtype=np.int64)
+            window_ends = np.asarray([window.end for window in windows], dtype=np.int64)
+            for gene_idx in self._by_chromosome.get(chromosome, ()):
+                exon_begin = self.exon_offsets[gene_idx]
+                exon_end = self.exon_offsets[gene_idx + 1]
+                scores: dict[int, int] = defaultdict(int)
+                total_exon_bases = 0
+                for start, end in zip(
+                    self.exon_starts[exon_begin:exon_end],
+                    self.exon_ends[exon_begin:exon_end],
+                    strict=True,
+                ):
+                    total_exon_bases += int(end - start)
+                    first_window = int(np.searchsorted(window_ends, start, side="right"))
+                    for window_idx in range(first_window, len(windows)):
+                        if window_starts[window_idx] >= end:
+                            break
+                        overlap = min(int(end), int(window_ends[window_idx])) - max(
+                            int(start), int(window_starts[window_idx])
+                        )
+                        if overlap > 0:
+                            scores[window_idx] += overlap
+                if not scores or total_exon_bases <= 0:
+                    continue
+                best_window_idx, observed_exon_bases = min(
+                    scores.items(), key=lambda item: (-item[1], windows[item[0]].start)
+                )
+                assigned[self._window_key(windows[best_window_idx])].append(
+                    (int(gene_idx), total_exon_bases / observed_exon_bases)
+                )
+        self._assigned_indices = {
+            key: np.asarray([gene_idx for gene_idx, _ in values], dtype=np.int64)
+            for key, values in assigned.items()
+        }
+        self._assigned_scales = {
+            key: np.asarray([scale for _, scale in values], dtype=np.float32)
+            for key, values in assigned.items()
+        }
+
+    def indices_for_window(self, window: genome.Interval) -> np.ndarray:
+        if self.window_assignment == "full_span":
+            return self.contained_indices(window)
+        return self._assigned_indices.get(
+            self._window_key(window), np.empty((0,), dtype=np.int64)
+        )
+
     def max_genes(self, intervals: Mapping[str, Sequence[genome.Interval]]) -> int:
         return max(
             (
-                len(self.contained_indices(window))
+                len(self.indices_for_window(window))
                 for windows in intervals.values()
                 for window in windows
             ),
@@ -127,7 +195,14 @@ class GeneExpressionSupervision:
             raise ValueError(
                 "Gene expression supervision requires sequence length divisible by 128."
             )
-        indices = self.contained_indices(window)
+        indices = self.indices_for_window(window)
+        scales = (
+            np.ones(len(indices), dtype=np.float32)
+            if self.window_assignment == "full_span"
+            else self._assigned_scales.get(
+                self._window_key(window), np.empty((0,), dtype=np.float32)
+            )
+        )
         if len(indices) > max_genes:
             raise ValueError(
                 f"Window contains {len(indices)} genes, exceeding configured {max_genes}."
@@ -140,7 +215,7 @@ class GeneExpressionSupervision:
             (max_genes, len(self.groups)) if has_missing_groups else (max_genes,),
             dtype=bool,
         )
-        for output_idx, gene_idx in enumerate(indices):
+        for output_idx, (gene_idx, scale) in enumerate(zip(indices, scales, strict=True)):
             exon_begin = self.exon_offsets[gene_idx]
             exon_end = self.exon_offsets[gene_idx + 1]
             for start, end in zip(
@@ -148,13 +223,16 @@ class GeneExpressionSupervision:
                 self.exon_ends[exon_begin:exon_end],
                 strict=True,
             ):
-                local_start = int(start) - window.start
-                local_end = int(end) - window.start
+                local_start = max(0, int(start) - window.start)
+                local_end = min(sequence_length, int(end) - window.start)
+                if local_end <= local_start:
+                    continue
                 first_bin = local_start // 128
                 last_bin = (local_end - 1) // 128
                 for bin_idx in range(first_bin, last_bin + 1):
                     overlap = min(local_end, (bin_idx + 1) * 128) - max(local_start, bin_idx * 128)
                     weights[bin_idx, output_idx] += overlap / 128.0
+            weights[:, output_idx] *= scale
             targets[output_idx] = self.cpm[:, gene_idx]
             strands[output_idx] = 0 if self.strands[gene_idx] == "+" else 1
             valid[output_idx] = self.group_valid if has_missing_groups else True
@@ -1169,6 +1247,8 @@ class BigWigDataModule:
             for spec in head_specs
             if spec.gene_supervision_path is not None
         }
+        for supervision in self._gene_supervisions.values():
+            supervision.configure_windows(self._intervals)
         self._max_genes = {
             head_name: supervision.max_genes(self._intervals)
             for head_name, supervision in self._gene_supervisions.items()
@@ -1178,7 +1258,7 @@ class BigWigDataModule:
                 split: np.asarray(
                     [
                         sum(
-                            len(supervision.contained_indices(window))
+                            len(supervision.indices_for_window(window))
                             for supervision in self._gene_supervisions.values()
                         )
                         for window in windows
@@ -1192,7 +1272,7 @@ class BigWigDataModule:
         )
         for head_name, max_genes in self._max_genes.items():
             if max_genes == 0:
-                raise ValueError(f"No fully contained genes were found for head {head_name}.")
+                raise ValueError(f"No genes were assigned to sequence windows for head {head_name}.")
         self._target_cache = (
             WindowedTargetCache(
                 target_cache_dir,
