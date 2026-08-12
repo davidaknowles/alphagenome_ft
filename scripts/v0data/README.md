@@ -10,6 +10,8 @@ Each new `best` and `last` checkpoint stores optimizer state as well as model pa
 
 `--pretrained-head-initialization bootstrap` initializes every new ATAC or RNA output channel from a deterministic, non-padding channel of AlphaGenome's corresponding pretrained head. Source channels are matched by strand when possible, and one assignment is shared across resolutions, biases, weights, and learned scales. This preserves coherent pretrained output directions without freezing or sharing the new head. The default `none` retains random initialization, and initialization cannot be reapplied when resuming a checkpoint.
 
+`submit_pretrained_head_bootstrap_screens.sh` runs matched one-epoch LoRA and LoRA plus LoCon screens on HDA and Liu. These two studies test published and reconstructed targets, respectively. Bootstrap is advanced to the wider study panel only if it improves signed double-centered RNA correlation without a larger ATAC regression.
+
 `prepare_study_targets.py` creates deterministic manifests from published BigWigs. RNA heads receive the exact base-weighted mean over finite positive values for each track because the AlphaGenome RNA output transform uses this quantity for channel scaling. ATAC tracks remain in their native published units because earlier scalar and quantile normalization screens did not improve Allen performance.
 
 The published-track comparison includes the Mannens fetal-brain ATAC panel, paired Mannens ATAC/RNA targets, all four Zemke 2023 motor-cortex species, and the all-age Zemke 2024 hippocampus ATAC/RNA panel. The all-age Zemke 2024 panel avoids mixing biological age effects into the first adapter comparison. Age-stratified channels will be evaluated after the shared cell-type baseline.
