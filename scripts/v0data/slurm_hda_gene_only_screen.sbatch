@@ -1,11 +1,11 @@
 #!/bin/bash
 #SBATCH --job-name=hda_gene_only
 #SBATCH --partition=gpu
-#SBATCH --gres=gpu:b6k:1
+#SBATCH --gres=gpu:l40s:2
 #SBATCH --cpus-per-task=24
 #SBATCH --mem=96G
 #SBATCH --time=12:00:00
-#SBATCH --array=0-2%3
+#SBATCH --array=0-2%1
 #SBATCH --output=logs/v0data/hda_gene_only-%A_%a.out
 #SBATCH --error=logs/v0data/hda_gene_only-%A_%a.err
 
