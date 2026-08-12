@@ -22,6 +22,7 @@ def main() -> None:
     parser.add_argument("--output-dir", required=True, type=Path)
     parser.add_argument("--head", required=True)
     parser.add_argument("--correlation-loss-weight", type=float, default=0.0)
+    parser.add_argument("--row-correlation-loss-weight", type=float, default=0.0)
     args = parser.parse_args()
 
     source_path = args.input.expanduser().resolve()
@@ -35,6 +36,7 @@ def main() -> None:
             json.loads(target_path.read_text()),
             head_id=args.head,
             correlation_loss_weight=args.correlation_loss_weight,
+            row_correlation_loss_weight=args.row_correlation_loss_weight,
         )
         species_dir = args.output_dir / str(entry["name"])
         species_dir.mkdir(parents=True, exist_ok=True)

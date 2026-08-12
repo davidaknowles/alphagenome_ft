@@ -81,6 +81,7 @@ class HeadSpec:
     gene_loss_weight: float = 0.0
     coverage_loss_weight: float = 1.0
     double_centered_correlation_loss_weight: float = 0.0
+    row_centered_correlation_loss_weight: float = 0.0
     target_transform_path: Path | None = None
 
 
@@ -342,8 +343,19 @@ def prepare_head_specs(
         double_centered_correlation_loss_weight = float(
             entry.get("double_centered_correlation_loss_weight", 0.0)
         )
-        if double_centered_correlation_loss_weight < 0:
-            raise ValueError("Double-centered correlation loss weight must be non-negative.")
+        row_centered_correlation_loss_weight = float(
+            entry.get("row_centered_correlation_loss_weight", 0.0)
+        )
+        if (
+            not math.isfinite(double_centered_correlation_loss_weight)
+            or double_centered_correlation_loss_weight < 0
+        ):
+            raise ValueError("Double-centered correlation loss weight must be finite and non-negative.")
+        if (
+            not math.isfinite(row_centered_correlation_loss_weight)
+            or row_centered_correlation_loss_weight < 0
+        ):
+            raise ValueError("Row-centered correlation loss weight must be finite and non-negative.")
         if gene_supervision is not None:
             if source != "predefined":
                 raise ValueError(
@@ -377,6 +389,9 @@ def prepare_head_specs(
                     loss_weight=loss_weight,
                     double_centered_correlation_loss_weight=(
                         double_centered_correlation_loss_weight
+                    ),
+                    row_centered_correlation_loss_weight=(
+                        row_centered_correlation_loss_weight
                     ),
                     target_transform_path=target_transform_path,
                 )
@@ -432,6 +447,9 @@ def prepare_head_specs(
                     coverage_loss_weight=coverage_loss_weight,
                     double_centered_correlation_loss_weight=(
                         double_centered_correlation_loss_weight
+                    ),
+                    row_centered_correlation_loss_weight=(
+                        row_centered_correlation_loss_weight
                     ),
                     target_transform_path=target_transform_path,
                 )

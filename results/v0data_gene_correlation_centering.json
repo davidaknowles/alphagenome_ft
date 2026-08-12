@@ -1,0 +1,154 @@
+{
+  "datasets": {
+    "HDA": {
+      "gene_supervision": "/gpfs/commons/home/daknowles/projects/alphagenome_fp4/outputs/v0data/hda-joint/gene_expression_supervision.npz",
+      "groups": 134,
+      "training_genes": 44840,
+      "training_windows_with_genes": 14397,
+      "batch_size_windows": 8,
+      "shuffle_repeats": 10,
+      "row_vs_global_double_centered_cosine": 0.9997498848151853,
+      "global_double_centered_variance_fraction_of_row_centered": 0.9994998321879699,
+      "local_vs_global_double_centered_cosine": {
+        "minimum": 0.0031300595699875772,
+        "p10": 0.5522995298848448,
+        "p25": 0.82480640988612,
+        "median": 0.9478122686641155,
+        "p75": 0.9767962100347695,
+        "p90": 0.9849637183710944,
+        "maximum": 0.9966624751803113,
+        "mean": 0.8522926607094146
+      },
+      "genes_per_batch": {
+        "minimum": 8.0,
+        "p10": 16.0,
+        "p25": 19.0,
+        "median": 24.0,
+        "p75": 29.0,
+        "p90": 35.0,
+        "maximum": 112.0,
+        "mean": 24.91650917176209
+      }
+    },
+    "Liu": {
+      "gene_supervision": "/gpfs/commons/home/daknowles/projects/alphagenome_fp4/outputs/v0data/liu-hdma/joint/gene_expression_supervision.npz",
+      "groups": 186,
+      "training_genes": 25367,
+      "training_windows_with_genes": 10360,
+      "batch_size_windows": 8,
+      "shuffle_repeats": 10,
+      "row_vs_global_double_centered_cosine": 0.9998648377058859,
+      "global_double_centered_variance_fraction_of_row_centered": 0.9997296936806157,
+      "local_vs_global_double_centered_cosine": {
+        "minimum": 0.15845027418226118,
+        "p10": 0.931616840221951,
+        "p25": 0.9541851358369535,
+        "median": 0.9672690133737758,
+        "p75": 0.9755699181349365,
+        "p90": 0.9809684936780784,
+        "maximum": 0.9940394109209022,
+        "mean": 0.9552607644089138
+      },
+      "genes_per_batch": {
+        "minimum": 8.0,
+        "p10": 13.0,
+        "p25": 15.0,
+        "median": 18.0,
+        "p75": 23.0,
+        "p90": 28.0,
+        "maximum": 102.0,
+        "mean": 19.588416988416988
+      }
+    },
+    "Johansen-human": {
+      "gene_supervision": "/gpfs/commons/home/daknowles/projects/alphagenome_fp4/outputs/v0data/johansen-rna-corrected/supervision/human/gene_expression_supervision.npz",
+      "groups": 47,
+      "training_genes": 7512,
+      "training_windows_with_genes": 4416,
+      "batch_size_windows": 8,
+      "shuffle_repeats": 10,
+      "row_vs_global_double_centered_cosine": 0.9931189332038376,
+      "global_double_centered_variance_fraction_of_row_centered": 0.9862852154879287,
+      "local_vs_global_double_centered_cosine": {
+        "minimum": 0.2643433798404911,
+        "p10": 0.9183004073090412,
+        "p25": 0.9431374294852011,
+        "median": 0.9590623633464234,
+        "p75": 0.970184381730533,
+        "p90": 0.9777473244404985,
+        "maximum": 0.9940267467649861,
+        "mean": 0.9509922950911275
+      },
+      "genes_per_batch": {
+        "minimum": 8.0,
+        "p10": 10.0,
+        "p25": 11.0,
+        "median": 13.0,
+        "p75": 16.0,
+        "p90": 18.0,
+        "maximum": 34.0,
+        "mean": 13.608695652173912
+      }
+    },
+    "Johansen-macaque": {
+      "gene_supervision": "/gpfs/commons/home/daknowles/projects/alphagenome_fp4/outputs/v0data/johansen-rna-corrected/supervision/macaque/gene_expression_supervision.npz",
+      "groups": 47,
+      "training_genes": 7642,
+      "training_windows_with_genes": 4520,
+      "batch_size_windows": 8,
+      "shuffle_repeats": 10,
+      "row_vs_global_double_centered_cosine": 0.9969138362425831,
+      "global_double_centered_variance_fraction_of_row_centered": 0.9938371968919038,
+      "local_vs_global_double_centered_cosine": {
+        "minimum": 0.5950076115085174,
+        "p10": 0.920852870352067,
+        "p25": 0.9432244299423211,
+        "median": 0.958489913384204,
+        "p75": 0.9699484100825672,
+        "p90": 0.9776660555100483,
+        "maximum": 0.9934272450603628,
+        "mean": 0.9520826525453114
+      },
+      "genes_per_batch": {
+        "minimum": 8.0,
+        "p10": 10.0,
+        "p25": 11.0,
+        "median": 13.0,
+        "p75": 15.0,
+        "p90": 18.0,
+        "maximum": 34.0,
+        "mean": 13.52566371681416
+      }
+    },
+    "Johansen-marmoset": {
+      "gene_supervision": "/gpfs/commons/home/daknowles/projects/alphagenome_fp4/outputs/v0data/johansen-rna-corrected/supervision/marmoset/gene_expression_supervision.npz",
+      "groups": 47,
+      "training_genes": 7574,
+      "training_windows_with_genes": 4446,
+      "batch_size_windows": 8,
+      "shuffle_repeats": 10,
+      "row_vs_global_double_centered_cosine": 0.994919600985797,
+      "global_double_centered_variance_fraction_of_row_centered": 0.9898650124257375,
+      "local_vs_global_double_centered_cosine": {
+        "minimum": 0.5338779312436239,
+        "p10": 0.9204348382809701,
+        "p25": 0.9436806747270383,
+        "median": 0.9585863207581767,
+        "p75": 0.9700385534604627,
+        "p90": 0.9777222706065993,
+        "maximum": 0.9939956296099709,
+        "mean": 0.9522873008346936
+      },
+      "genes_per_batch": {
+        "minimum": 8.0,
+        "p10": 10.0,
+        "p25": 11.0,
+        "median": 13.0,
+        "p75": 16.0,
+        "p90": 19.0,
+        "maximum": 36.0,
+        "mean": 13.627207207207206
+      }
+    }
+  }
+}

@@ -33,6 +33,18 @@ def test_make_gene_only_config_preserves_source_and_disables_coverage() -> None:
     assert rna["resolutions"] == [128]
     assert rna["gene_supervision"]["coverage_loss_weight"] == 0.0
     assert rna["double_centered_correlation_loss_weight"] == 0.1
+    assert rna["row_centered_correlation_loss_weight"] == 0.0
+
+
+def test_make_gene_only_config_can_set_row_correlation() -> None:
+    result = make_gene_only_config(
+        _config(),
+        head_id="rna",
+        correlation_loss_weight=0.0,
+        row_correlation_loss_weight=1.0,
+    )
+
+    assert result["heads"][1]["row_centered_correlation_loss_weight"] == 1.0
 
 
 def test_make_gene_only_config_can_replace_supervision_path() -> None:
@@ -46,6 +58,15 @@ def test_make_gene_only_config_can_replace_supervision_path() -> None:
     assert result["heads"][1]["gene_supervision"]["path"] == "corrected.npz"
 
 
-def test_make_gene_only_config_rejects_negative_weight() -> None:
-    with pytest.raises(ValueError, match="non-negative"):
-        make_gene_only_config(_config(), head_id="rna", correlation_loss_weight=-0.1)
+@pytest.mark.parametrize("invalid", [-0.1, float("inf"), float("nan")])
+def test_make_gene_only_config_rejects_invalid_weight(invalid: float) -> None:
+    with pytest.raises(ValueError, match="finite and non-negative"):
+        make_gene_only_config(_config(), head_id="rna", correlation_loss_weight=invalid)
+
+    with pytest.raises(ValueError, match="finite and non-negative"):
+        make_gene_only_config(
+            _config(),
+            head_id="rna",
+            correlation_loss_weight=0.0,
+            row_correlation_loss_weight=invalid,
+        )

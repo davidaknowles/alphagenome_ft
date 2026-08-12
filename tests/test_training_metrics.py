@@ -9,6 +9,7 @@ import jax.numpy as jnp
 
 from alphagenome_ft.finetune.train import (
     _double_centered_correlation_loss,
+    _row_centered_correlation_loss,
     _weighted_head_loss_sum,
     _finalize_r2_stats,
     _flatten_valid_metrics,
@@ -136,6 +137,7 @@ def test_train_reports_per_head_gradient_norms_once(capsys, tmp_path):
             coverage_loss_weight=1.0,
             gene_loss_weight=0.0,
             double_centered_correlation_loss_weight=0.0,
+            row_centered_correlation_loss_weight=0.0,
             loss_weight=weight,
         )
         for head_name, weight in (("atac", 1.0), ("rna", 5.0))
@@ -270,6 +272,65 @@ def test_double_centered_correlation_loss_has_finite_gradient_without_variance()
     assert loss == 0
     assert np.all(np.isfinite(gradient))
     np.testing.assert_array_equal(gradient, np.zeros_like(gradient))
+
+
+def test_row_centered_correlation_loss_removes_observation_offsets():
+    targets = jnp.square(jnp.arange(24, dtype=jnp.float32)).reshape(2, 4, 3)
+    observation_offset = jnp.arange(8, dtype=jnp.float32).reshape(2, 4, 1)
+
+    loss = _row_centered_correlation_loss(targets + observation_offset, targets)
+
+    np.testing.assert_allclose(loss, 0.0, atol=1e-6)
+
+
+def test_row_centered_correlation_loss_retains_track_offsets():
+    targets = jnp.square(jnp.arange(24, dtype=jnp.float32)).reshape(2, 4, 3)
+    track_offset = jnp.asarray([20.0, -10.0, 5.0]).reshape(1, 1, 3)
+
+    loss = _row_centered_correlation_loss(targets + track_offset, targets)
+
+    assert float(loss) > 0.0
+
+
+def test_row_centered_correlation_loss_ignores_masked_rows():
+    targets = jnp.square(jnp.arange(18, dtype=jnp.float32)).reshape(1, 6, 3)
+    predictions = targets.at[:, -2:, :].set(-1000.0)
+    mask = jnp.asarray([[True, True, True, True, False, False]])
+
+    loss = _row_centered_correlation_loss(predictions, targets, mask)
+
+    np.testing.assert_allclose(loss, 0.0, atol=1e-6)
+
+
+def test_row_centered_correlation_loss_has_finite_gradient_without_variance():
+    prediction = jnp.ones((2, 4, 3), dtype=jnp.float32)
+    targets = jnp.ones((2, 4, 3), dtype=jnp.float32)
+
+    loss, gradient = jax.value_and_grad(_row_centered_correlation_loss)(prediction, targets)
+
+    assert loss == 0
+    assert np.all(np.isfinite(gradient))
+    np.testing.assert_array_equal(gradient, np.zeros_like(gradient))
+
+
+def test_row_centered_correlation_loss_uses_global_pmap_batch():
+    device_count = jax.local_device_count()
+    targets = jnp.square(jnp.arange(device_count * 24, dtype=jnp.float32)).reshape(
+        device_count, 2, 4, 3
+    )
+    predictions = targets.at[0, :, :, 0].set(jnp.flip(targets[0, :, :, 0], axis=1))
+    expected = _row_centered_correlation_loss(
+        predictions.reshape((-1, 4, 3)),
+        targets.reshape((-1, 4, 3)),
+    )
+
+    @functools.partial(jax.pmap, axis_name="data")
+    def distributed_loss(prediction, target):
+        return _row_centered_correlation_loss(prediction, target, axis_name="data")
+
+    actual = distributed_loss(predictions, targets)
+
+    np.testing.assert_allclose(actual, expected, rtol=1e-6)
 
 
 def test_double_centered_correlation_loss_uses_global_pmap_batch():

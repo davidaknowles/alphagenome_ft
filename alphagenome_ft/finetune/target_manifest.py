@@ -15,11 +15,14 @@ def make_gene_only_config(
     *,
     head_id: str,
     correlation_loss_weight: float,
+    row_correlation_loss_weight: float = 0.0,
     gene_supervision_path: str | None = None,
 ) -> dict[str, Any]:
     """Copy a target manifest and retain one RNA head's gene supervision only."""
-    if correlation_loss_weight < 0:
-        raise ValueError("Correlation loss weight must be non-negative.")
+    if not math.isfinite(correlation_loss_weight) or correlation_loss_weight < 0:
+        raise ValueError("Correlation loss weight must be finite and non-negative.")
+    if not math.isfinite(row_correlation_loss_weight) or row_correlation_loss_weight < 0:
+        raise ValueError("Row correlation loss weight must be finite and non-negative.")
     config = copy.deepcopy(config)
     matches = [head for head in config.get("heads", ()) if head.get("id") == head_id]
     if len(matches) != 1:
@@ -33,6 +36,7 @@ def make_gene_only_config(
         gene_supervision["path"] = gene_supervision_path
     head["resolutions"] = [128]
     head["double_centered_correlation_loss_weight"] = correlation_loss_weight
+    head["row_centered_correlation_loss_weight"] = row_correlation_loss_weight
     return config
 
 

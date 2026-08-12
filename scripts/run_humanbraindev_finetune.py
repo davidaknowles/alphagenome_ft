@@ -627,6 +627,7 @@ def main() -> None:
                 spec.gene_loss_weight,
                 spec.coverage_loss_weight,
                 spec.double_centered_correlation_loss_weight,
+                spec.row_centered_correlation_loss_weight,
             )
             for spec in head_specs
         ]
@@ -662,6 +663,7 @@ def main() -> None:
                     spec.gene_loss_weight,
                     spec.coverage_loss_weight,
                     spec.double_centered_correlation_loss_weight,
+                    spec.row_centered_correlation_loss_weight,
                 )
                 for spec in species_specs
             ]

@@ -21,6 +21,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--output", required=True, type=Path)
     parser.add_argument("--head", required=True)
     parser.add_argument("--correlation-loss-weight", type=float, default=0.0)
+    parser.add_argument("--row-correlation-loss-weight", type=float, default=0.0)
     parser.add_argument("--gene-supervision-path", type=Path)
     return parser.parse_args()
 
@@ -32,6 +33,7 @@ def main() -> None:
         config,
         head_id=args.head,
         correlation_loss_weight=args.correlation_loss_weight,
+        row_correlation_loss_weight=args.row_correlation_loss_weight,
         gene_supervision_path=(
             str(args.gene_supervision_path.expanduser().resolve())
             if args.gene_supervision_path is not None
@@ -41,8 +43,9 @@ def main() -> None:
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(config, indent=2) + "\n")
     print(
-        f"Wrote gene-only {args.head} config with correlation weight "
-        f"{args.correlation_loss_weight:g} to {args.output}."
+        f"Wrote gene-only {args.head} config with double-centered correlation weight "
+        f"{args.correlation_loss_weight:g} and row-centered correlation weight "
+        f"{args.row_correlation_loss_weight:g} to {args.output}."
     )
 
 

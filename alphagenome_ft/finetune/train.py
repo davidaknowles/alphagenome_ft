@@ -432,6 +432,49 @@ def _double_centered_correlation_loss(
     return jnp.where((count > 0) & has_variance, 1.0 - correlation, 0.0)
 
 
+def _row_centered_correlation_loss(
+    prediction,
+    targets,
+    observation_mask=None,
+    *,
+    axis_name: str | None = None,
+):
+    """Return one minus correlation after centering each observation over tracks."""
+    prediction, targets = _align_prediction_and_targets(prediction, targets, observation_mask)
+    prediction = prediction.astype(jnp.float32)
+    targets = targets.astype(jnp.float32)
+    if observation_mask is None:
+        prediction = _maybe_bin_128bp_jax(prediction)
+        targets = _maybe_bin_128bp_jax(targets)
+        mask = jnp.ones(prediction.shape[:-1], dtype=jnp.float32)
+    else:
+        mask = observation_mask.astype(jnp.float32)
+        if mask.shape != targets.shape[:-1]:
+            raise ValueError(
+                f"Observation mask shape {mask.shape} does not match {targets.shape[:-1]}."
+            )
+
+    row_mask = mask.reshape((-1, 1))
+    pred_matrix = prediction.reshape((-1, prediction.shape[-1]))
+    target_matrix = targets.reshape((-1, targets.shape[-1]))
+    pred_centered = (pred_matrix - jnp.mean(pred_matrix, axis=1, keepdims=True)) * row_mask
+    target_centered = (target_matrix - jnp.mean(target_matrix, axis=1, keepdims=True)) * row_mask
+
+    def global_sum(value):
+        if axis_name is None:
+            return value
+        return jax.lax.psum(value, axis_name=axis_name)
+
+    count = global_sum(jnp.sum(row_mask))
+    covariance = global_sum(jnp.sum(pred_centered * target_centered))
+    pred_sum_squares = global_sum(jnp.sum(jnp.square(pred_centered)))
+    target_sum_squares = global_sum(jnp.sum(jnp.square(target_centered)))
+    denominator = jnp.sqrt(jnp.maximum(pred_sum_squares * target_sum_squares, 1e-16))
+    correlation = covariance / denominator
+    has_variance = (pred_sum_squares > 1e-8) & (target_sum_squares > 1e-8)
+    return jnp.where((count > 0) & has_variance, 1.0 - correlation, 0.0)
+
+
 def _weighted_head_loss_sum(head_losses, head_specs_by_name):
     """Sum head objectives using configured modality weights."""
     total_loss = 0.0
@@ -989,6 +1032,16 @@ def train(
                         axis_name=axis_name,
                     )
                 )
+            if spec.row_centered_correlation_loss_weight > 0:
+                head_loss = head_loss + (
+                    spec.row_centered_correlation_loss_weight
+                    * _row_centered_correlation_loss(
+                        correlation_prediction,
+                        correlation_targets,
+                        correlation_mask,
+                        axis_name=axis_name,
+                    )
+                )
             head_losses[head_name] = head_loss
             if spec.gene_supervision_path is not None:
                 head_stats[head_name] = _r2_stats(gene_prediction, gene_targets, gene_valid)
@@ -1148,6 +1201,16 @@ def train(
                 head_loss = head_loss + (
                     spec.double_centered_correlation_loss_weight
                     * _double_centered_correlation_loss(
+                        correlation_prediction,
+                        correlation_targets,
+                        correlation_mask,
+                        axis_name="data",
+                    )
+                )
+            if spec.row_centered_correlation_loss_weight > 0:
+                head_loss = head_loss + (
+                    spec.row_centered_correlation_loss_weight
+                    * _row_centered_correlation_loss(
                         correlation_prediction,
                         correlation_targets,
                         correlation_mask,
