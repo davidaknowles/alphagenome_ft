@@ -58,6 +58,31 @@ def test_make_gene_only_config_can_factorize_output() -> None:
     assert result["heads"][1]["output_rank"] == 1
 
 
+def test_make_gene_only_config_can_share_strands_and_factorize() -> None:
+    source = _config()
+    source["heads"][1]["targets"] = [
+        {"path": "a.plus.bw", "label": "a (+)", "strand": "+"},
+        {"path": "a.minus.bw", "label": "a (-)", "strand": "-"},
+        {"path": "b.plus.bw", "label": "b (+)", "strand": "+"},
+        {"path": "b.minus.bw", "label": "b (-)", "strand": "-"},
+    ]
+
+    result = make_gene_only_config(
+        source,
+        head_id="rna",
+        correlation_loss_weight=1.0,
+        output_rank=1,
+        unstranded_output=True,
+    )
+
+    rna = result["heads"][1]
+    assert rna["output_rank"] == 1
+    assert [(target["label"], target["strand"]) for target in rna["targets"]] == [
+        ("a", "."),
+        ("b", "."),
+    ]
+
+
 def test_make_gene_only_config_can_replace_supervision_path() -> None:
     result = make_gene_only_config(
         _config(),
