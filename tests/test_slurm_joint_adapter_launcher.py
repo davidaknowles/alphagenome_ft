@@ -55,3 +55,12 @@ def test_johansen_joint_evaluator_uses_corrected_checkpoints() -> None:
     assert "johansen_joint_${strategy}_rawcount_geneonly_corrw1/best" in script
     assert 'dependency="afterok:${source_job}_${task}"' in script
     assert "EVALUATE_SPECIES=${species}" in script
+
+
+def test_zemke_species_continuation_requires_optimizer_state_by_default() -> None:
+    script = Path("scripts/v0data/submit_zemke_species_continuations.sh").read_text()
+
+    assert 'tasks="${TASKS:-2;3}"' in script
+    assert '"${REQUIRE_OPTIMIZER_STATE:-1}" == "1"' in script
+    assert 'test -d "$source/optimizer_state"' in script
+    assert "RESUME_FROM=${source}" in script
