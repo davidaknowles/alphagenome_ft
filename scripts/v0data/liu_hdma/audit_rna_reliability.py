@@ -25,6 +25,7 @@ from alphagenome_ft.finetune.reliability import (
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--sample-dir", required=True, type=Path)
+    parser.add_argument("--gene-supervision", type=Path)
     parser.add_argument("--json-output", required=True, type=Path)
     parser.add_argument("--markdown-output", required=True, type=Path)
     return parser.parse_args()
@@ -40,6 +41,49 @@ def _row_correlations(first: np.ndarray, second: np.ndarray) -> np.ndarray:
         out=np.full((len(first),), np.nan),
         where=denominator > 0,
     )
+
+
+def chromosome_reliability(
+    first_cpm: np.ndarray,
+    second_cpm: np.ndarray,
+    gene_ids: tuple[str, ...],
+    gene_supervision_path: Path,
+) -> dict[str, dict[str, float | int]]:
+    """Report split-half reliability for modeled genes on each chromosome."""
+    with np.load(gene_supervision_path) as supervision:
+        modeled_ids = supervision["gene_ids"].astype(str)
+        modeled_chromosomes = supervision["chromosomes"].astype(str)
+    if modeled_ids.shape != modeled_chromosomes.shape:
+        raise ValueError("Modeled gene IDs and chromosomes must have equal shape.")
+    chromosome_by_gene = {
+        gene_id.split(".", 1)[0]: chromosome
+        for gene_id, chromosome in zip(modeled_ids, modeled_chromosomes, strict=True)
+    }
+    normalized_ids = tuple(gene_id.split(".", 1)[0] for gene_id in gene_ids)
+    result: dict[str, dict[str, float | int]] = {}
+    for chromosome in sorted(set(chromosome_by_gene.values())):
+        indices = np.asarray(
+            [
+                index
+                for index, gene_id in enumerate(normalized_ids)
+                if chromosome_by_gene.get(gene_id) == chromosome
+            ],
+            dtype=np.int64,
+        )
+        if len(indices) < 2:
+            continue
+        raw_r = double_centered_pearson(first_cpm[:, indices], second_cpm[:, indices])
+        log_r = double_centered_pearson(
+            np.log1p(first_cpm[:, indices]), np.log1p(second_cpm[:, indices])
+        )
+        result[chromosome] = {
+            "genes": int(len(indices)),
+            "raw_cpm_double_centered_r": raw_r,
+            "raw_cpm_full_reliability_estimate": spearman_brown(raw_r),
+            "log1p_cpm_double_centered_r": log_r,
+            "log1p_cpm_full_reliability_estimate": spearman_brown(log_r),
+        }
+    return result
 
 
 def main() -> None:
@@ -96,10 +140,17 @@ def main() -> None:
             for quantile in quantiles
         },
     }
+    if args.gene_supervision:
+        result["chromosome_reliability"] = chromosome_reliability(
+            first_cpm,
+            second_cpm,
+            genes,
+            args.gene_supervision.expanduser().resolve(),
+        )
     args.json_output.parent.mkdir(parents=True, exist_ok=True)
     args.markdown_output.parent.mkdir(parents=True, exist_ok=True)
     args.json_output.write_text(json.dumps(result, indent=2) + "\n")
-    args.markdown_output.write_text(
+    markdown = (
         "# Liu RNA split-half reliability\n\n"
         "Biological samples were assigned independently for each cell group to two greedily library-depth-balanced halves. Counts were summed and normalized to counts per million, CPM, within each half. The Spearman-Brown correction estimates reliability of the complete pseudobulk from equal-half correlation.\n\n"
         "| Quantity | Value |\n|---|---:|\n"
@@ -111,6 +162,23 @@ def main() -> None:
         f"| log1p CPM split-half double-centered R | {log_r:.4f} |\n"
         f"| log1p CPM estimated full-pseudobulk reliability | {result['log1p_cpm_full_reliability_estimate']:.4f} |\n"
     )
+    chromosome_rows = result.get("chromosome_reliability")
+    if chromosome_rows:
+        markdown += (
+            "\n## Chromosome strata\n\n"
+            "CPM normalization remains genome-wide before genes are stratified. This table therefore measures target reliability on each chromosome in the same expression units used for evaluation.\n\n"
+            "| Chromosome | Genes | Raw CPM split-half R | Raw CPM full reliability | log1p CPM split-half R | log1p CPM full reliability |\n"
+            "|---|---:|---:|---:|---:|---:|\n"
+        )
+        for chromosome, row in chromosome_rows.items():
+            markdown += (
+                f"| {chromosome} | {row['genes']} | "
+                f"{row['raw_cpm_double_centered_r']:.4f} | "
+                f"{row['raw_cpm_full_reliability_estimate']:.4f} | "
+                f"{row['log1p_cpm_double_centered_r']:.4f} | "
+                f"{row['log1p_cpm_full_reliability_estimate']:.4f} |\n"
+            )
+    args.markdown_output.write_text(markdown)
     print(json.dumps(result, indent=2))
 
 
