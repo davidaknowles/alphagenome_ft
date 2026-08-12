@@ -3,8 +3,10 @@ import json
 import h5py
 import numpy as np
 import pandas as pd
+import pytest
 
 from scripts.v0data.zemke2024_rna_reprocessing.prepare_gene_supervision import (
+    audit_molecule_discrepancy,
     retained_raw_feature_mask,
     target_groups_and_validity,
 )
@@ -105,8 +107,21 @@ def test_zemke2024_donor_smoke_recovers_metadata_molecules(tmp_path):
     assert result == {
         "donor": "hc1",
         "cells": 2,
-        "rna_molecules": 10,
+        "filtered_raw_molecules": 10,
+        "metadata_nCount_RNA": 10,
+        "molecule_difference": 0,
+        "relative_molecule_discrepancy": 0.0,
         "gene_features": 2,
         "valid_groups": 1,
         "nonempty_groups": 1,
     }
+
+
+def test_molecule_discrepancy_enforces_relative_limit():
+    with pytest.raises(ValueError, match="above the 0.1000% limit"):
+        audit_molecule_discrepancy(
+            np.asarray([1002]),
+            np.asarray([1000]),
+            donor="hc1",
+            maximum_relative_discrepancy=0.001,
+        )

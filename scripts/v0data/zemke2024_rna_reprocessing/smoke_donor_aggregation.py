@@ -17,6 +17,7 @@ if str(REPO_ROOT) not in sys.path:
 
 from alphagenome_ft.finetune.reprocessing import aggregate_10x_h5_columns_by_group
 from scripts.v0data.zemke2024_rna_reprocessing.prepare_gene_supervision import (
+    audit_molecule_discrepancy,
     bare_barcodes_for_donor,
     read_filtered_seurat_features,
     retained_raw_feature_mask,
@@ -31,8 +32,9 @@ def smoke_donor(
     metadata_path: Path,
     filtered_seurat_path: Path,
     targets_path: Path,
+    maximum_relative_molecule_discrepancy: float = 0.001,
 ) -> dict[str, object]:
-    """Aggregate one donor and require exact metadata count recovery."""
+    """Aggregate one donor and audit metadata count recovery."""
     config = json.loads(targets_path.read_text())
     target_groups, group_valid = target_groups_and_validity(config)
     valid_groups = tuple(group for group, valid in zip(target_groups, group_valid) if valid)
@@ -75,12 +77,15 @@ def smoke_donor(
     if not np.array_equal(n_cells, expected_cells.to_numpy(dtype=np.int64)):
         raise ValueError(f"Donor {donor} retained cell counts do not match metadata.")
     observed_molecules = counts.sum(axis=1)
-    if not np.array_equal(observed_molecules, expected_molecules.to_numpy(dtype=np.float64)):
-        raise ValueError(f"Donor {donor} RNA molecule totals do not match metadata.")
+    molecule_audit = audit_molecule_discrepancy(
+        observed_molecules,
+        expected_molecules.to_numpy(dtype=np.float64),
+        donor=donor,
+        maximum_relative_discrepancy=maximum_relative_molecule_discrepancy,
+    )
     return {
-        "donor": donor,
+        **molecule_audit,
         "cells": int(n_cells.sum()),
-        "rna_molecules": int(observed_molecules.sum()),
         "gene_features": len(feature_ids),
         "valid_groups": len(valid_groups),
         "nonempty_groups": int(np.count_nonzero(n_cells)),
@@ -95,6 +100,7 @@ def main() -> None:
     parser.add_argument("--filtered-seurat", required=True, type=Path)
     parser.add_argument("--targets", required=True, type=Path)
     parser.add_argument("--output", type=Path)
+    parser.add_argument("--maximum-relative-molecule-discrepancy", type=float, default=0.001)
     args = parser.parse_args()
     result = smoke_donor(
         donor=args.donor,
@@ -102,6 +108,7 @@ def main() -> None:
         metadata_path=args.metadata,
         filtered_seurat_path=args.filtered_seurat,
         targets_path=args.targets,
+        maximum_relative_molecule_discrepancy=args.maximum_relative_molecule_discrepancy,
     )
     rendered = json.dumps(result, indent=2) + "\n"
     if args.output is not None:
