@@ -2,6 +2,8 @@
 
 This directory contains dataset-specific preparation and experiment launchers for comparing low-rank adaptation, LoRA, with LoRA plus low-rank convolution adaptation, LoCon. All comparisons use the same 131,072 bp chromosome holdouts, initialization, optimizer settings, and signed double-centered Pearson correlation for model selection.
 
+The current machine-readable and Markdown snapshots are `results/v0data_adapter_comparisons.json` and `results/v0data_adapter_comparisons.md`. Regenerate both with `collate_adapter_comparisons.py` after an evaluation checkpoint completes. The selected epoch maximizes mean validation signed double-centered correlation across heads; compare adapter strategies at matched epochs while training remains active.
+
 `prepare_study_targets.py` creates deterministic manifests from published BigWigs. RNA heads receive the exact base-weighted mean over finite positive values for each track because the AlphaGenome RNA output transform uses this quantity for channel scaling. ATAC tracks remain in their native published units because earlier scalar and quantile normalization screens did not improve Allen performance.
 
 The published-track comparison includes the Mannens fetal-brain ATAC panel, paired Mannens ATAC/RNA targets, all four Zemke 2023 motor-cortex species, and the all-age Zemke 2024 hippocampus ATAC/RNA panel. The all-age Zemke 2024 panel avoids mixing biological age effects into the first adapter comparison. Age-stratified channels will be evaluated after the shared cell-type baseline.

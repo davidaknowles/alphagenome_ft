@@ -100,7 +100,7 @@ def render_markdown(results: dict[str, Any]) -> str:
     lines = [
         "# Adapter comparison results",
         "",
-        "Each run is selected by the mean validation signed double-centered Pearson correlation across its heads. Per-head test values come from that same epoch.",
+        "Each run is selected by the mean validation signed double-centered Pearson correlation across its heads. Per-head test values come from that same epoch. Runs can have different maximum epochs while training is active, so strategy conclusions require a matched-epoch comparison.",
         "",
         "| Dataset | Strategy | Epoch | Head | Validation R | Test R |",
         "|---|---|---:|---|---:|---:|",
