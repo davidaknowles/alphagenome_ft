@@ -84,3 +84,39 @@ def test_canonical_chromosomes_accepts_refseq_accessions() -> None:
 
     assert chromosomes == ["NC_041754.1"]
     np.testing.assert_array_equal(probabilities, np.asarray([1.0]))
+
+
+def test_audit_counts_uncovered_bases_as_zero(tmp_path: Path) -> None:
+    paths = [tmp_path / f"partial_{index}.bw" for index in range(2)]
+    for path in paths:
+        with pyBigWig.open(str(path), "w") as handle:
+            handle.addHeader([("chr1", 100)])
+            handle.addEntries(["chr1"], [0], ends=[5], values=[10.0])
+    manifest_path = tmp_path / "targets.json"
+    manifest_path.write_text(
+        json.dumps(
+            {
+                "dataset": "partial",
+                "heads": [
+                    {
+                        "id": "atac",
+                        "kind": "atac",
+                        "targets": [{"path": str(path)} for path in paths],
+                    }
+                ],
+            }
+        )
+    )
+
+    result = audit_manifest(
+        manifest_path,
+        num_windows=1,
+        window_size=100,
+        num_bins=10,
+        excluded_chromosomes=set(),
+        seed=3,
+    )
+
+    head = result["heads"][0]
+    assert head["nonzero_fraction"] == 0.1
+    assert head["standard_deviation"] == 1.5

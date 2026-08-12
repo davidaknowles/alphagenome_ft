@@ -41,6 +41,11 @@ def _sample_head(
     rng: np.random.Generator,
     workers: int,
 ) -> dict[str, Any]:
+    if window_size % num_bins:
+        raise ValueError(
+            f"Window size {window_size} must be divisible by bin count {num_bins}."
+        )
+    bin_width = window_size // num_bins
     targets = head["targets"]
     first_handle = pyBigWig.open(targets[0]["path"])
     try:
@@ -65,15 +70,14 @@ def _sample_head(
                 )
             windows = []
             for chromosome, start in regions:
-                values = handle.stats(
+                values = handle.values(
                     chromosome,
                     start,
                     start + window_size,
-                    nBins=num_bins,
-                    type="mean",
-                    exact=False,
+                    numpy=True,
                 )
-                windows.append(np.nan_to_num(np.asarray(values, dtype=np.float64), nan=0.0))
+                dense = np.nan_to_num(np.asarray(values, dtype=np.float64), nan=0.0)
+                windows.append(dense.reshape(num_bins, bin_width).mean(axis=1))
             return np.stack(windows)
         finally:
             handle.close()
