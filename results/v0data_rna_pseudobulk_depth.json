@@ -1,0 +1,2603 @@
+{
+  "audits": {
+    "liu": {
+      "num_groups": 186,
+      "retained_groups": 140,
+      "spearman_log_atac_vs_log_expression_depth": 0.7901151107982227,
+      "spearman_log_atac_vs_log_cells": 0.8699235623378734,
+      "all_cell_quantiles": {
+        "0.0": 93.0,
+        "0.1": 585.5,
+        "0.25": 1103.0,
+        "0.5": 3076.0,
+        "0.75": 5672.0,
+        "0.9": 9287.0,
+        "1.0": 33620.0
+      },
+      "retained_cell_quantiles": {
+        "0.0": 632.0,
+        "0.1": 1428.3,
+        "0.25": 2360.0,
+        "0.5": 3966.5,
+        "0.75": 6499.75,
+        "0.9": 10144.200000000003,
+        "1.0": 33620.0
+      },
+      "all_expression_depth_quantiles": {
+        "0.0": 531551.0,
+        "0.1": 1839450.5,
+        "0.25": 3664244.0,
+        "0.5": 9047946.0,
+        "0.75": 16818778.25,
+        "0.9": 32118905.5,
+        "1.0": 109477091.0
+      },
+      "retained_expression_depth_quantiles": {
+        "0.0": 1676877.0,
+        "0.1": 3924270.0,
+        "0.25": 6452601.5,
+        "0.5": 12657286.5,
+        "0.75": 22356680.75,
+        "0.9": 44815290.20000002,
+        "1.0": 109477091.0
+      },
+      "retained_below_500_cells": 0,
+      "retained_below_1000_cells": 4,
+      "tracks": [
+        {
+          "group": "LI_13",
+          "atac_fragments": 9306851,
+          "expression_depth": 2435404.0,
+          "cells": 1004,
+          "retained": false
+        },
+        {
+          "group": "LI_3",
+          "atac_fragments": 86323892,
+          "expression_depth": 15442109.0,
+          "cells": 8171,
+          "retained": true
+        },
+        {
+          "group": "LI_6",
+          "atac_fragments": 42818020,
+          "expression_depth": 9599027.0,
+          "cells": 3701,
+          "retained": true
+        },
+        {
+          "group": "LI_1",
+          "atac_fragments": 134523965,
+          "expression_depth": 34687708.0,
+          "cells": 14247,
+          "retained": true
+        },
+        {
+          "group": "LI_4",
+          "atac_fragments": 31993089,
+          "expression_depth": 16769492.0,
+          "cells": 3807,
+          "retained": true
+        },
+        {
+          "group": "AG_2",
+          "atac_fragments": 3794371,
+          "expression_depth": 6549278.0,
+          "cells": 511,
+          "retained": false
+        },
+        {
+          "group": "AG_0",
+          "atac_fragments": 7495497,
+          "expression_depth": 8986448.0,
+          "cells": 823,
+          "retained": false
+        },
+        {
+          "group": "AG_3",
+          "atac_fragments": 3624606,
+          "expression_depth": 3342564.0,
+          "cells": 483,
+          "retained": false
+        },
+        {
+          "group": "LU_14",
+          "atac_fragments": 39045250,
+          "expression_depth": 18932110.0,
+          "cells": 3041,
+          "retained": true
+        },
+        {
+          "group": "ST_16",
+          "atac_fragments": 10567159,
+          "expression_depth": 3384684.0,
+          "cells": 1289,
+          "retained": true
+        },
+        {
+          "group": "EY_0",
+          "atac_fragments": 67322630,
+          "expression_depth": 21772910.0,
+          "cells": 10546,
+          "retained": true
+        },
+        {
+          "group": "BR_1",
+          "atac_fragments": 43290651,
+          "expression_depth": 74026014.0,
+          "cells": 9436,
+          "retained": true
+        },
+        {
+          "group": "BR_15",
+          "atac_fragments": 4948055,
+          "expression_depth": 8991065.0,
+          "cells": 1070,
+          "retained": false
+        },
+        {
+          "group": "EY_8",
+          "atac_fragments": 15940901,
+          "expression_depth": 6707182.0,
+          "cells": 2592,
+          "retained": true
+        },
+        {
+          "group": "EY_2",
+          "atac_fragments": 37278878,
+          "expression_depth": 9071696.0,
+          "cells": 6100,
+          "retained": true
+        },
+        {
+          "group": "EY_7",
+          "atac_fragments": 22226858,
+          "expression_depth": 5619355.0,
+          "cells": 2907,
+          "retained": true
+        },
+        {
+          "group": "ST_9",
+          "atac_fragments": 43787944,
+          "expression_depth": 16646829.0,
+          "cells": 4256,
+          "retained": true
+        },
+        {
+          "group": "BR_14",
+          "atac_fragments": 6472040,
+          "expression_depth": 14475991.0,
+          "cells": 2996,
+          "retained": false
+        },
+        {
+          "group": "BR_4",
+          "atac_fragments": 10053391,
+          "expression_depth": 14346655.0,
+          "cells": 4766,
+          "retained": true
+        },
+        {
+          "group": "BR_0",
+          "atac_fragments": 22038605,
+          "expression_depth": 37845192.0,
+          "cells": 9750,
+          "retained": true
+        },
+        {
+          "group": "BR_3",
+          "atac_fragments": 37495583,
+          "expression_depth": 78670751.0,
+          "cells": 4939,
+          "retained": true
+        },
+        {
+          "group": "BR_10",
+          "atac_fragments": 9515380,
+          "expression_depth": 16318171.0,
+          "cells": 3502,
+          "retained": false
+        },
+        {
+          "group": "BR_9",
+          "atac_fragments": 12525494,
+          "expression_depth": 22298180.0,
+          "cells": 3812,
+          "retained": true
+        },
+        {
+          "group": "BR_2",
+          "atac_fragments": 32187431,
+          "expression_depth": 59881635.0,
+          "cells": 6705,
+          "retained": true
+        },
+        {
+          "group": "BR_6",
+          "atac_fragments": 41795549,
+          "expression_depth": 85287175.0,
+          "cells": 4463,
+          "retained": true
+        },
+        {
+          "group": "BR_5",
+          "atac_fragments": 21399745,
+          "expression_depth": 46600177.0,
+          "cells": 4721,
+          "retained": true
+        },
+        {
+          "group": "BR_7",
+          "atac_fragments": 24746006,
+          "expression_depth": 28098358.0,
+          "cells": 4405,
+          "retained": true
+        },
+        {
+          "group": "BR_12",
+          "atac_fragments": 20870124,
+          "expression_depth": 33229875.0,
+          "cells": 3372,
+          "retained": true
+        },
+        {
+          "group": "EY_6",
+          "atac_fragments": 41642058,
+          "expression_depth": 22899292.0,
+          "cells": 3616,
+          "retained": true
+        },
+        {
+          "group": "EY_11",
+          "atac_fragments": 15883494,
+          "expression_depth": 6302019.0,
+          "cells": 2303,
+          "retained": true
+        },
+        {
+          "group": "EY_3",
+          "atac_fragments": 35039458,
+          "expression_depth": 11203205.0,
+          "cells": 5672,
+          "retained": true
+        },
+        {
+          "group": "LI_12",
+          "atac_fragments": 12303232,
+          "expression_depth": 2702155.0,
+          "cells": 1042,
+          "retained": true
+        },
+        {
+          "group": "LU_17",
+          "atac_fragments": 3519555,
+          "expression_depth": 1190872.0,
+          "cells": 284,
+          "retained": false
+        },
+        {
+          "group": "LI_0",
+          "atac_fragments": 124569622,
+          "expression_depth": 29737779.0,
+          "cells": 16461,
+          "retained": true
+        },
+        {
+          "group": "LI_5",
+          "atac_fragments": 38936608,
+          "expression_depth": 8361427.0,
+          "cells": 3762,
+          "retained": true
+        },
+        {
+          "group": "LI_2",
+          "atac_fragments": 48164328,
+          "expression_depth": 13046149.0,
+          "cells": 8716,
+          "retained": true
+        },
+        {
+          "group": "LI_8",
+          "atac_fragments": 19917377,
+          "expression_depth": 4989396.0,
+          "cells": 2362,
+          "retained": true
+        },
+        {
+          "group": "EY_18",
+          "atac_fragments": 5414665,
+          "expression_depth": 2049220.0,
+          "cells": 640,
+          "retained": false
+        },
+        {
+          "group": "SP_8",
+          "atac_fragments": 19266367,
+          "expression_depth": 2408474.0,
+          "cells": 1462,
+          "retained": true
+        },
+        {
+          "group": "SP_10",
+          "atac_fragments": 21079210,
+          "expression_depth": 2085063.0,
+          "cells": 1310,
+          "retained": true
+        },
+        {
+          "group": "SP_3",
+          "atac_fragments": 47907494,
+          "expression_depth": 5379342.0,
+          "cells": 3866,
+          "retained": true
+        },
+        {
+          "group": "SP_9",
+          "atac_fragments": 13870823,
+          "expression_depth": 1679648.0,
+          "cells": 1413,
+          "retained": true
+        },
+        {
+          "group": "TM_6",
+          "atac_fragments": 57314209,
+          "expression_depth": 12278232.0,
+          "cells": 2783,
+          "retained": true
+        },
+        {
+          "group": "LI_11",
+          "atac_fragments": 9263473,
+          "expression_depth": 2096148.0,
+          "cells": 1154,
+          "retained": false
+        },
+        {
+          "group": "TM_12",
+          "atac_fragments": 9663969,
+          "expression_depth": 2101234.0,
+          "cells": 554,
+          "retained": false
+        },
+        {
+          "group": "TM_11",
+          "atac_fragments": 18669018,
+          "expression_depth": 3375005.0,
+          "cells": 787,
+          "retained": true
+        },
+        {
+          "group": "TM_15",
+          "atac_fragments": 4089718,
+          "expression_depth": 960900.0,
+          "cells": 290,
+          "retained": false
+        },
+        {
+          "group": "TM_0",
+          "atac_fragments": 94995454,
+          "expression_depth": 18159878.0,
+          "cells": 9138,
+          "retained": true
+        },
+        {
+          "group": "TM_2",
+          "atac_fragments": 119306192,
+          "expression_depth": 22532183.0,
+          "cells": 5635,
+          "retained": true
+        },
+        {
+          "group": "TM_1",
+          "atac_fragments": 73625673,
+          "expression_depth": 16835207.0,
+          "cells": 6268,
+          "retained": true
+        },
+        {
+          "group": "BR_17",
+          "atac_fragments": 1458794,
+          "expression_depth": 2501161.0,
+          "cells": 335,
+          "retained": false
+        },
+        {
+          "group": "LI_7",
+          "atac_fragments": 33769326,
+          "expression_depth": 8077236.0,
+          "cells": 3467,
+          "retained": true
+        },
+        {
+          "group": "SP_5",
+          "atac_fragments": 41294044,
+          "expression_depth": 4070571.0,
+          "cells": 2635,
+          "retained": true
+        },
+        {
+          "group": "HT_14",
+          "atac_fragments": 6267524,
+          "expression_depth": 3290830.0,
+          "cells": 869,
+          "retained": false
+        },
+        {
+          "group": "LU_12",
+          "atac_fragments": 34387206,
+          "expression_depth": 10853609.0,
+          "cells": 3747,
+          "retained": true
+        },
+        {
+          "group": "ST_19",
+          "atac_fragments": 4016533,
+          "expression_depth": 1335858.0,
+          "cells": 595,
+          "retained": false
+        },
+        {
+          "group": "MU_15",
+          "atac_fragments": 15243330,
+          "expression_depth": 6456374.0,
+          "cells": 1755,
+          "retained": true
+        },
+        {
+          "group": "SK_15",
+          "atac_fragments": 10291586,
+          "expression_depth": 1676877.0,
+          "cells": 632,
+          "retained": true
+        },
+        {
+          "group": "LU_3",
+          "atac_fragments": 219800578,
+          "expression_depth": 72133122.0,
+          "cells": 13959,
+          "retained": true
+        },
+        {
+          "group": "LU_15",
+          "atac_fragments": 24925627,
+          "expression_depth": 9024196.0,
+          "cells": 1709,
+          "retained": true
+        },
+        {
+          "group": "ST_13",
+          "atac_fragments": 17485663,
+          "expression_depth": 7453794.0,
+          "cells": 2197,
+          "retained": true
+        },
+        {
+          "group": "ST_4",
+          "atac_fragments": 43602089,
+          "expression_depth": 22788230.0,
+          "cells": 5869,
+          "retained": true
+        },
+        {
+          "group": "ST_15",
+          "atac_fragments": 20264120,
+          "expression_depth": 11538416.0,
+          "cells": 1430,
+          "retained": true
+        },
+        {
+          "group": "ST_0",
+          "atac_fragments": 92463523,
+          "expression_depth": 26804751.0,
+          "cells": 11861,
+          "retained": true
+        },
+        {
+          "group": "ST_3",
+          "atac_fragments": 58649922,
+          "expression_depth": 18764605.0,
+          "cells": 6473,
+          "retained": true
+        },
+        {
+          "group": "LU_5",
+          "atac_fragments": 98710716,
+          "expression_depth": 23498830.0,
+          "cells": 10353,
+          "retained": true
+        },
+        {
+          "group": "LU_0",
+          "atac_fragments": 312508692,
+          "expression_depth": 70610573.0,
+          "cells": 28899,
+          "retained": true
+        },
+        {
+          "group": "LU_10",
+          "atac_fragments": 34037404,
+          "expression_depth": 27663191.0,
+          "cells": 6086,
+          "retained": true
+        },
+        {
+          "group": "BR_13",
+          "atac_fragments": 11347207,
+          "expression_depth": 7768807.0,
+          "cells": 3234,
+          "retained": true
+        },
+        {
+          "group": "MU_8",
+          "atac_fragments": 20447680,
+          "expression_depth": 7985321.0,
+          "cells": 4571,
+          "retained": true
+        },
+        {
+          "group": "SK_17",
+          "atac_fragments": 5567500,
+          "expression_depth": 900127.0,
+          "cells": 243,
+          "retained": false
+        },
+        {
+          "group": "SK_18",
+          "atac_fragments": 5399826,
+          "expression_depth": 887317.0,
+          "cells": 226,
+          "retained": false
+        },
+        {
+          "group": "SK_2",
+          "atac_fragments": 101768871,
+          "expression_depth": 15842653.0,
+          "cells": 6480,
+          "retained": true
+        },
+        {
+          "group": "SK_12",
+          "atac_fragments": 28113240,
+          "expression_depth": 3993730.0,
+          "cells": 1731,
+          "retained": true
+        },
+        {
+          "group": "HT_5",
+          "atac_fragments": 108151617,
+          "expression_depth": 84785033.0,
+          "cells": 8102,
+          "retained": true
+        },
+        {
+          "group": "HT_8",
+          "atac_fragments": 48903182,
+          "expression_depth": 27300060.0,
+          "cells": 5654,
+          "retained": true
+        },
+        {
+          "group": "HT_7",
+          "atac_fragments": 35055269,
+          "expression_depth": 11509314.0,
+          "cells": 5716,
+          "retained": true
+        },
+        {
+          "group": "HT_1",
+          "atac_fragments": 80210994,
+          "expression_depth": 44647884.0,
+          "cells": 14883,
+          "retained": true
+        },
+        {
+          "group": "HT_0",
+          "atac_fragments": 167333912,
+          "expression_depth": 109477091.0,
+          "cells": 33620,
+          "retained": true
+        },
+        {
+          "group": "HT_15",
+          "atac_fragments": 8832946,
+          "expression_depth": 4533768.0,
+          "cells": 528,
+          "retained": false
+        },
+        {
+          "group": "HT_2",
+          "atac_fragments": 108419827,
+          "expression_depth": 75013596.0,
+          "cells": 13925,
+          "retained": true
+        },
+        {
+          "group": "SP_2",
+          "atac_fragments": 47863235,
+          "expression_depth": 5793311.0,
+          "cells": 3925,
+          "retained": true
+        },
+        {
+          "group": "SP_6",
+          "atac_fragments": 30734580,
+          "expression_depth": 3519641.0,
+          "cells": 2012,
+          "retained": true
+        },
+        {
+          "group": "BR_16",
+          "atac_fragments": 8230713,
+          "expression_depth": 12782963.0,
+          "cells": 648,
+          "retained": false
+        },
+        {
+          "group": "HT_11",
+          "atac_fragments": 30748340,
+          "expression_depth": 19055737.0,
+          "cells": 2438,
+          "retained": true
+        },
+        {
+          "group": "LI_10",
+          "atac_fragments": 18632143,
+          "expression_depth": 4278271.0,
+          "cells": 1674,
+          "retained": true
+        },
+        {
+          "group": "MU_5",
+          "atac_fragments": 61769137,
+          "expression_depth": 27082954.0,
+          "cells": 5955,
+          "retained": true
+        },
+        {
+          "group": "SK_4",
+          "atac_fragments": 81481389,
+          "expression_depth": 14615120.0,
+          "cells": 4889,
+          "retained": true
+        },
+        {
+          "group": "EY_9",
+          "atac_fragments": 22073182,
+          "expression_depth": 8001734.0,
+          "cells": 2451,
+          "retained": true
+        },
+        {
+          "group": "HT_4",
+          "atac_fragments": 123004129,
+          "expression_depth": 66119821.0,
+          "cells": 8253,
+          "retained": true
+        },
+        {
+          "group": "ST_10",
+          "atac_fragments": 40173177,
+          "expression_depth": 13712985.0,
+          "cells": 3381,
+          "retained": true
+        },
+        {
+          "group": "LU_2",
+          "atac_fragments": 261419114,
+          "expression_depth": 82751305.0,
+          "cells": 21309,
+          "retained": true
+        },
+        {
+          "group": "LU_11",
+          "atac_fragments": 45844749,
+          "expression_depth": 16403143.0,
+          "cells": 3748,
+          "retained": true
+        },
+        {
+          "group": "SK_13",
+          "atac_fragments": 18447753,
+          "expression_depth": 3285238.0,
+          "cells": 1171,
+          "retained": true
+        },
+        {
+          "group": "ST_20",
+          "atac_fragments": 6288891,
+          "expression_depth": 2102275.0,
+          "cells": 383,
+          "retained": false
+        },
+        {
+          "group": "TR_6",
+          "atac_fragments": 3594323,
+          "expression_depth": 1024300.0,
+          "cells": 299,
+          "retained": false
+        },
+        {
+          "group": "TR_0",
+          "atac_fragments": 12980789,
+          "expression_depth": 2692011.0,
+          "cells": 2956,
+          "retained": true
+        },
+        {
+          "group": "TR_1",
+          "atac_fragments": 14274317,
+          "expression_depth": 3564234.0,
+          "cells": 1833,
+          "retained": true
+        },
+        {
+          "group": "EY_5",
+          "atac_fragments": 37496616,
+          "expression_depth": 21062139.0,
+          "cells": 4008,
+          "retained": true
+        },
+        {
+          "group": "MU_18",
+          "atac_fragments": 10430061,
+          "expression_depth": 5092384.0,
+          "cells": 1006,
+          "retained": true
+        },
+        {
+          "group": "MU_0",
+          "atac_fragments": 106789080,
+          "expression_depth": 51547452.0,
+          "cells": 12909,
+          "retained": true
+        },
+        {
+          "group": "MU_16",
+          "atac_fragments": 15177361,
+          "expression_depth": 10872317.0,
+          "cells": 1263,
+          "retained": true
+        },
+        {
+          "group": "TM_3",
+          "atac_fragments": 50969876,
+          "expression_depth": 17267125.0,
+          "cells": 5033,
+          "retained": true
+        },
+        {
+          "group": "TM_14",
+          "atac_fragments": 4493598,
+          "expression_depth": 1718110.0,
+          "cells": 358,
+          "retained": false
+        },
+        {
+          "group": "TM_7",
+          "atac_fragments": 20006087,
+          "expression_depth": 6441284.0,
+          "cells": 1332,
+          "retained": true
+        },
+        {
+          "group": "TM_4",
+          "atac_fragments": 29860492,
+          "expression_depth": 20827010.0,
+          "cells": 3228,
+          "retained": true
+        },
+        {
+          "group": "TM_9",
+          "atac_fragments": 16884361,
+          "expression_depth": 5141552.0,
+          "cells": 868,
+          "retained": true
+        },
+        {
+          "group": "TM_8",
+          "atac_fragments": 9842634,
+          "expression_depth": 2893139.0,
+          "cells": 1086,
+          "retained": false
+        },
+        {
+          "group": "TM_10",
+          "atac_fragments": 10362846,
+          "expression_depth": 2945449.0,
+          "cells": 812,
+          "retained": true
+        },
+        {
+          "group": "TM_5",
+          "atac_fragments": 34997057,
+          "expression_depth": 10229383.0,
+          "cells": 2959,
+          "retained": true
+        },
+        {
+          "group": "MU_2",
+          "atac_fragments": 29021958,
+          "expression_depth": 24305058.0,
+          "cells": 7879,
+          "retained": true
+        },
+        {
+          "group": "MU_10",
+          "atac_fragments": 13120380,
+          "expression_depth": 10514578.0,
+          "cells": 4136,
+          "retained": true
+        },
+        {
+          "group": "HT_6",
+          "atac_fragments": 83127782,
+          "expression_depth": 15320697.0,
+          "cells": 7147,
+          "retained": true
+        },
+        {
+          "group": "HT_12",
+          "atac_fragments": 22242755,
+          "expression_depth": 4589554.0,
+          "cells": 1728,
+          "retained": true
+        },
+        {
+          "group": "ST_18",
+          "atac_fragments": 12466172,
+          "expression_depth": 3135755.0,
+          "cells": 1003,
+          "retained": true
+        },
+        {
+          "group": "SK_8",
+          "atac_fragments": 47503887,
+          "expression_depth": 10102378.0,
+          "cells": 2354,
+          "retained": true
+        },
+        {
+          "group": "SK_11",
+          "atac_fragments": 21179089,
+          "expression_depth": 4447109.0,
+          "cells": 1799,
+          "retained": true
+        },
+        {
+          "group": "SK_16",
+          "atac_fragments": 5733518,
+          "expression_depth": 1001400.0,
+          "cells": 323,
+          "retained": false
+        },
+        {
+          "group": "TM_17",
+          "atac_fragments": 2035525,
+          "expression_depth": 531551.0,
+          "cells": 93,
+          "retained": false
+        },
+        {
+          "group": "AG_1",
+          "atac_fragments": 3298953,
+          "expression_depth": 4397646.0,
+          "cells": 576,
+          "retained": false
+        },
+        {
+          "group": "TR_5",
+          "atac_fragments": 4410470,
+          "expression_depth": 1227547.0,
+          "cells": 643,
+          "retained": false
+        },
+        {
+          "group": "TR_3",
+          "atac_fragments": 5105696,
+          "expression_depth": 1830484.0,
+          "cells": 842,
+          "retained": false
+        },
+        {
+          "group": "TR_4",
+          "atac_fragments": 5228791,
+          "expression_depth": 1383865.0,
+          "cells": 781,
+          "retained": false
+        },
+        {
+          "group": "TR_2",
+          "atac_fragments": 8269781,
+          "expression_depth": 2526752.0,
+          "cells": 1280,
+          "retained": false
+        },
+        {
+          "group": "SP_11",
+          "atac_fragments": 9548687,
+          "expression_depth": 1259160.0,
+          "cells": 605,
+          "retained": false
+        },
+        {
+          "group": "SP_0",
+          "atac_fragments": 112340303,
+          "expression_depth": 13509571.0,
+          "cells": 6992,
+          "retained": true
+        },
+        {
+          "group": "SP_4",
+          "atac_fragments": 47447931,
+          "expression_depth": 6202512.0,
+          "cells": 2645,
+          "retained": true
+        },
+        {
+          "group": "SP_7",
+          "atac_fragments": 34052173,
+          "expression_depth": 4625732.0,
+          "cells": 1787,
+          "retained": true
+        },
+        {
+          "group": "EY_10",
+          "atac_fragments": 23944145,
+          "expression_depth": 7395372.0,
+          "cells": 2441,
+          "retained": true
+        },
+        {
+          "group": "EY_15",
+          "atac_fragments": 9686136,
+          "expression_depth": 2908043.0,
+          "cells": 1081,
+          "retained": false
+        },
+        {
+          "group": "EY_12",
+          "atac_fragments": 14015123,
+          "expression_depth": 5085224.0,
+          "cells": 2141,
+          "retained": true
+        },
+        {
+          "group": "EY_1",
+          "atac_fragments": 36412968,
+          "expression_depth": 14757099.0,
+          "cells": 6420,
+          "retained": true
+        },
+        {
+          "group": "EY_4",
+          "atac_fragments": 28338895,
+          "expression_depth": 10848886.0,
+          "cells": 4704,
+          "retained": true
+        },
+        {
+          "group": "ST_17",
+          "atac_fragments": 4545946,
+          "expression_depth": 2626232.0,
+          "cells": 1070,
+          "retained": false
+        },
+        {
+          "group": "ST_7",
+          "atac_fragments": 28416596,
+          "expression_depth": 16686838.0,
+          "cells": 5518,
+          "retained": true
+        },
+        {
+          "group": "ST_11",
+          "atac_fragments": 23818889,
+          "expression_depth": 8464531.0,
+          "cells": 3130,
+          "retained": true
+        },
+        {
+          "group": "ST_2",
+          "atac_fragments": 75647197,
+          "expression_depth": 19157432.0,
+          "cells": 6860,
+          "retained": true
+        },
+        {
+          "group": "ST_1",
+          "atac_fragments": 33670356,
+          "expression_depth": 14827516.0,
+          "cells": 7577,
+          "retained": true
+        },
+        {
+          "group": "ST_14",
+          "atac_fragments": 11463378,
+          "expression_depth": 4479109.0,
+          "cells": 1893,
+          "retained": true
+        },
+        {
+          "group": "ST_5",
+          "atac_fragments": 33327315,
+          "expression_depth": 10978039.0,
+          "cells": 5672,
+          "retained": true
+        },
+        {
+          "group": "ST_6",
+          "atac_fragments": 31669480,
+          "expression_depth": 12145074.0,
+          "cells": 5555,
+          "retained": true
+        },
+        {
+          "group": "LU_16",
+          "atac_fragments": 5224513,
+          "expression_depth": 1826935.0,
+          "cells": 395,
+          "retained": false
+        },
+        {
+          "group": "ST_21",
+          "atac_fragments": 2745221,
+          "expression_depth": 921815.0,
+          "cells": 243,
+          "retained": false
+        },
+        {
+          "group": "LU_6",
+          "atac_fragments": 98923671,
+          "expression_depth": 31826277.0,
+          "cells": 9897,
+          "retained": true
+        },
+        {
+          "group": "MU_19",
+          "atac_fragments": 4975089,
+          "expression_depth": 1848417.0,
+          "cells": 928,
+          "retained": false
+        },
+        {
+          "group": "LU_13",
+          "atac_fragments": 15938073,
+          "expression_depth": 13520271.0,
+          "cells": 3507,
+          "retained": true
+        },
+        {
+          "group": "BR_11",
+          "atac_fragments": 10035055,
+          "expression_depth": 8307798.0,
+          "cells": 3373,
+          "retained": true
+        },
+        {
+          "group": "MU_1",
+          "atac_fragments": 37631691,
+          "expression_depth": 13545659.0,
+          "cells": 8838,
+          "retained": true
+        },
+        {
+          "group": "LU_4",
+          "atac_fragments": 91885618,
+          "expression_depth": 24925800.0,
+          "cells": 12194,
+          "retained": true
+        },
+        {
+          "group": "LU_7",
+          "atac_fragments": 28875958,
+          "expression_depth": 16481144.0,
+          "cells": 8418,
+          "retained": true
+        },
+        {
+          "group": "LU_1",
+          "atac_fragments": 165729831,
+          "expression_depth": 46321946.0,
+          "cells": 22426,
+          "retained": true
+        },
+        {
+          "group": "LU_9",
+          "atac_fragments": 57113214,
+          "expression_depth": 18949641.0,
+          "cells": 6559,
+          "retained": true
+        },
+        {
+          "group": "MU_6",
+          "atac_fragments": 86325578,
+          "expression_depth": 32411534.0,
+          "cells": 5944,
+          "retained": true
+        },
+        {
+          "group": "BR_8",
+          "atac_fragments": 38879415,
+          "expression_depth": 30576139.0,
+          "cells": 4070,
+          "retained": true
+        },
+        {
+          "group": "MU_11",
+          "atac_fragments": 8695080,
+          "expression_depth": 4797670.0,
+          "cells": 3590,
+          "retained": false
+        },
+        {
+          "group": "EY_17",
+          "atac_fragments": 6373707,
+          "expression_depth": 2221023.0,
+          "cells": 686,
+          "retained": false
+        },
+        {
+          "group": "SK_10",
+          "atac_fragments": 31232394,
+          "expression_depth": 5268523.0,
+          "cells": 1878,
+          "retained": true
+        },
+        {
+          "group": "EY_13",
+          "atac_fragments": 13730676,
+          "expression_depth": 4936761.0,
+          "cells": 1932,
+          "retained": true
+        },
+        {
+          "group": "SK_7",
+          "atac_fragments": 55197495,
+          "expression_depth": 9312785.0,
+          "cells": 3111,
+          "retained": true
+        },
+        {
+          "group": "HT_13",
+          "atac_fragments": 12372086,
+          "expression_depth": 3563803.0,
+          "cells": 1036,
+          "retained": true
+        },
+        {
+          "group": "EY_16",
+          "atac_fragments": 6158572,
+          "expression_depth": 2967165.0,
+          "cells": 1017,
+          "retained": false
+        },
+        {
+          "group": "ST_8",
+          "atac_fragments": 43029130,
+          "expression_depth": 15635364.0,
+          "cells": 4858,
+          "retained": true
+        },
+        {
+          "group": "SK_14",
+          "atac_fragments": 7665307,
+          "expression_depth": 1475358.0,
+          "cells": 764,
+          "retained": false
+        },
+        {
+          "group": "SK_9",
+          "atac_fragments": 21980213,
+          "expression_depth": 3964274.0,
+          "cells": 2251,
+          "retained": true
+        },
+        {
+          "group": "SK_0",
+          "atac_fragments": 75341152,
+          "expression_depth": 13968543.0,
+          "cells": 9770,
+          "retained": true
+        },
+        {
+          "group": "SK_3",
+          "atac_fragments": 75450373,
+          "expression_depth": 12586396.0,
+          "cells": 5251,
+          "retained": true
+        },
+        {
+          "group": "MU_20",
+          "atac_fragments": 9686303,
+          "expression_depth": 6438337.0,
+          "cells": 921,
+          "retained": false
+        },
+        {
+          "group": "MU_13",
+          "atac_fragments": 32326978,
+          "expression_depth": 12610352.0,
+          "cells": 2660,
+          "retained": true
+        },
+        {
+          "group": "MU_21",
+          "atac_fragments": 7238175,
+          "expression_depth": 3109629.0,
+          "cells": 546,
+          "retained": false
+        },
+        {
+          "group": "MU_12",
+          "atac_fragments": 8092728,
+          "expression_depth": 6288124.0,
+          "cells": 3372,
+          "retained": false
+        },
+        {
+          "group": "MU_3",
+          "atac_fragments": 72891747,
+          "expression_depth": 30051499.0,
+          "cells": 7496,
+          "retained": true
+        },
+        {
+          "group": "EY_14",
+          "atac_fragments": 8225970,
+          "expression_depth": 4506899.0,
+          "cells": 1923,
+          "retained": false
+        },
+        {
+          "group": "MU_7",
+          "atac_fragments": 30781976,
+          "expression_depth": 13729162.0,
+          "cells": 5393,
+          "retained": true
+        },
+        {
+          "group": "MU_17",
+          "atac_fragments": 8233548,
+          "expression_depth": 5069297.0,
+          "cells": 1008,
+          "retained": false
+        },
+        {
+          "group": "MU_9",
+          "atac_fragments": 40839080,
+          "expression_depth": 14727243.0,
+          "cells": 4392,
+          "retained": true
+        },
+        {
+          "group": "MU_4",
+          "atac_fragments": 28012110,
+          "expression_depth": 12704221.0,
+          "cells": 6093,
+          "retained": true
+        },
+        {
+          "group": "LI_9",
+          "atac_fragments": 27386315,
+          "expression_depth": 6562031.0,
+          "cells": 2239,
+          "retained": true
+        },
+        {
+          "group": "HT_9",
+          "atac_fragments": 24429658,
+          "expression_depth": 12213950.0,
+          "cells": 3684,
+          "retained": true
+        },
+        {
+          "group": "MU_14",
+          "atac_fragments": 11519805,
+          "expression_depth": 4969916.0,
+          "cells": 1887,
+          "retained": true
+        },
+        {
+          "group": "SK_6",
+          "atac_fragments": 45510967,
+          "expression_depth": 7793096.0,
+          "cells": 3366,
+          "retained": true
+        },
+        {
+          "group": "ST_12",
+          "atac_fragments": 20048975,
+          "expression_depth": 6852294.0,
+          "cells": 2550,
+          "retained": true
+        },
+        {
+          "group": "HT_3",
+          "atac_fragments": 47020575,
+          "expression_depth": 24679191.0,
+          "cells": 10121,
+          "retained": true
+        },
+        {
+          "group": "HT_10",
+          "atac_fragments": 31041714,
+          "expression_depth": 16315609.0,
+          "cells": 2550,
+          "retained": true
+        },
+        {
+          "group": "TM_13",
+          "atac_fragments": 5935467,
+          "expression_depth": 1225951.0,
+          "cells": 380,
+          "retained": false
+        },
+        {
+          "group": "SK_1",
+          "atac_fragments": 53618820,
+          "expression_depth": 9972713.0,
+          "cells": 6716,
+          "retained": true
+        },
+        {
+          "group": "SK_5",
+          "atac_fragments": 68919699,
+          "expression_depth": 11765152.0,
+          "cells": 4846,
+          "retained": true
+        }
+      ]
+    },
+    "johansen_human": {
+      "num_groups": 53,
+      "retained_groups": 38,
+      "spearman_log_atac_vs_log_expression_depth": 0.9616997258506692,
+      "spearman_log_atac_vs_log_cells": 0.9396871472343171,
+      "all_cell_quantiles": {
+        "0.0": 42.0,
+        "0.1": 262.2,
+        "0.25": 1731.0,
+        "0.5": 3329.0,
+        "0.75": 14721.0,
+        "0.9": 52844.60000000008,
+        "1.0": 145491.0
+      },
+      "retained_cell_quantiles": {
+        "0.0": 159.0,
+        "0.1": 1036.0000000000002,
+        "0.25": 2003.25,
+        "0.5": 3700.5,
+        "0.75": 14821.5,
+        "0.9": 44028.60000000008,
+        "1.0": 136684.0
+      },
+      "all_expression_depth_quantiles": {
+        "0.0": 995714.3643248081,
+        "0.1": 5091287.912814379,
+        "0.25": 27238003.387592077,
+        "0.5": 62400557.60902548,
+        "0.75": 271003749.3390584,
+        "0.9": 769670268.4382745,
+        "1.0": 2397433908.841774
+      },
+      "retained_expression_depth_quantiles": {
+        "0.0": 3430187.8377337456,
+        "0.1": 19508696.819474366,
+        "0.25": 43454044.45104796,
+        "0.5": 75130974.9945842,
+        "0.75": 270914721.35662717,
+        "0.9": 752203326.3859578,
+        "1.0": 2397433908.841774
+      },
+      "retained_below_500_cells": 4,
+      "retained_below_1000_cells": 4,
+      "tracks": [
+        {
+          "group": "AMY-SLEA-BNST GABA",
+          "atac_fragments": 138268316,
+          "expression_depth": 44322152.586598635,
+          "cells": 2199,
+          "retained": true
+        },
+        {
+          "group": "Astrocyte",
+          "atac_fragments": 4517721320,
+          "expression_depth": 1633651439.343174,
+          "cells": 136684,
+          "retained": true
+        },
+        {
+          "group": "BAM",
+          "atac_fragments": 57668827,
+          "expression_depth": 37217131.381726265,
+          "cells": 3486,
+          "retained": false
+        },
+        {
+          "group": "BF SKOR1 Glut",
+          "atac_fragments": 105942340,
+          "expression_depth": 42752073.47613144,
+          "cells": 1907,
+          "retained": true
+        },
+        {
+          "group": "COP",
+          "atac_fragments": 28587528,
+          "expression_depth": 9089655.605288267,
+          "cells": 711,
+          "retained": false
+        },
+        {
+          "group": "Endo",
+          "atac_fragments": 107654309,
+          "expression_depth": 88380937.8880794,
+          "cells": 7671,
+          "retained": true
+        },
+        {
+          "group": "Ependymal",
+          "atac_fragments": 280805044,
+          "expression_depth": 152508854.51709008,
+          "cells": 11063,
+          "retained": true
+        },
+        {
+          "group": "GPe MEIS2-SOX6 GABA",
+          "atac_fragments": 242644764,
+          "expression_depth": 86393245.88495255,
+          "cells": 4072,
+          "retained": true
+        },
+        {
+          "group": "GPe SOX6-CTXND1 GABA",
+          "atac_fragments": 215697728,
+          "expression_depth": 70791152.88107562,
+          "cells": 3329,
+          "retained": true
+        },
+        {
+          "group": "GPe-NDB-SI LHX6-LHX8-GBX1 GABA",
+          "atac_fragments": 162858875,
+          "expression_depth": 63572950.52017355,
+          "cells": 2927,
+          "retained": true
+        },
+        {
+          "group": "GPi Core",
+          "atac_fragments": 72145178,
+          "expression_depth": 45140691.910283804,
+          "cells": 1993,
+          "retained": true
+        },
+        {
+          "group": "GPi Shell",
+          "atac_fragments": 14794052,
+          "expression_depth": 10123270.84076047,
+          "cells": 427,
+          "retained": false
+        },
+        {
+          "group": "GPin-BF Cholinergic GABA",
+          "atac_fragments": 23086088,
+          "expression_depth": 9181904.574856281,
+          "cells": 469,
+          "retained": true
+        },
+        {
+          "group": "ImOligo",
+          "atac_fragments": 248384436,
+          "expression_depth": 65105011.58801246,
+          "cells": 5146,
+          "retained": false
+        },
+        {
+          "group": "LAMP5-CXCL14 GABA",
+          "atac_fragments": 173215604,
+          "expression_depth": 79470797.10809278,
+          "cells": 4536,
+          "retained": true
+        },
+        {
+          "group": "LAMP5-LHX6 GABA",
+          "atac_fragments": 59399564,
+          "expression_depth": 23934464.924310684,
+          "cells": 1279,
+          "retained": true
+        },
+        {
+          "group": "Microglia",
+          "atac_fragments": 1768181914,
+          "expression_depth": 786045030.6782522,
+          "cells": 80593,
+          "retained": true
+        },
+        {
+          "group": "OB Dopa-GABA",
+          "atac_fragments": 2316792,
+          "expression_depth": 995714.3643248081,
+          "cells": 65,
+          "retained": false
+        },
+        {
+          "group": "OB FRMD7 GABA",
+          "atac_fragments": 29067176,
+          "expression_depth": 12809672.980309486,
+          "cells": 881,
+          "retained": false
+        },
+        {
+          "group": "OPC",
+          "atac_fragments": 775589631,
+          "expression_depth": 352777666.6279745,
+          "cells": 29344,
+          "retained": true
+        },
+        {
+          "group": "OT D1 ICj",
+          "atac_fragments": 120069463,
+          "expression_depth": 43965274.64718437,
+          "cells": 2578,
+          "retained": true
+        },
+        {
+          "group": "Oligo OPALIN",
+          "atac_fragments": 3279753715,
+          "expression_depth": 1450193242.6163514,
+          "cells": 145491,
+          "retained": false
+        },
+        {
+          "group": "Oligo PLEKHG1",
+          "atac_fragments": 1728679218,
+          "expression_depth": 720235073.0005975,
+          "cells": 56371,
+          "retained": true
+        },
+        {
+          "group": "Pericyte",
+          "atac_fragments": 55730202,
+          "expression_depth": 62400557.60902548,
+          "cells": 5625,
+          "retained": false
+        },
+        {
+          "group": "SMC",
+          "atac_fragments": 13802432,
+          "expression_depth": 8075663.186761141,
+          "cells": 844,
+          "retained": false
+        },
+        {
+          "group": "SN GATA3-PVALB GABA",
+          "atac_fragments": 33424,
+          "expression_depth": 1118476.5840582848,
+          "cells": 42,
+          "retained": false
+        },
+        {
+          "group": "SN SOX6 Dopa",
+          "atac_fragments": 15444043,
+          "expression_depth": 27238003.387592077,
+          "cells": 2335,
+          "retained": true
+        },
+        {
+          "group": "SN-VTR CALB1 Dopa",
+          "atac_fragments": 938023,
+          "expression_depth": 2343289.9397661686,
+          "cells": 108,
+          "retained": false
+        },
+        {
+          "group": "SN-VTR GAD2 Dopa",
+          "atac_fragments": 1620264,
+          "expression_depth": 4188028.944968462,
+          "cells": 212,
+          "retained": false
+        },
+        {
+          "group": "SN-VTR-HTH GATA3-TCF7L2 GABA",
+          "atac_fragments": 57586910,
+          "expression_depth": 43942989.78693676,
+          "cells": 1951,
+          "retained": true
+        },
+        {
+          "group": "STH PVALB-PITX2 Glut",
+          "atac_fragments": 25127205,
+          "expression_depth": 52810248.97051549,
+          "cells": 2406,
+          "retained": true
+        },
+        {
+          "group": "STR Cholinergic GABA",
+          "atac_fragments": 10816799,
+          "expression_depth": 3430187.8377337456,
+          "cells": 159,
+          "retained": true
+        },
+        {
+          "group": "STR D1D2 Hybrid MSN",
+          "atac_fragments": 1358936277,
+          "expression_depth": 512585297.64599776,
+          "cells": 27505,
+          "retained": true
+        },
+        {
+          "group": "STR FS PTHLH-PVALB GABA",
+          "atac_fragments": 898217633,
+          "expression_depth": 303575027.9794791,
+          "cells": 14721,
+          "retained": false
+        },
+        {
+          "group": "STR LYPD6-RSPO2 GABA",
+          "atac_fragments": 105143645,
+          "expression_depth": 35222041.6711359,
+          "cells": 1731,
+          "retained": true
+        },
+        {
+          "group": "STR SST-ADARB2 GABA",
+          "atac_fragments": 17295530,
+          "expression_depth": 6251545.934217691,
+          "cells": 279,
+          "retained": true
+        },
+        {
+          "group": "STR SST-CHODL GABA",
+          "atac_fragments": 306884165,
+          "expression_depth": 88253869.11150813,
+          "cells": 4345,
+          "retained": true
+        },
+        {
+          "group": "STR SST-RSPO2 GABA",
+          "atac_fragments": 111866310,
+          "expression_depth": 35406351.05071235,
+          "cells": 2034,
+          "retained": true
+        },
+        {
+          "group": "STR TAC3-PLPP4 GABA",
+          "atac_fragments": 747942161,
+          "expression_depth": 271003749.3390584,
+          "cells": 14340,
+          "retained": true
+        },
+        {
+          "group": "STR-BF TAC3-PLPP4-LHX8 GABA",
+          "atac_fragments": 163427890,
+          "expression_depth": 55059832.14147401,
+          "cells": 2683,
+          "retained": true
+        },
+        {
+          "group": "STRd Cholinergic GABA",
+          "atac_fragments": 11061615,
+          "expression_depth": 4801223.407463551,
+          "cells": 258,
+          "retained": true
+        },
+        {
+          "group": "STRd D1 Matrix MSN",
+          "atac_fragments": 6281144713,
+          "expression_depth": 2391385149.70384,
+          "cells": 122353,
+          "retained": false
+        },
+        {
+          "group": "STRd D1 Striosome MSN",
+          "atac_fragments": 1901540008,
+          "expression_depth": 741723161.1545677,
+          "cells": 36816,
+          "retained": true
+        },
+        {
+          "group": "STRd D2 Matrix MSN",
+          "atac_fragments": 6693821633,
+          "expression_depth": 2397433908.841774,
+          "cells": 131276,
+          "retained": true
+        },
+        {
+          "group": "STRd D2 StrioMat Hybrid MSN",
+          "atac_fragments": 416370995,
+          "expression_depth": 150612526.9440856,
+          "cells": 7627,
+          "retained": true
+        },
+        {
+          "group": "STRd D2 Striosome MSN",
+          "atac_fragments": 1563353155,
+          "expression_depth": 589725071.0339503,
+          "cells": 31146,
+          "retained": false
+        },
+        {
+          "group": "STRv D1 MSN",
+          "atac_fragments": 1907099785,
+          "expression_depth": 776657045.259201,
+          "cells": 38739,
+          "retained": true
+        },
+        {
+          "group": "STRv D1 NUDAP MSN",
+          "atac_fragments": 738152585,
+          "expression_depth": 270647637.40933347,
+          "cells": 14982,
+          "retained": true
+        },
+        {
+          "group": "STRv D2 MSN",
+          "atac_fragments": 1907699204,
+          "expression_depth": 735367833.7720778,
+          "cells": 37591,
+          "retained": true
+        },
+        {
+          "group": "VIP GABA",
+          "atac_fragments": 292875907,
+          "expression_depth": 129274680.45541883,
+          "cells": 7244,
+          "retained": true
+        },
+        {
+          "group": "VLMC",
+          "atac_fragments": 130320967,
+          "expression_depth": 84969548.2744348,
+          "cells": 7486,
+          "retained": true
+        },
+        {
+          "group": "VTR-HTH Glut",
+          "atac_fragments": 50300933,
+          "expression_depth": 49061372.818416834,
+          "cells": 2292,
+          "retained": true
+        },
+        {
+          "group": "ZI-HTH GABA",
+          "atac_fragments": 60326682,
+          "expression_depth": 43291062.672418356,
+          "cells": 1966,
+          "retained": true
+        }
+      ]
+    },
+    "johansen_macaque": {
+      "num_groups": 53,
+      "retained_groups": 38,
+      "spearman_log_atac_vs_log_expression_depth": 0.9870182228672795,
+      "spearman_log_atac_vs_log_cells": 0.9520238671182067,
+      "all_cell_quantiles": {
+        "0.0": 110.0,
+        "0.1": 311.8,
+        "0.25": 1178.0,
+        "0.5": 3029.0,
+        "0.75": 10481.0,
+        "0.9": 35255.60000000003,
+        "1.0": 83269.0
+      },
+      "retained_cell_quantiles": {
+        "0.0": 286.0,
+        "0.1": 1196.2,
+        "0.25": 1732.75,
+        "0.5": 3449.5,
+        "0.75": 9697.5,
+        "0.9": 32342.100000000024,
+        "1.0": 83269.0
+      },
+      "all_expression_depth_quantiles": {
+        "0.0": 1434106.744462967,
+        "0.1": 4765361.104856158,
+        "0.25": 20300393.425415516,
+        "0.5": 53198287.64237833,
+        "0.75": 159372302.81766248,
+        "0.9": 359807258.93358755,
+        "1.0": 1383544890.1466613
+      },
+      "retained_expression_depth_quantiles": {
+        "0.0": 4672776.245427847,
+        "0.1": 19779230.885189414,
+        "0.25": 31514422.54686749,
+        "0.5": 59962522.29797971,
+        "0.75": 146579426.34868932,
+        "0.9": 357799455.7184329,
+        "1.0": 1383544890.1466613
+      },
+      "retained_below_500_cells": 2,
+      "retained_below_1000_cells": 2,
+      "tracks": [
+        {
+          "group": "AMY-SLEA-BNST GABA",
+          "atac_fragments": 177682681,
+          "expression_depth": 58451807.37856674,
+          "cells": 3295,
+          "retained": true
+        },
+        {
+          "group": "Astrocyte",
+          "atac_fragments": 1054319498,
+          "expression_depth": 432569440.1468463,
+          "cells": 39886,
+          "retained": true
+        },
+        {
+          "group": "BAM",
+          "atac_fragments": 8172214,
+          "expression_depth": 5726137.481577396,
+          "cells": 603,
+          "retained": false
+        },
+        {
+          "group": "BF SKOR1 Glut",
+          "atac_fragments": 159063881,
+          "expression_depth": 45707777.05786538,
+          "cells": 2509,
+          "retained": true
+        },
+        {
+          "group": "COP",
+          "atac_fragments": 6609838,
+          "expression_depth": 2172802.1023626328,
+          "cells": 185,
+          "retained": false
+        },
+        {
+          "group": "Endo",
+          "atac_fragments": 45273000,
+          "expression_depth": 31809273.172036886,
+          "cells": 2954,
+          "retained": true
+        },
+        {
+          "group": "Ependymal",
+          "atac_fragments": 43601398,
+          "expression_depth": 20471875.067189455,
+          "cells": 1699,
+          "retained": true
+        },
+        {
+          "group": "GPe MEIS2-SOX6 GABA",
+          "atac_fragments": 152996582,
+          "expression_depth": 38384343.86274648,
+          "cells": 2008,
+          "retained": true
+        },
+        {
+          "group": "GPe SOX6-CTXND1 GABA",
+          "atac_fragments": 264941035,
+          "expression_depth": 61473237.21739268,
+          "cells": 3029,
+          "retained": true
+        },
+        {
+          "group": "GPe-NDB-SI LHX6-LHX8-GBX1 GABA",
+          "atac_fragments": 423807370,
+          "expression_depth": 108200796.94176984,
+          "cells": 5669,
+          "retained": true
+        },
+        {
+          "group": "GPi Core",
+          "atac_fragments": 253183532,
+          "expression_depth": 56409742.48803806,
+          "cells": 2579,
+          "retained": true
+        },
+        {
+          "group": "GPi Shell",
+          "atac_fragments": 57340403,
+          "expression_depth": 10963886.879853725,
+          "cells": 487,
+          "retained": false
+        },
+        {
+          "group": "GPin-BF Cholinergic GABA",
+          "atac_fragments": 113860551,
+          "expression_depth": 31870740.25446868,
+          "cells": 1572,
+          "retained": true
+        },
+        {
+          "group": "ImOligo",
+          "atac_fragments": 138621565,
+          "expression_depth": 55365658.94564414,
+          "cells": 4249,
+          "retained": false
+        },
+        {
+          "group": "LAMP5-CXCL14 GABA",
+          "atac_fragments": 112174211,
+          "expression_depth": 38186019.40561247,
+          "cells": 2512,
+          "retained": true
+        },
+        {
+          "group": "LAMP5-LHX6 GABA",
+          "atac_fragments": 81822697,
+          "expression_depth": 25108010.378150225,
+          "cells": 1532,
+          "retained": true
+        },
+        {
+          "group": "Microglia",
+          "atac_fragments": 617582511,
+          "expression_depth": 346784443.7940383,
+          "cells": 40908,
+          "retained": true
+        },
+        {
+          "group": "OB Dopa-GABA",
+          "atac_fragments": 9821579,
+          "expression_depth": 3763983.8159296513,
+          "cells": 273,
+          "retained": false
+        },
+        {
+          "group": "OB FRMD7 GABA",
+          "atac_fragments": 11258389,
+          "expression_depth": 5135700.542569399,
+          "cells": 415,
+          "retained": false
+        },
+        {
+          "group": "OPC",
+          "atac_fragments": 162655917,
+          "expression_depth": 75030747.37213922,
+          "cells": 7347,
+          "retained": true
+        },
+        {
+          "group": "OT D1 ICj",
+          "atac_fragments": 105769574,
+          "expression_depth": 48653338.317754745,
+          "cells": 3473,
+          "retained": true
+        },
+        {
+          "group": "Oligo OPALIN",
+          "atac_fragments": 634971606,
+          "expression_depth": 361039137.42691183,
+          "cells": 43465,
+          "retained": false
+        },
+        {
+          "group": "Oligo PLEKHG1",
+          "atac_fragments": 743062027,
+          "expression_depth": 352864699.6974673,
+          "cells": 36421,
+          "retained": true
+        },
+        {
+          "group": "Pericyte",
+          "atac_fragments": 12383157,
+          "expression_depth": 6593452.936858177,
+          "cells": 809,
+          "retained": false
+        },
+        {
+          "group": "SMC",
+          "atac_fragments": 2938160,
+          "expression_depth": 1434106.744462967,
+          "cells": 157,
+          "retained": false
+        },
+        {
+          "group": "SN GATA3-PVALB GABA",
+          "atac_fragments": 77385705,
+          "expression_depth": 20689104.344756603,
+          "cells": 907,
+          "retained": false
+        },
+        {
+          "group": "SN SOX6 Dopa",
+          "atac_fragments": 274611871,
+          "expression_depth": 82396058.9748435,
+          "cells": 3770,
+          "retained": true
+        },
+        {
+          "group": "SN-VTR CALB1 Dopa",
+          "atac_fragments": 6274575,
+          "expression_depth": 2490961.664719343,
+          "cells": 110,
+          "retained": false
+        },
+        {
+          "group": "SN-VTR GAD2 Dopa",
+          "atac_fragments": 8012775,
+          "expression_depth": 2591400.9307432175,
+          "cells": 136,
+          "retained": false
+        },
+        {
+          "group": "SN-VTR-HTH GATA3-TCF7L2 GABA",
+          "atac_fragments": 88428494,
+          "expression_depth": 30802871.246117115,
+          "cells": 1445,
+          "retained": true
+        },
+        {
+          "group": "STH PVALB-PITX2 Glut",
+          "atac_fragments": 387370217,
+          "expression_depth": 88706876.63792062,
+          "cells": 4176,
+          "retained": true
+        },
+        {
+          "group": "STR Cholinergic GABA",
+          "atac_fragments": 27820008,
+          "expression_depth": 7880373.0712201595,
+          "cells": 416,
+          "retained": true
+        },
+        {
+          "group": "STR D1D2 Hybrid MSN",
+          "atac_fragments": 752583343,
+          "expression_depth": 295193059.0521345,
+          "cells": 18050,
+          "retained": true
+        },
+        {
+          "group": "STR FS PTHLH-PVALB GABA",
+          "atac_fragments": 660465154,
+          "expression_depth": 229698865.36835003,
+          "cells": 13378,
+          "retained": false
+        },
+        {
+          "group": "STR LYPD6-RSPO2 GABA",
+          "atac_fragments": 78137471,
+          "expression_depth": 21214710.11138773,
+          "cells": 1178,
+          "retained": true
+        },
+        {
+          "group": "STR SST-ADARB2 GABA",
+          "atac_fragments": 13569406,
+          "expression_depth": 4672776.245427847,
+          "cells": 286,
+          "retained": true
+        },
+        {
+          "group": "STR SST-CHODL GABA",
+          "atac_fragments": 228811062,
+          "expression_depth": 72130056.84463787,
+          "cells": 4314,
+          "retained": true
+        },
+        {
+          "group": "STR SST-RSPO2 GABA",
+          "atac_fragments": 111258901,
+          "expression_depth": 31416139.005144358,
+          "cells": 1834,
+          "retained": true
+        },
+        {
+          "group": "STR TAC3-PLPP4 GABA",
+          "atac_fragments": 389467645,
+          "expression_depth": 159372302.81766248,
+          "cells": 10481,
+          "retained": true
+        },
+        {
+          "group": "STR-BF TAC3-PLPP4-LHX8 GABA",
+          "atac_fragments": 57970010,
+          "expression_depth": 18563184.957995176,
+          "cells": 1204,
+          "retained": true
+        },
+        {
+          "group": "STRd Cholinergic GABA",
+          "atac_fragments": 75682163,
+          "expression_depth": 20300393.425415516,
+          "cells": 1004,
+          "retained": true
+        },
+        {
+          "group": "STRd D1 Matrix MSN",
+          "atac_fragments": 2884168987,
+          "expression_depth": 1163430034.5496418,
+          "cells": 67381,
+          "retained": false
+        },
+        {
+          "group": "STRd D1 Striosome MSN",
+          "atac_fragments": 908485285,
+          "expression_depth": 364612114.1540985,
+          "cells": 21223,
+          "retained": true
+        },
+        {
+          "group": "STRd D2 Matrix MSN",
+          "atac_fragments": 3310478806,
+          "expression_depth": 1383544890.1466613,
+          "cells": 83269,
+          "retained": true
+        },
+        {
+          "group": "STRd D2 StrioMat Hybrid MSN",
+          "atac_fragments": 214822100,
+          "expression_depth": 83002215.32413626,
+          "cells": 4782,
+          "retained": true
+        },
+        {
+          "group": "STRd D2 Striosome MSN",
+          "atac_fragments": 869904869,
+          "expression_depth": 341914549.4991391,
+          "cells": 20040,
+          "retained": false
+        },
+        {
+          "group": "STRv D1 MSN",
+          "atac_fragments": 1156290956,
+          "expression_depth": 502978210.6233411,
+          "cells": 30594,
+          "retained": true
+        },
+        {
+          "group": "STRv D1 NUDAP MSN",
+          "atac_fragments": 466531821,
+          "expression_depth": 179771582.7876866,
+          "cells": 11524,
+          "retained": true
+        },
+        {
+          "group": "STRv D2 MSN",
+          "atac_fragments": 835106580,
+          "expression_depth": 354879744.96029043,
+          "cells": 21392,
+          "retained": true
+        },
+        {
+          "group": "VIP GABA",
+          "atac_fragments": 161952606,
+          "expression_depth": 53198287.64237833,
+          "cells": 3426,
+          "retained": true
+        },
+        {
+          "group": "VLMC",
+          "atac_fragments": 24253465,
+          "expression_depth": 15504551.291122198,
+          "cells": 1321,
+          "retained": true
+        },
+        {
+          "group": "VTR-HTH Glut",
+          "atac_fragments": 246736444,
+          "expression_depth": 77582562.4543035,
+          "cells": 4064,
+          "retained": true
+        },
+        {
+          "group": "ZI-HTH GABA",
+          "atac_fragments": 334545961,
+          "expression_depth": 87156854.05559158,
+          "cells": 4514,
+          "retained": true
+        }
+      ]
+    },
+    "johansen_marmoset": {
+      "num_groups": 53,
+      "retained_groups": 38,
+      "spearman_log_atac_vs_log_expression_depth": 0.9956458635703919,
+      "spearman_log_atac_vs_log_cells": 0.9721012739880664,
+      "all_cell_quantiles": {
+        "0.0": 49.0,
+        "0.1": 253.60000000000002,
+        "0.25": 476.0,
+        "0.5": 1500.0,
+        "0.75": 6159.0,
+        "0.9": 12367.400000000001,
+        "1.0": 65164.0
+      },
+      "retained_cell_quantiles": {
+        "0.0": 220.0,
+        "0.1": 332.8,
+        "0.25": 694.0,
+        "0.5": 2423.0,
+        "0.75": 7624.25,
+        "0.9": 12228.400000000001,
+        "1.0": 30452.0
+      },
+      "all_expression_depth_quantiles": {
+        "0.0": 417241.0252456665,
+        "0.1": 3856723.8925452707,
+        "0.25": 7808365.492820263,
+        "0.5": 29567372.350177526,
+        "0.75": 97742868.94317627,
+        "0.9": 197988030.52723274,
+        "1.0": 555334787.559237
+      },
+      "retained_expression_depth_quantiles": {
+        "0.0": 4018060.13812232,
+        "0.1": 6712751.999535632,
+        "0.25": 12237929.264846861,
+        "0.5": 41134294.91791165,
+        "0.75": 111424597.52219594,
+        "0.9": 171378715.95964918,
+        "1.0": 521077467.5148349
+      },
+      "retained_below_500_cells": 5,
+      "retained_below_1000_cells": 11,
+      "tracks": [
+        {
+          "group": "AMY-SLEA-BNST GABA",
+          "atac_fragments": 86326018,
+          "expression_depth": 41977607.39707041,
+          "cells": 2183,
+          "retained": true
+        },
+        {
+          "group": "Astrocyte",
+          "atac_fragments": 520427464,
+          "expression_depth": 283906883.15099096,
+          "cells": 26192,
+          "retained": true
+        },
+        {
+          "group": "BAM",
+          "atac_fragments": 6646045,
+          "expression_depth": 3816389.8311510086,
+          "cells": 416,
+          "retained": false
+        },
+        {
+          "group": "BF SKOR1 Glut",
+          "atac_fragments": 28623298,
+          "expression_depth": 10700499.914851189,
+          "cells": 555,
+          "retained": true
+        },
+        {
+          "group": "COP",
+          "atac_fragments": 11681323,
+          "expression_depth": 4787055.410700321,
+          "cells": 421,
+          "retained": false
+        },
+        {
+          "group": "Endo",
+          "atac_fragments": 14773633,
+          "expression_depth": 5532666.058084011,
+          "cells": 525,
+          "retained": true
+        },
+        {
+          "group": "Ependymal",
+          "atac_fragments": 39438911,
+          "expression_depth": 16241813.640634775,
+          "cells": 1420,
+          "retained": true
+        },
+        {
+          "group": "GPe MEIS2-SOX6 GABA",
+          "atac_fragments": 17581179,
+          "expression_depth": 6236348.033178806,
+          "cells": 316,
+          "retained": true
+        },
+        {
+          "group": "GPe SOX6-CTXND1 GABA",
+          "atac_fragments": 33601125,
+          "expression_depth": 12709058.132307291,
+          "cells": 587,
+          "retained": true
+        },
+        {
+          "group": "GPe-NDB-SI LHX6-LHX8-GBX1 GABA",
+          "atac_fragments": 86017955,
+          "expression_depth": 31186319.435355425,
+          "cells": 1500,
+          "retained": true
+        },
+        {
+          "group": "GPi Core",
+          "atac_fragments": 15134783,
+          "expression_depth": 6916925.127974272,
+          "cells": 297,
+          "retained": true
+        },
+        {
+          "group": "GPi Shell",
+          "atac_fragments": 6642469,
+          "expression_depth": 2828391.4950220585,
+          "cells": 131,
+          "retained": false
+        },
+        {
+          "group": "GPin-BF Cholinergic GABA",
+          "atac_fragments": 24436732,
+          "expression_depth": 7808365.492820263,
+          "cells": 340,
+          "retained": true
+        },
+        {
+          "group": "ImOligo",
+          "atac_fragments": 167538610,
+          "expression_depth": 46924856.17645335,
+          "cells": 3151,
+          "retained": false
+        },
+        {
+          "group": "LAMP5-CXCL14 GABA",
+          "atac_fragments": 132135329,
+          "expression_depth": 45979333.56326938,
+          "cells": 3068,
+          "retained": true
+        },
+        {
+          "group": "LAMP5-LHX6 GABA",
+          "atac_fragments": 153972152,
+          "expression_depth": 55284739.35238385,
+          "cells": 3474,
+          "retained": true
+        },
+        {
+          "group": "Microglia",
+          "atac_fragments": 228916413,
+          "expression_depth": 101053425.50990844,
+          "cells": 11261,
+          "retained": true
+        },
+        {
+          "group": "OB Dopa-GABA",
+          "atac_fragments": 2882152,
+          "expression_depth": 778080.4042377472,
+          "cells": 65,
+          "retained": false
+        },
+        {
+          "group": "OB FRMD7 GABA",
+          "atac_fragments": 9514008,
+          "expression_depth": 3272819.9746022224,
+          "cells": 288,
+          "retained": false
+        },
+        {
+          "group": "OPC",
+          "atac_fragments": 260422465,
+          "expression_depth": 133420344.43641949,
+          "cells": 13692,
+          "retained": true
+        },
+        {
+          "group": "OT D1 ICj",
+          "atac_fragments": 40857357,
+          "expression_depth": 14200508.028455019,
+          "cells": 1145,
+          "retained": true
+        },
+        {
+          "group": "Oligo OPALIN",
+          "atac_fragments": 918793756,
+          "expression_depth": 537337849.6520982,
+          "cells": 65164,
+          "retained": false
+        },
+        {
+          "group": "Oligo PLEKHG1",
+          "atac_fragments": 182242192,
+          "expression_depth": 92295672.26927805,
+          "cells": 9527,
+          "retained": true
+        },
+        {
+          "group": "Pericyte",
+          "atac_fragments": 6621033,
+          "expression_depth": 3065104.1463861465,
+          "cells": 361,
+          "retained": false
+        },
+        {
+          "group": "SMC",
+          "atac_fragments": 1688192,
+          "expression_depth": 417241.0252456665,
+          "cells": 49,
+          "retained": false
+        },
+        {
+          "group": "SN GATA3-PVALB GABA",
+          "atac_fragments": 13656984,
+          "expression_depth": 4211299.491450548,
+          "cells": 188,
+          "retained": false
+        },
+        {
+          "group": "SN SOX6 Dopa",
+          "atac_fragments": 46653066,
+          "expression_depth": 14495954.348430634,
+          "cells": 688,
+          "retained": true
+        },
+        {
+          "group": "SN-VTR CALB1 Dopa",
+          "atac_fragments": 47248833,
+          "expression_depth": 17686061.473639727,
+          "cells": 940,
+          "retained": false
+        },
+        {
+          "group": "SN-VTR GAD2 Dopa",
+          "atac_fragments": 21793313,
+          "expression_depth": 8473616.62913537,
+          "cells": 476,
+          "retained": false
+        },
+        {
+          "group": "SN-VTR-HTH GATA3-TCF7L2 GABA",
+          "atac_fragments": 154100054,
+          "expression_depth": 66602792.046007395,
+          "cells": 3504,
+          "retained": true
+        },
+        {
+          "group": "STH PVALB-PITX2 Glut",
+          "atac_fragments": 66170587,
+          "expression_depth": 27668050.890619516,
+          "cells": 1472,
+          "retained": true
+        },
+        {
+          "group": "STR Cholinergic GABA",
+          "atac_fragments": 13974849,
+          "expression_depth": 5106297.303042412,
+          "cells": 245,
+          "retained": true
+        },
+        {
+          "group": "STR D1D2 Hybrid MSN",
+          "atac_fragments": 268008968,
+          "expression_depth": 97742868.94317627,
+          "cells": 5946,
+          "retained": true
+        },
+        {
+          "group": "STR FS PTHLH-PVALB GABA",
+          "atac_fragments": 212017573,
+          "expression_depth": 69948553.35141635,
+          "cells": 3864,
+          "retained": false
+        },
+        {
+          "group": "STR LYPD6-RSPO2 GABA",
+          "atac_fragments": 194091400,
+          "expression_depth": 69044903.50759459,
+          "cells": 4173,
+          "retained": true
+        },
+        {
+          "group": "STR SST-ADARB2 GABA",
+          "atac_fragments": 13264214,
+          "expression_depth": 4018060.13812232,
+          "cells": 220,
+          "retained": true
+        },
+        {
+          "group": "STR SST-CHODL GABA",
+          "atac_fragments": 85497750,
+          "expression_depth": 29567372.350177526,
+          "cells": 1716,
+          "retained": true
+        },
+        {
+          "group": "STR SST-RSPO2 GABA",
+          "atac_fragments": 257298510,
+          "expression_depth": 95825892.64286375,
+          "cells": 5978,
+          "retained": true
+        },
+        {
+          "group": "STR TAC3-PLPP4 GABA",
+          "atac_fragments": 114148970,
+          "expression_depth": 40290982.43875289,
+          "cells": 2663,
+          "retained": true
+        },
+        {
+          "group": "STR-BF TAC3-PLPP4-LHX8 GABA",
+          "atac_fragments": 31775253,
+          "expression_depth": 11308996.244119167,
+          "cells": 712,
+          "retained": true
+        },
+        {
+          "group": "STRd Cholinergic GABA",
+          "atac_fragments": 35342571,
+          "expression_depth": 11031064.002464533,
+          "cells": 503,
+          "retained": true
+        },
+        {
+          "group": "STRd D1 Matrix MSN",
+          "atac_fragments": 1471647733,
+          "expression_depth": 555334787.559237,
+          "cells": 31781,
+          "retained": false
+        },
+        {
+          "group": "STRd D1 Striosome MSN",
+          "atac_fragments": 292694860,
+          "expression_depth": 117716167.63737655,
+          "cells": 6989,
+          "retained": true
+        },
+        {
+          "group": "STRd D2 Matrix MSN",
+          "atac_fragments": 1360275527,
+          "expression_depth": 521077467.5148349,
+          "cells": 30452,
+          "retained": true
+        },
+        {
+          "group": "STRd D2 StrioMat Hybrid MSN",
+          "atac_fragments": 55777664,
+          "expression_depth": 18992626.70697546,
+          "cells": 1074,
+          "retained": true
+        },
+        {
+          "group": "STRd D2 Striosome MSN",
+          "atac_fragments": 232323689,
+          "expression_depth": 91389831.06456327,
+          "cells": 5461,
+          "retained": false
+        },
+        {
+          "group": "STRv D1 MSN",
+          "atac_fragments": 517247055,
+          "expression_depth": 219311076.70061255,
+          "cells": 12423,
+          "retained": true
+        },
+        {
+          "group": "STRv D1 NUDAP MSN",
+          "atac_fragments": 281960841,
+          "expression_depth": 121911845.47942352,
+          "cells": 8444,
+          "retained": true
+        },
+        {
+          "group": "STRv D2 MSN",
+          "atac_fragments": 469100996,
+          "expression_depth": 208631756.35426593,
+          "cells": 12145,
+          "retained": true
+        },
+        {
+          "group": "VIP GABA",
+          "atac_fragments": 312812604,
+          "expression_depth": 116064535.76065731,
+          "cells": 7902,
+          "retained": true
+        },
+        {
+          "group": "VLMC",
+          "atac_fragments": 38585301,
+          "expression_depth": 12080886.309026718,
+          "cells": 1204,
+          "retained": true
+        },
+        {
+          "group": "VTR-HTH Glut",
+          "atac_fragments": 248706816,
+          "expression_depth": 114881654.8596251,
+          "cells": 6159,
+          "retained": true
+        },
+        {
+          "group": "ZI-HTH GABA",
+          "atac_fragments": 376843201,
+          "expression_depth": 155413127.2190988,
+          "cells": 7836,
+          "retained": true
+        }
+      ]
+    }
+  }
+}
