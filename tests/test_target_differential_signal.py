@@ -4,7 +4,10 @@ from pathlib import Path
 import numpy as np
 import pyBigWig
 
-from scripts.v0data.audit_target_differential_signal import audit_manifest
+from scripts.v0data.audit_target_differential_signal import (
+    _canonical_chromosomes,
+    audit_manifest,
+)
 
 
 def _write_bigwig(path: Path, values: np.ndarray) -> None:
@@ -65,3 +68,19 @@ def test_audit_manifest_reports_finite_differential_signal(tmp_path: Path) -> No
     assert head["num_observations"] == 20
     assert 0 < head["double_centered_variance_fraction"] <= 1
     assert np.isfinite(head["median_pairwise_track_correlation"])
+
+
+def test_canonical_chromosomes_accepts_refseq_accessions() -> None:
+    chromosomes, probabilities = _canonical_chromosomes(
+        {
+            "NC_041754.1": 1_000,
+            "NC_041755.1": 900,
+            "NW_012345.1": 800,
+            "chr1_random": 700,
+        },
+        window_size=100,
+        excluded={"NC_041755.1"},
+    )
+
+    assert chromosomes == ["NC_041754.1"]
+    np.testing.assert_array_equal(probabilities, np.asarray([1.0]))

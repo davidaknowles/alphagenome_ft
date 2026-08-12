@@ -19,8 +19,7 @@ def _canonical_chromosomes(
     chromosomes = [
         chrom
         for chrom, size in chrom_sizes.items()
-        if chrom.startswith("chr")
-        and "_" not in chrom
+        if (chrom.startswith("NC_") or (chrom.startswith("chr") and "_" not in chrom))
         and chrom not in excluded
         and size >= window_size
     ]
