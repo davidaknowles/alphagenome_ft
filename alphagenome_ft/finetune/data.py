@@ -195,10 +195,14 @@ class GeneExpressionSupervision:
             quantiles = (0.0, 0.5, 0.9, 0.95, 0.99, 1.0)
             return {
                 "assigned_genes": int(len(selected_scales)),
-                "scale_quantiles": {
-                    str(quantile): float(np.quantile(selected_scales, quantile))
-                    for quantile in quantiles
-                },
+                "scale_quantiles": (
+                    {
+                        str(quantile): float(np.quantile(selected_scales, quantile))
+                        for quantile in quantiles
+                    }
+                    if len(selected_scales)
+                    else {}
+                ),
             }
 
         by_chromosome = {}

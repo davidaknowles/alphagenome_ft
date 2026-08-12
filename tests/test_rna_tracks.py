@@ -138,16 +138,16 @@ def test_gene_supervision_assigns_long_gene_to_best_exon_window(tmp_path: Path):
     artifact = tmp_path / "long-gene.npz"
     np.savez_compressed(
         artifact,
-        gene_ids=np.asarray(["LONG"]),
-        chromosomes=np.asarray(["chr1"]),
-        starts=np.asarray([0]),
-        ends=np.asarray([220]),
-        strands=np.asarray(["+"]),
-        exon_offsets=np.asarray([0, 2]),
-        exon_starts=np.asarray([0, 200]),
-        exon_ends=np.asarray([10, 220]),
+        gene_ids=np.asarray(["LONG", "UNMODELED"]),
+        chromosomes=np.asarray(["chr1", "chr2"]),
+        starts=np.asarray([0, 0]),
+        ends=np.asarray([220, 10]),
+        strands=np.asarray(["+", "+"]),
+        exon_offsets=np.asarray([0, 2, 3]),
+        exon_starts=np.asarray([0, 200, 0]),
+        exon_ends=np.asarray([10, 220, 10]),
         groups=np.asarray(["cell type"]),
-        cpm=np.asarray([[12.0]], dtype=np.float32),
+        cpm=np.asarray([[12.0, 3.0]], dtype=np.float32),
     )
     spec = HeadSpec(
         "rna",
@@ -172,6 +172,8 @@ def test_gene_supervision_assigns_long_gene_to_best_exon_window(tmp_path: Path):
     summary = supervision.assignment_summary()
     assert summary["assigned_genes"] == 1
     assert summary["scale_quantiles"]["0.5"] == 1.5
+    assert summary["chromosomes"]["chr2"]["assigned_genes"] == 0
+    assert summary["chromosomes"]["chr2"]["scale_quantiles"] == {}
 
 
 def test_expression_remap_and_gtf_attribute_aliases(tmp_path: Path):
