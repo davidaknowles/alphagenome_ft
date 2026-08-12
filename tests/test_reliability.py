@@ -8,6 +8,7 @@ from alphagenome_ft.finetune.reliability import (
     double_centered_pearson,
     double_centered_leverage_summary,
     double_centered_rank_summary,
+    double_centered_transfer_rank_summary,
     fixed_window_gene_mask,
     split_half_pseudobulks,
     spearman_brown,
@@ -89,6 +90,27 @@ def test_double_centered_rank_summary_recovers_rank_one_target() -> None:
 def test_double_centered_rank_summary_rejects_constant_target() -> None:
     with pytest.raises(ValueError, match="no variance"):
         double_centered_rank_summary(np.ones((3, 4)))
+
+
+def test_double_centered_transfer_rank_summary_uses_training_track_basis() -> None:
+    training_observations = np.asarray([-2.0, -1.0, 1.0, 2.0])[:, None]
+    shared_track_factor = np.asarray([-1.0, 0.0, 1.0, 0.0])[None, :]
+    orthogonal_track_factor = np.asarray([1.0, -1.0, 1.0, -1.0])[None, :]
+    training = training_observations @ shared_track_factor
+    evaluation = (
+        np.asarray([-1.0, 0.0, 1.0])[:, None] @ shared_track_factor
+        + np.asarray([1.0, -2.0, 1.0])[:, None] @ orthogonal_track_factor
+    )
+
+    summary = double_centered_transfer_rank_summary(training, evaluation, ranks=(1, 2))
+    unit_factor = shared_track_factor / np.linalg.norm(shared_track_factor)
+    projected = evaluation @ unit_factor.T @ unit_factor
+
+    assert summary["rank_correlation_ceiling"]["1"] == pytest.approx(
+        np.sqrt(np.sum(np.square(projected)) / np.sum(np.square(evaluation)))
+    )
+    assert summary["training_numerical_rank"] == 1
+    assert "2" not in summary["rank_correlation_ceiling"]
 
 
 def test_split_half_pseudobulks_balances_each_group_independently() -> None:

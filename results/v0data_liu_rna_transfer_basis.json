@@ -1,0 +1,72 @@
+{
+  "definition": "Held-out target projection onto right singular vectors learned from double-centered training-chromosome targets.",
+  "support": "fixed_window_full_span",
+  "gene_supervision": "outputs/v0data/liu-hdma/joint/gene_expression_supervision.npz",
+  "held_out_chromosomes": [
+    "chr8",
+    "chr9"
+  ],
+  "training_genes": 25439,
+  "chromosomes": {
+    "chr8": {
+      "raw_cpm": {
+        "training_observations": 25439,
+        "evaluation_observations": 1067,
+        "tracks": 186,
+        "training_numerical_rank": 185,
+        "rank_correlation_ceiling": {
+          "1": 0.18376994176572645,
+          "2": 0.2543220017165145,
+          "4": 0.7648647905471447,
+          "8": 0.8869701117426101,
+          "16": 0.9423501802655787,
+          "32": 0.9753092287479025
+        }
+      },
+      "log1p_cpm": {
+        "training_observations": 25439,
+        "evaluation_observations": 1067,
+        "tracks": 186,
+        "training_numerical_rank": 185,
+        "rank_correlation_ceiling": {
+          "1": 0.42762187346321723,
+          "2": 0.5524049885096691,
+          "4": 0.6834005309463438,
+          "8": 0.7960036705900932,
+          "16": 0.8632841162639603,
+          "32": 0.9062581893382888
+        }
+      }
+    },
+    "chr9": {
+      "raw_cpm": {
+        "training_observations": 25439,
+        "evaluation_observations": 972,
+        "tracks": 186,
+        "training_numerical_rank": 185,
+        "rank_correlation_ceiling": {
+          "1": 0.2663403357620707,
+          "2": 0.3416223850052352,
+          "4": 0.5689939258926874,
+          "8": 0.7388923219290346,
+          "16": 0.8595917024918028,
+          "32": 0.9407509172163472
+        }
+      },
+      "log1p_cpm": {
+        "training_observations": 25439,
+        "evaluation_observations": 972,
+        "tracks": 186,
+        "training_numerical_rank": 185,
+        "rank_correlation_ceiling": {
+          "1": 0.4039404908354546,
+          "2": 0.5395779019378378,
+          "4": 0.6643350257910807,
+          "8": 0.7814918331933266,
+          "16": 0.8569338779178243,
+          "32": 0.9039040885458202
+        }
+      }
+    }
+  }
+}

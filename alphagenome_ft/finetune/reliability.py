@@ -195,6 +195,78 @@ def double_centered_rank_summary(
     }
 
 
+def double_centered_transfer_rank_summary(
+    training_values: np.ndarray,
+    evaluation_values: np.ndarray,
+    *,
+    ranks: tuple[int, ...] = (1, 2, 4, 8, 16, 32),
+) -> dict[str, object]:
+    """Project held-out targets onto cell-group factors learned from training targets.
+
+    Both inputs have shape ``[G, C]``, where ``G`` may differ between inputs
+    and ``C`` is the shared track or cell-group axis. Each matrix is double
+    centered independently. The rank-k ceiling is the cosine between the
+    held-out matrix and its projection onto the leading k right singular
+    vectors of the training matrix.
+    """
+    training_values = np.asarray(training_values, dtype=np.float64)
+    evaluation_values = np.asarray(evaluation_values, dtype=np.float64)
+    if (
+        training_values.ndim != 2
+        or evaluation_values.ndim != 2
+        or min(training_values.shape) < 2
+        or min(evaluation_values.shape) < 2
+        or training_values.shape[1] != evaluation_values.shape[1]
+        or np.any(~np.isfinite(training_values))
+        or np.any(~np.isfinite(evaluation_values))
+    ):
+        raise ValueError(
+            "Training and evaluation values must be finite nontrivial matrices "
+            "with the same track count."
+        )
+    if not ranks or any(not isinstance(rank, int) or rank < 1 for rank in ranks):
+        raise ValueError("ranks must contain positive integers.")
+
+    def center(values: np.ndarray) -> np.ndarray:
+        return values - values.mean(axis=0) - values.mean(axis=1)[:, None] + values.mean()
+
+    training_centered = center(training_values)
+    evaluation_centered = center(evaluation_values)
+    eigenvalues, eigenvectors = np.linalg.eigh(training_centered.T @ training_centered)
+    order = np.argsort(eigenvalues)[::-1]
+    eigenvalues = np.maximum(eigenvalues[order], 0.0)
+    basis = eigenvectors[:, order]
+    training_total = float(eigenvalues.sum())
+    evaluation_total = float(np.sum(np.square(evaluation_centered)))
+    if training_total <= 0 or evaluation_total <= 0:
+        raise ValueError("Double-centered training and evaluation values must have variance.")
+    tolerance = np.finfo(np.float64).eps * max(training_centered.shape) * eigenvalues[0]
+    numerical_rank = int(np.sum(eigenvalues > tolerance))
+
+    projected_coordinates = evaluation_centered @ basis
+    projected_energy = np.cumsum(np.sum(np.square(projected_coordinates), axis=0))
+    ceilings = {
+        str(rank): float(
+            np.sqrt(
+                min(
+                    projected_energy[min(rank, len(projected_energy)) - 1]
+                    / evaluation_total,
+                    1.0,
+                )
+            )
+        )
+        for rank in sorted(set(ranks))
+        if rank <= numerical_rank
+    }
+    return {
+        "training_observations": int(training_values.shape[0]),
+        "evaluation_observations": int(evaluation_values.shape[0]),
+        "tracks": int(training_values.shape[1]),
+        "training_numerical_rank": numerical_rank,
+        "rank_correlation_ceiling": ceilings,
+    }
+
+
 def spearman_brown(split_half_correlation: float) -> float:
     """Estimate full-target reliability from equal-half correlation."""
     correlation = float(split_half_correlation)
