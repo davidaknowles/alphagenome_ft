@@ -42,3 +42,9 @@ done
   --supervision-root "$output_root/supervision" \
   --output-dir "$output_root/geneonly-corrw1" \
   --correlation-loss-weight 1
+
+"$python_bin" scripts/v0data/johansen_rna_reprocessing/audit_normalization.py \
+  --species "human=$rna_root/Human_HMBA_basalganglia_pseudobulk_by_group.h5ad=$rna_root/Human_HMBA_basalganglia_pseudobulk_by_group_correctnorm.h5ad" \
+  --species "macaque=$rna_root/Macaque_HMBA_basalganglia_pseudobulk_by_group.h5ad=$rna_root/Macaque_HMBA_basalganglia_pseudobulk_by_group_correctnorm.h5ad" \
+  --species "marmoset=$rna_root/Marmoset_HMBA_basalganglia_pseudobulk_by_group.h5ad=$marmoset_expression" \
+  --output-prefix results/v0data_johansen_rna_normalization_audit

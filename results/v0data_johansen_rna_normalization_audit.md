@@ -6,5 +6,6 @@ Legacy pseudobulks summed expression after per-cell normalization. Corrected pse
 |---|---:|---:|---:|---:|---:|
 | human | 60 | 36601 | 0.4645 | 0.9224 | 0.4942 |
 | macaque | 58 | 35219 | 0.5023 | 0.9418 | 0.5714 |
+| marmoset | 56 | 35787 | 0.5430 | 0.9537 | 0.5968 |
 
 The raw-CPM discrepancy changes the cell-group-specific target structure, not only its scale. Johansen RNA training results produced from the legacy matrices are therefore superseded by raw-count-derived targets.
