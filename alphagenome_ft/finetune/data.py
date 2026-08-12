@@ -5,6 +5,7 @@ from __future__ import annotations
 import contextlib
 import concurrent.futures
 import gzip
+import heapq
 import json
 import os
 import resource
@@ -142,6 +143,63 @@ class GeneExpressionSupervision:
             strands[output_idx] = 0 if self.strands[gene_idx] == "+" else 1
             valid[output_idx] = True
         return {"weights": weights, "targets": targets, "strands": strands, "valid": valid}
+
+
+def _balance_gene_window_order(
+    order: np.ndarray,
+    gene_counts: np.ndarray,
+    *,
+    batch_size: int,
+    drop_last: bool,
+) -> np.ndarray:
+    """Distribute gene-bearing windows across fixed-size batches without resampling."""
+    order = np.asarray(order, dtype=np.int64)
+    gene_counts = np.asarray(gene_counts, dtype=np.int64)
+    if batch_size < 1:
+        raise ValueError("batch_size must be positive.")
+    if gene_counts.ndim != 1 or np.any(gene_counts < 0):
+        raise ValueError("gene_counts must be a non-negative vector.")
+    if np.any(order < 0) or np.any(order >= len(gene_counts)):
+        raise ValueError("order contains an out-of-range window index.")
+    usable = len(order) // batch_size * batch_size if drop_last else len(order)
+    selected = order[:usable]
+    if len(selected) == 0:
+        return selected
+    num_batches = (
+        len(selected) // batch_size
+        if drop_last
+        else (len(selected) + batch_size - 1) // batch_size
+    )
+    capacities = np.full(num_batches, batch_size, dtype=np.int64)
+    if not drop_last and len(selected) % batch_size:
+        capacities[-1] = len(selected) % batch_size
+
+    positive = selected[gene_counts[selected] > 0]
+    negative = selected[gene_counts[selected] == 0]
+    positive = positive[np.argsort(-gene_counts[positive], kind="stable")]
+    batches: list[list[int]] = [[] for _ in range(num_batches)]
+    available_batches = [(0, batch_index) for batch_index in range(num_batches)]
+    heapq.heapify(available_batches)
+    for index in positive:
+        current_gene_count, destination = heapq.heappop(available_batches)
+        batches[destination].append(int(index))
+        if len(batches[destination]) < capacities[destination]:
+            heapq.heappush(
+                available_batches,
+                (current_gene_count + int(gene_counts[index]), destination),
+            )
+
+    negative_index = 0
+    for batch_index, batch in enumerate(batches):
+        remaining = int(capacities[batch_index] - len(batch))
+        batch.extend(int(index) for index in negative[negative_index : negative_index + remaining])
+        negative_index += remaining
+    if negative_index != len(negative):
+        raise RuntimeError("Failed to assign every selected gene-free window.")
+    balanced = np.asarray([index for batch in batches for index in batch], dtype=np.int64)
+    if len(balanced) != len(selected) or set(balanced) != set(selected):
+        raise RuntimeError("Balanced window order did not preserve selected windows exactly once.")
+    return balanced
 
 
 def _available_cpu_count() -> int:
@@ -1037,6 +1095,7 @@ class BigWigDataModule:
         window_workers: int = 0,
         target_cache_dir: Path | None = None,
         target_cache_dtype: str | np.dtype = "float16",
+        balance_gene_windows: bool = False,
     ) -> None:
         """Initialize streaming sequence/BigWig batch generation.
 
@@ -1054,6 +1113,8 @@ class BigWigDataModule:
             target_cache_dir: Optional directory containing a windowed target
                 cache built from these intervals and BigWig tracks.
             target_cache_dtype: dtype used by the target cache.
+            balance_gene_windows: Distribute windows containing direct gene
+                supervision across shuffled training batches without resampling.
 
         Raises:
             ValueError: If no shared chromosomes exist across configured BigWigs,
@@ -1085,6 +1146,7 @@ class BigWigDataModule:
         self._drop_last = drop_last
         self._target_workers = target_workers
         self._window_workers = window_workers
+        self._balance_gene_windows = bool(balance_gene_windows)
         self._encoder = one_hot_encoder.DNAOneHotEncoder(dtype=np.float32)
         self._gene_supervisions = {
             spec.head_id: GeneExpressionSupervision(spec.gene_supervision_path, spec)
@@ -1095,6 +1157,23 @@ class BigWigDataModule:
             head_name: supervision.max_genes(self._intervals)
             for head_name, supervision in self._gene_supervisions.items()
         }
+        self._gene_counts_by_split = (
+            {
+                split: np.asarray(
+                    [
+                        sum(
+                            len(supervision.contained_indices(window))
+                            for supervision in self._gene_supervisions.values()
+                        )
+                        for window in windows
+                    ],
+                    dtype=np.int64,
+                )
+                for split, windows in self._intervals.items()
+            }
+            if self._balance_gene_windows and self._gene_supervisions
+            else {}
+        )
         for head_name, max_genes in self._max_genes.items():
             if max_genes == 0:
                 raise ValueError(f"No fully contained genes were found for head {head_name}.")
@@ -1183,6 +1262,13 @@ class BigWigDataModule:
         if should_shuffle:
             rng = np.random.default_rng(seed)
             rng.shuffle(order)
+            if self._balance_gene_windows and self._gene_supervisions:
+                order = _balance_gene_window_order(
+                    order,
+                    self._gene_counts_by_split[split],
+                    batch_size=self._batch_size,
+                    drop_last=self._drop_last,
+                )
 
         extractor = fasta_lib.FastaExtractor(str(self._fasta_path))
         with contextlib.ExitStack() as stack:

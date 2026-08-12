@@ -2,12 +2,12 @@
 
 Gene targets are counts per million, CPM. `Row/global cosine` compares targets centered only across cell groups within each gene with targets also centered across all training genes. `Local/global cosine` compares minibatch double centering with split-wide double centering after randomizing genomic windows. A low local value indicates noise from estimating cell-group means using the few genes in one sequence batch.
 
-| Dataset | Groups | Training genes | Median genes/batch | Row/global cosine | Global DC variance retained | Median local/global cosine | Local/global p10 |
-|---|---:|---:|---:|---:|---:|---:|---:|
-| HDA | 134 | 44,840 | 24 | 0.99975 | 0.99950 | 0.94781 | 0.55230 |
-| Liu | 186 | 25,367 | 18 | 0.99986 | 0.99973 | 0.96727 | 0.93162 |
-| Johansen-human | 47 | 7,512 | 13 | 0.99312 | 0.98629 | 0.95906 | 0.91830 |
-| Johansen-macaque | 47 | 7,642 | 13 | 0.99691 | 0.99384 | 0.95849 | 0.92085 |
-| Johansen-marmoset | 47 | 7,574 | 13 | 0.99492 | 0.98987 | 0.95859 | 0.92043 |
+| Dataset | Groups | Training genes | Gene-bearing windows | Random median genes | Balanced median genes | Random empty | Balanced empty | Random no local DC variance | Balanced no local DC variance | Row/global cosine | Global DC variance retained |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| HDA | 134 | 44,840 | 68.7% | 16 | 17 | 0.0% | 0.0% | 0.1% | 0.2% | 0.99975 | 0.99950 |
+| Liu | 186 | 25,367 | 49.4% | 9 | 9 | 0.4% | 0.0% | 1.4% | 0.0% | 0.99986 | 0.99973 |
+| Johansen-human | 47 | 7,512 | 21.1% | 1 | 1 | 38.9% | 15.8% | 26.0% | 53.0% | 0.99312 | 0.98629 |
+| Johansen-macaque | 47 | 7,642 | 23.1% | 1 | 1 | 34.9% | 7.6% | 26.7% | 58.8% | 0.99691 | 0.99384 |
+| Johansen-marmoset | 47 | 7,574 | 22.9% | 1 | 1 | 35.0% | 8.3% | 26.9% | 58.1% | 0.99492 | 0.98987 |
 
-For CPM targets, total expression is nearly equal across cell-group tracks. Row-centering therefore closely approximates split-wide double centering without estimating a noisy cell-group mean from each small minibatch. This is an objective-alignment diagnostic, not a prediction result.
+For CPM targets, total expression is nearly equal across cell-group tracks. Row-centering therefore closely approximates split-wide double centering without estimating a noisy cell-group mean from each small minibatch. Gene-balanced ordering is intended only for the row-centered objective. In sparse Johansen data it reduces empty batches but increases batches containing only one gene, which have no local double-centered variance. This is an objective-alignment diagnostic, not a prediction result.

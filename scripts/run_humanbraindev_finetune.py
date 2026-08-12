@@ -266,6 +266,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--limit-valid", type=_positive_int_or_none, default=None)
     parser.add_argument("--limit-test", type=_positive_int_or_none, default=None)
     parser.add_argument("--batch-size", type=int, default=16)
+    parser.add_argument(
+        "--balance-gene-windows",
+        action="store_true",
+        help="Distribute gene-bearing windows across shuffled batches without resampling.",
+    )
     parser.add_argument("--num-epochs", type=int, default=5)
     parser.add_argument("--max-train-steps", type=_positive_int_or_none, default=None)
     parser.add_argument("--learning-rate", type=float, default=1e-3)
@@ -698,6 +703,7 @@ def main() -> None:
                 ),
                 target_cache_dir=None,
                 target_cache_dtype=args.target_cache_dtype,
+                balance_gene_windows=args.balance_gene_windows,
             )
             print(
                 f"{species_name}: "
@@ -917,6 +923,7 @@ def main() -> None:
             ),
             target_cache_dir=target_cache_dir,
             target_cache_dtype=args.target_cache_dtype,
+            balance_gene_windows=args.balance_gene_windows,
         )
 
     head_ids = [spec.head_id for spec in head_specs]
