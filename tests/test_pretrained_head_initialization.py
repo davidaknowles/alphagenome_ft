@@ -5,6 +5,7 @@ import pandas as pd
 
 from alphagenome.models import dna_output
 from alphagenome_research.model import dna_model
+from alphagenome_research.model.metadata import metadata as metadata_lib
 
 from alphagenome_ft import custom_model
 
@@ -73,6 +74,46 @@ def test_pretrained_bootstrap_copies_consistent_output_channels(monkeypatch) -> 
     expected = jnp.take(source[0], jnp.asarray(indices), axis=-1)[None]
     actual = result["head/study_rna/resolution_128/multi_organism_linear"]["w"]
     assert jnp.array_equal(actual, expected)
+
+
+def test_pretrained_bootstrap_unwraps_target_output_metadata(monkeypatch) -> None:
+    output_type = dna_output.OutputType.RNA_SEQ
+    organism = dna_model.Organism.HOMO_SAPIENS
+
+    class SourceMetadata:
+        def __init__(self) -> None:
+            self.frame = pd.DataFrame({"strand": ("+", "-")})
+            self.padding = {output_type: jnp.asarray((False, False))}
+
+        def get(self, requested):
+            return self.frame if requested == output_type else None
+
+    target_metadata = metadata_lib.AlphaGenomeOutputMetadata(
+        rna_seq=pd.DataFrame({"strand": ("+", "-")})
+    )
+    monkeypatch.setattr(
+        custom_model,
+        "_resolve_user_metadata",
+        lambda **_kwargs: {organism: target_metadata},
+    )
+    params = {
+        "alphagenome/head/rna_seq/resolution_128/multi_organism_linear": {
+            "w": jnp.asarray([[[1.0, 2.0]]]),
+        },
+        "head/study_rna/resolution_128/multi_organism_linear": {
+            "w": jnp.zeros((1, 1, 2), dtype=jnp.float32),
+        },
+    }
+
+    result = custom_model._initialize_heads_from_pretrained_bootstrap(
+        params,
+        head_names=("study_rna",),
+        head_configs={"study_rna": SimpleNamespace(output_type=output_type)},
+        pretrained_metadata={organism: SourceMetadata()},
+    )
+
+    actual = result["head/study_rna/resolution_128/multi_organism_linear"]["w"]
+    assert set(actual.reshape(-1).tolist()) == {1.0, 2.0}
 
 
 def test_pretrained_bootstrap_uses_mouse_source_for_mouse_only_head(monkeypatch) -> None:

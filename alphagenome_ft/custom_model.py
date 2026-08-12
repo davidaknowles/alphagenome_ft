@@ -324,6 +324,15 @@ def _bootstrap_track_indices(
     return tuple(assignments)
 
 
+def _output_metadata_frame(metadata: Any, output_type: dna_output.OutputType):
+    """Return one output-type frame from wrapped or direct target metadata."""
+    if metadata is None:
+        return None
+    if isinstance(metadata, metadata_lib.AlphaGenomeOutputMetadata):
+        return metadata.get(output_type)
+    return metadata
+
+
 def _initialize_heads_from_pretrained_bootstrap(
     params: dict[str, Any],
     *,
@@ -387,6 +396,7 @@ def _initialize_heads_from_pretrained_bootstrap(
                             (frame for frame in target_metadata.values() if frame is not None),
                             None,
                         )
+                    target_frame = _output_metadata_frame(target_frame, output_type)
                     source_strands = (
                         tuple(source_frame["strand"].astype(str))
                         if "strand" in source_frame
