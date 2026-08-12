@@ -168,19 +168,21 @@
           2,
           3,
           4,
-          5
+          5,
+          6
         ],
         "lora+locon": [
           1,
           2,
           3,
           4,
-          5
+          5,
+          6
         ]
       },
-      "latest_lora_epoch": 5,
-      "latest_lora_locon_epoch": 5,
-      "highest_matched_epoch": 5,
+      "latest_lora_epoch": 6,
+      "latest_lora_locon_epoch": 6,
+      "highest_matched_epoch": 6,
       "status": "matched result available"
     },
     {

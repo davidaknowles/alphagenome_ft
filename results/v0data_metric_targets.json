@@ -90,24 +90,24 @@
       "modality": "ATAC",
       "threshold": 0.8,
       "status": "below target",
-      "gap_to_target": 0.029054783243829596,
+      "gap_to_target": 0.026290662145878274,
       "strategy": "lora",
-      "selected_epoch": 3,
+      "selected_epoch": 6,
       "head": "liu_atac",
-      "valid_r": 0.7709452167561704,
-      "test_r": 0.7887116272848264
+      "valid_r": 0.7737093378541218,
+      "test_r": 0.7903408184508365
     },
     {
       "dataset": "liu-hdma",
       "modality": "RNA",
       "threshold": 0.8,
       "status": "below target",
-      "gap_to_target": 0.15194145603826148,
-      "strategy": "lora",
-      "selected_epoch": 3,
+      "gap_to_target": 0.08305664373332378,
+      "strategy": "lora+locon",
+      "selected_epoch": 6,
       "head": "liu_rna",
-      "valid_r": 0.6480585439617386,
-      "test_r": 0.48861646443867734
+      "valid_r": 0.7169433562666763,
+      "test_r": 0.4977587721586113
     },
     {
       "dataset": "zemke2023-human",
