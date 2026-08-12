@@ -4,6 +4,27 @@
     {
       "dataset": "hda-joint",
       "strategy": "lora",
+      "variant": "geneonly_corrw0_screen",
+      "selected_epoch": 1,
+      "global_step": 2619,
+      "selection_mean_valid_r": 0.597843210383907,
+      "heads": [
+        {
+          "head": "hda_atac",
+          "valid_r": 0.7724434360753721,
+          "test_r": 0.7834370390935155
+        },
+        {
+          "head": "hda_rna",
+          "valid_r": 0.42324298469244176,
+          "test_r": 0.5714159590280907
+        }
+      ],
+      "metrics_path": "checkpoints/v0data/hda-joint_lora_geneonly_corrw0_screen/metrics.jsonl"
+    },
+    {
+      "dataset": "hda-joint",
+      "strategy": "lora",
       "variant": "rnaw5",
       "selected_epoch": 1,
       "global_step": 2619,
