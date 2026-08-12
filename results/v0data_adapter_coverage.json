@@ -169,7 +169,8 @@
           3,
           4,
           5,
-          6
+          6,
+          7
         ],
         "lora+locon": [
           1,
@@ -177,12 +178,13 @@
           3,
           4,
           5,
-          6
+          6,
+          7
         ]
       },
-      "latest_lora_epoch": 6,
-      "latest_lora_locon_epoch": 6,
-      "highest_matched_epoch": 6,
+      "latest_lora_epoch": 7,
+      "latest_lora_locon_epoch": 7,
+      "highest_matched_epoch": 7,
       "status": "matched result available"
     },
     {

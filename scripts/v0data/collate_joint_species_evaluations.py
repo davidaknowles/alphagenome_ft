@@ -68,7 +68,7 @@ def render_markdown(results: dict[str, Any]) -> str:
         "",
         "Each joint cross-species checkpoint is evaluated without parameter updates against the native reference and target manifest for each species.",
         "",
-        "| Dataset | Species | Strategy | Epoch | Split | Head | Differential R |",
+        "| Dataset | Species | Strategy | Epoch | Split | Head | Signed double-centered R |",
         "|---|---|---|---:|---|---|---:|",
     ]
     for evaluation in results["evaluations"]:
