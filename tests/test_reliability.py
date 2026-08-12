@@ -5,6 +5,7 @@ from alphagenome_ft.finetune.reliability import (
     balanced_library_split,
     counts_per_million,
     double_centered_pearson,
+    split_half_pseudobulks,
     spearman_brown,
 )
 
@@ -29,3 +30,21 @@ def test_double_centered_pearson_and_spearman_brown() -> None:
     values = np.asarray([[1, 4, 2], [3, 0, 5], [2, 6, 1]], dtype=float)
     assert double_centered_pearson(values, values) == pytest.approx(1.0)
     assert spearman_brown(0.8) == pytest.approx(8 / 9)
+
+
+def test_split_half_pseudobulks_balances_each_group_independently() -> None:
+    counts = np.asarray(
+        [
+            [[8, 0], [0, 0]],
+            [[4, 0], [0, 6]],
+            [[0, 2], [0, 3]],
+            [[0, 1], [2, 0]],
+        ],
+        dtype=float,
+    )
+
+    first, second, valid = split_half_pseudobulks(counts)
+
+    assert valid.tolist() == [True, True]
+    np.testing.assert_allclose(first.sum(axis=1), [1_000_000, 1_000_000])
+    np.testing.assert_allclose(second.sum(axis=1), [1_000_000, 1_000_000])

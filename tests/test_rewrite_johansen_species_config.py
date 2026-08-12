@@ -7,6 +7,10 @@ import anndata as ad
 import numpy as np
 from scipy import sparse
 
+from scripts.v0data.johansen_rna_reprocessing.audit_donor_reliability import (
+    audit_reliability,
+)
+
 
 def test_aggregate_corrected_pseudobulk_reads_raw_counts(tmp_path: Path):
     source = ad.AnnData(
@@ -39,6 +43,46 @@ def test_aggregate_corrected_pseudobulk_reads_raw_counts(tmp_path: Path):
     assert result.obs_names.tolist() == ["a", "b"]
     np.testing.assert_allclose(result.X, [[1_000_000, 0], [625_000, 375_000]])
     np.testing.assert_array_equal(result.obs["n_cells"], [1, 2])
+
+
+def test_johansen_donor_reliability_uses_modeled_groups_and_genes(tmp_path: Path):
+    obs = {
+        "Group": ["a", "a", "a", "a", "b", "b", "b", "b", "unused"],
+        "donor_id": ["d1", "d2", "d3", "d4", "d1", "d2", "d3", "d4", "d1"],
+    }
+    var = {"ensembl_id": ["g1", "g2", "unused_gene"]}
+    counts = sparse.csr_matrix(
+        [
+            [8, 2, 20],
+            [4, 1, 10],
+            [6, 3, 0],
+            [2, 1, 0],
+            [1, 9, 0],
+            [1, 4, 0],
+            [3, 6, 0],
+            [1, 2, 0],
+            [100, 0, 0],
+        ],
+        dtype=np.float32,
+    )
+    source = ad.AnnData(X=counts.copy(), obs=obs, var=var)
+    source.raw = source.copy()
+    expression_path = tmp_path / "single_cell.h5ad"
+    source.write_h5ad(expression_path)
+    template_path = tmp_path / "template.npz"
+    np.savez(template_path, groups=np.asarray(["a", "b"]), gene_ids=np.asarray(["g1", "g2"]))
+
+    result = audit_reliability(
+        species="human",
+        expression_path=expression_path,
+        template_path=template_path,
+        orthologs_path=tmp_path / "unused.csv",
+        chunk_size=3,
+    )
+
+    assert result["donors"] == 4
+    assert result["groups_estimable_in_both_halves"] == 2
+    assert result["genes"] == 2
 
 
 def test_rewrite_species_config_uses_corrected_gene_only_supervision(tmp_path: Path):

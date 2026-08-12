@@ -62,3 +62,24 @@ def spearman_brown(split_half_correlation: float) -> float:
     correlation = float(split_half_correlation)
     return 2.0 * correlation / (1.0 + correlation)
 
+
+def split_half_pseudobulks(
+    counts_by_sample_group: np.ndarray,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Construct depth-balanced sample split halves for pseudobulk counts.
+
+    ``counts_by_sample_group`` has shape ``[S, C, G]``, where ``S`` is the
+    number of biological samples, ``C`` is the number of cell groups, and
+    ``G`` is the number of genes. Returned CPM matrices have shape ``[C, G]``;
+    the Boolean vector of shape ``[C]`` marks groups observed in both halves.
+    """
+    counts = np.asarray(counts_by_sample_group, dtype=np.float64)
+    if counts.ndim != 3 or np.any(~np.isfinite(counts)) or np.any(counts < 0):
+        raise ValueError("counts_by_sample_group must be finite non-negative [S, C, G].")
+    library_sizes = counts.sum(axis=2)
+    first_assignment = balanced_library_split(library_sizes)
+    first_counts = np.sum(counts * first_assignment[..., None], axis=0)
+    second_counts = np.sum(counts * (~first_assignment)[..., None], axis=0)
+    first_cpm, first_valid = counts_per_million(first_counts)
+    second_cpm, second_valid = counts_per_million(second_counts)
+    return first_cpm, second_cpm, first_valid & second_valid
