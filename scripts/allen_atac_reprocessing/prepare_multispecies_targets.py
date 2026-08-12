@@ -115,6 +115,12 @@ def replace_atac_head(
     return payload
 
 
+def update_shared_group_metadata(config: dict, retained_group_count: int) -> None:
+    config["shared_groups"] = retained_group_count
+    for summary in config.get("summary", ()):  # Older source configs may omit summaries.
+        summary["groups"] = retained_group_count
+
+
 def main() -> None:
     args = parse_args()
     source_config_path = args.source_species_config.expanduser().resolve()
@@ -200,6 +206,7 @@ def main() -> None:
 
     output_config = copy.deepcopy(source_config)
     output_config["species"] = output_entries
+    update_shared_group_metadata(output_config, len(retained_groups))
     output_config["atac_source"] = "all-fragment coverage signal per million reads"
     output_config["minimum_fragments_per_group"] = args.minimum_fragments
     output_config["excluded_groups"] = excluded_groups

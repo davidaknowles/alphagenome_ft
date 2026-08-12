@@ -68,3 +68,18 @@ def test_read_fragment_depths_uses_stored_whole_genome_totals(tmp_path):
     )
 
     assert MODULE["read_fragment_depths"](tmp_path) == {"a": 12, "b": 34}
+
+
+def test_update_shared_group_metadata_updates_top_level_and_species_summaries():
+    config = {
+        "shared_groups": 48,
+        "summary": [
+            {"species": "human", "groups": 48},
+            {"species": "macaque", "groups": 48},
+        ],
+    }
+
+    MODULE["update_shared_group_metadata"](config, 47)
+
+    assert config["shared_groups"] == 47
+    assert [summary["groups"] for summary in config["summary"]] == [47, 47]
