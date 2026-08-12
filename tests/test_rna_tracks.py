@@ -169,6 +169,9 @@ def test_gene_supervision_assigns_long_gene_to_best_exon_window(tmp_path: Path):
     assert second_arrays["valid"].tolist() == [True]
     np.testing.assert_allclose(second_arrays["weights"].sum(), 30 / 128)
     np.testing.assert_allclose(second_arrays["targets"][0], [12.0])
+    summary = supervision.assignment_summary()
+    assert summary["assigned_genes"] == 1
+    assert summary["scale_quantiles"]["0.5"] == 1.5
 
 
 def test_expression_remap_and_gtf_attribute_aliases(tmp_path: Path):

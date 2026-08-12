@@ -174,6 +174,46 @@ class GeneExpressionSupervision:
             self._window_key(window), np.empty((0,), dtype=np.int64)
         )
 
+    def assignment_summary(self) -> dict[str, object]:
+        """Summarize expanded gene support and exon-length extrapolation scales."""
+        if self.window_assignment == "full_span":
+            raise ValueError("Assignment summary requires an expanded window assignment.")
+        assigned_indices = (
+            np.concatenate(tuple(self._assigned_indices.values()))
+            if self._assigned_indices
+            else np.empty((0,), dtype=np.int64)
+        )
+        scales = (
+            np.concatenate(tuple(self._assigned_scales.values()))
+            if self._assigned_scales
+            else np.empty((0,), dtype=np.float32)
+        )
+        if len(np.unique(assigned_indices)) != len(assigned_indices):
+            raise RuntimeError("Expanded gene assignment contains duplicate genes.")
+
+        def summarize(selected_scales: np.ndarray) -> dict[str, float | int]:
+            quantiles = (0.0, 0.5, 0.9, 0.95, 0.99, 1.0)
+            return {
+                "assigned_genes": int(len(selected_scales)),
+                "scale_quantiles": {
+                    str(quantile): float(np.quantile(selected_scales, quantile))
+                    for quantile in quantiles
+                },
+            }
+
+        by_chromosome = {}
+        for chromosome in sorted(set(self.chromosomes)):
+            chromosome_mask = self.chromosomes[assigned_indices] == chromosome
+            by_chromosome[chromosome] = {
+                "available_genes": int(np.sum(self.chromosomes == chromosome)),
+                **summarize(scales[chromosome_mask]),
+            }
+        return {
+            "available_genes": len(self.gene_ids),
+            **summarize(scales),
+            "chromosomes": by_chromosome,
+        }
+
     def max_genes(self, intervals: Mapping[str, Sequence[genome.Interval]]) -> int:
         return max(
             (
