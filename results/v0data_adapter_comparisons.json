@@ -94,19 +94,19 @@
     {
       "dataset": "zemke2023-human",
       "strategy": "lora+locon",
-      "selected_epoch": 1,
-      "global_step": 2619,
-      "selection_mean_valid_r": 0.539168309848941,
+      "selected_epoch": 2,
+      "global_step": 5238,
+      "selection_mean_valid_r": 0.5751473360959212,
       "heads": [
         {
           "head": "zemke2023_atac",
-          "valid_r": 0.6784285140405584,
-          "test_r": 0.6939110746665793
+          "valid_r": 0.6925030025376702,
+          "test_r": 0.7093359231757852
         },
         {
           "head": "zemke2023_rna",
-          "valid_r": 0.3999081056573237,
-          "test_r": 0.3461811035981152
+          "valid_r": 0.45779166965417223,
+          "test_r": 0.38733833797970146
         }
       ],
       "metrics_path": "checkpoints/v0data/zemke2023-human_lora_locon/metrics.jsonl"
