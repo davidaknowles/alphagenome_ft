@@ -8,6 +8,7 @@ import pytest
 from alphagenome_ft.finetune.target_manifest import (
     bigwig_nonzero_mean,
     build_head_config,
+    combined_bigwig_nonzero_mean,
     make_gene_only_config,
     retain_target_heads,
     set_gene_window_assignment,
@@ -15,7 +16,11 @@ from alphagenome_ft.finetune.target_manifest import (
 )
 
 
-def test_make_gene_only_config_can_collapse_strand_pairs() -> None:
+def test_make_gene_only_config_can_collapse_strand_pairs(tmp_path: Path) -> None:
+    group_a_plus = tmp_path / "group_a.plus.bw"
+    group_a_minus = tmp_path / "group_a.minus.bw"
+    _write_bigwig(group_a_plus)
+    _write_bigwig(group_a_minus)
     source = {
         "heads": [
             {
@@ -25,13 +30,13 @@ def test_make_gene_only_config_can_collapse_strand_pairs() -> None:
                 "gene_supervision": {"path": "genes.npz", "coverage_loss_weight": 0.1},
                 "targets": [
                     {
-                        "path": "group_a.plus.bw",
+                        "path": str(group_a_plus),
                         "label": "group_a (+)",
                         "strand": "+",
                         "nonzero_mean": 2.0,
                     },
                     {
-                        "path": "group_a.minus.bw",
+                        "path": str(group_a_minus),
                         "label": "group_a (-)",
                         "strand": "-",
                         "nonzero_mean": 4.0,
@@ -57,7 +62,7 @@ def test_make_gene_only_config_can_collapse_strand_pairs() -> None:
         ("group_a", "."),
         ("group_b", "."),
     ]
-    assert head["targets"][0]["nonzero_mean"] == 3.0
+    assert head["targets"][0]["nonzero_mean"] == pytest.approx(6.5)
     assert source["heads"][0]["targets"][0]["strand"] == "+"
 
 
@@ -134,6 +139,15 @@ def _write_bigwig(path: Path) -> None:
         values=[0.0, 2.0, 4.0],
     )
     bigwig.close()
+
+
+def test_combined_bigwig_nonzero_mean_sums_overlapping_tracks(tmp_path: Path) -> None:
+    first = tmp_path / "first.bw"
+    second = tmp_path / "second.bw"
+    _write_bigwig(first)
+    _write_bigwig(second)
+
+    assert combined_bigwig_nonzero_mean((first, second)) == pytest.approx(6.5)
 
 
 def test_bigwig_nonzero_mean_is_base_weighted(tmp_path: Path) -> None:

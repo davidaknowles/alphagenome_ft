@@ -3,11 +3,53 @@
 from __future__ import annotations
 
 import copy
+from collections import defaultdict
 import math
 from pathlib import Path
 from typing import Any, Iterable, Sequence
 
 import pyBigWig
+
+
+def combined_bigwig_nonzero_mean(paths: Sequence[Path]) -> float:
+    """Return the positive-base mean after summing aligned BigWig tracks."""
+    paths = tuple(Path(path).expanduser() for path in paths)
+    if not paths:
+        raise ValueError("At least one BigWig is required.")
+    handles = [pyBigWig.open(str(path)) for path in paths]
+    weighted_sum = 0.0
+    positive_bases = 0
+    try:
+        chromosome_sizes = handles[0].chroms()
+        if any(handle.chroms() != chromosome_sizes for handle in handles[1:]):
+            raise ValueError("Combined BigWigs must have identical chromosome headers.")
+        for chromosome in chromosome_sizes:
+            events: dict[int, float] = defaultdict(float)
+            for handle in handles:
+                for start, end, value in handle.intervals(chromosome) or ():
+                    if not math.isfinite(value):
+                        raise ValueError("Combined BigWigs must contain only finite values.")
+                    if value <= 0:
+                        continue
+                    events[int(start)] += float(value)
+                    events[int(end)] -= float(value)
+            current = 0.0
+            previous = None
+            for position in sorted(events):
+                if previous is not None and position > previous and current > 0:
+                    width = position - previous
+                    weighted_sum += width * current
+                    positive_bases += width
+                current += events[position]
+                if abs(current) < 1e-12:
+                    current = 0.0
+                previous = position
+    finally:
+        for handle in handles:
+            handle.close()
+    if positive_bases == 0:
+        raise ValueError("Combined BigWigs contain no finite positive values.")
+    return weighted_sum / positive_bases
 
 
 def make_gene_only_config(
@@ -66,7 +108,9 @@ def make_gene_only_config(
                 if item.get("nonzero_mean") is not None
             ]
             if means:
-                target["nonzero_mean"] = sum(means) / len(means)
+                target["nonzero_mean"] = combined_bigwig_nonzero_mean(
+                    (Path(positive["path"]), Path(negative["path"]))
+                )
             collapsed_targets.append(target)
         head["targets"] = collapsed_targets
     if output_rank is not None:
@@ -207,6 +251,7 @@ def build_head_config(
 __all__ = [
     "bigwig_nonzero_mean",
     "build_head_config",
+    "combined_bigwig_nonzero_mean",
     "make_gene_only_config",
     "retain_target_heads",
     "set_gene_window_assignment",
