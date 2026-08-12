@@ -27,8 +27,8 @@ These non-canonical runs test one change at a time. Paired strategies are compar
 
 | Dataset | Strategy | Variant | Epoch | Head | Validation R | Test R |
 |---|---|---|---:|---|---:|---:|
-| `hda-joint` | `lora` | `cosine3e4_screen` | 1 | `hda_atac` | 0.6990 | 0.7099 |
-| `hda-joint` | `lora` | `cosine3e4_screen` | 1 | `hda_rna` | 0.3133 | 0.4865 |
+| `hda-joint` | `lora` | `cosine3e4_screen` | 2 | `hda_atac` | 0.7565 | 0.7688 |
+| `hda-joint` | `lora` | `cosine3e4_screen` | 2 | `hda_rna` | 0.4229 | 0.5753 |
 | `hda-joint` | `lora` | `geneonly_corrw0_screen` | 1 | `hda_atac` | 0.7724 | 0.7834 |
 | `hda-joint` | `lora` | `geneonly_corrw0_screen` | 1 | `hda_rna` | 0.4232 | 0.5714 |
 | `hda-joint` | `lora` | `geneonly_corrw0p1_screen` | 1 | `hda_atac` | 0.7710 | 0.7827 |
