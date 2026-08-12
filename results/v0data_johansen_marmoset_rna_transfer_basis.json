@@ -1,0 +1,72 @@
+{
+  "definition": "Held-out target projection onto right singular vectors learned from double-centered training-chromosome targets.",
+  "support": "fixed_window_full_span",
+  "gene_supervision": "outputs/v0data/johansen-rna-corrected/supervision/marmoset/gene_expression_supervision.npz",
+  "held_out_chromosomes": [
+    "chr8",
+    "chr9"
+  ],
+  "training_genes": 7572,
+  "chromosomes": {
+    "chr8": {
+      "raw_cpm": {
+        "training_observations": 7572,
+        "evaluation_observations": 248,
+        "tracks": 47,
+        "training_numerical_rank": 46,
+        "rank_correlation_ceiling": {
+          "1": 0.1697980125657156,
+          "2": 0.21633342558450736,
+          "4": 0.27769165580081595,
+          "8": 0.4132314723206506,
+          "16": 0.7630678265362995,
+          "32": 0.9657517289877461
+        }
+      },
+      "log1p_cpm": {
+        "training_observations": 7572,
+        "evaluation_observations": 248,
+        "tracks": 47,
+        "training_numerical_rank": 46,
+        "rank_correlation_ceiling": {
+          "1": 0.5667934841549501,
+          "2": 0.6380331730605285,
+          "4": 0.7436480260659416,
+          "8": 0.8233564349050397,
+          "16": 0.9138776943328075,
+          "32": 0.9818337784703933
+        }
+      }
+    },
+    "chr9": {
+      "raw_cpm": {
+        "training_observations": 7572,
+        "evaluation_observations": 431,
+        "tracks": 47,
+        "training_numerical_rank": 46,
+        "rank_correlation_ceiling": {
+          "1": 0.5462310721623571,
+          "2": 0.6374575202753693,
+          "4": 0.6933922927942037,
+          "8": 0.827679103633354,
+          "16": 0.9714254976676415,
+          "32": 0.9925449336752551
+        }
+      },
+      "log1p_cpm": {
+        "training_observations": 7572,
+        "evaluation_observations": 431,
+        "tracks": 47,
+        "training_numerical_rank": 46,
+        "rank_correlation_ceiling": {
+          "1": 0.6067792212608443,
+          "2": 0.6878761620129262,
+          "4": 0.7912080495153874,
+          "8": 0.8680938557690706,
+          "16": 0.9423799527953886,
+          "32": 0.9898980735648025
+        }
+      }
+    }
+  }
+}

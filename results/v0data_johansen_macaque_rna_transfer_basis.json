@@ -1,0 +1,72 @@
+{
+  "definition": "Held-out target projection onto right singular vectors learned from double-centered training-chromosome targets.",
+  "support": "fixed_window_full_span",
+  "gene_supervision": "outputs/v0data/johansen-rna-corrected/supervision/macaque/gene_expression_supervision.npz",
+  "held_out_chromosomes": [
+    "NC_041761.1",
+    "NC_041762.1"
+  ],
+  "training_genes": 7640,
+  "chromosomes": {
+    "NC_041761.1": {
+      "raw_cpm": {
+        "training_observations": 7640,
+        "evaluation_observations": 266,
+        "tracks": 47,
+        "training_numerical_rank": 46,
+        "rank_correlation_ceiling": {
+          "1": 0.2501743297618417,
+          "2": 0.3720435264976787,
+          "4": 0.5539848339815331,
+          "8": 0.7996647292974849,
+          "16": 0.9470352635057548,
+          "32": 0.9896202688234522
+        }
+      },
+      "log1p_cpm": {
+        "training_observations": 7640,
+        "evaluation_observations": 266,
+        "tracks": 47,
+        "training_numerical_rank": 46,
+        "rank_correlation_ceiling": {
+          "1": 0.5250988306622836,
+          "2": 0.6377699938682083,
+          "4": 0.7338632464713681,
+          "8": 0.828188067477166,
+          "16": 0.9205203689714465,
+          "32": 0.9857780963488914
+        }
+      }
+    },
+    "NC_041762.1": {
+      "raw_cpm": {
+        "training_observations": 7640,
+        "evaluation_observations": 269,
+        "tracks": 47,
+        "training_numerical_rank": 46,
+        "rank_correlation_ceiling": {
+          "1": 0.3667801371152021,
+          "2": 0.5556661605603991,
+          "4": 0.691136306269073,
+          "8": 0.8194410570563255,
+          "16": 0.9323318001199178,
+          "32": 0.9943263103242445
+        }
+      },
+      "log1p_cpm": {
+        "training_observations": 7640,
+        "evaluation_observations": 269,
+        "tracks": 47,
+        "training_numerical_rank": 46,
+        "rank_correlation_ceiling": {
+          "1": 0.5908312577773585,
+          "2": 0.6752335884233616,
+          "4": 0.7679507116037799,
+          "8": 0.8543251509711575,
+          "16": 0.9336526022695885,
+          "32": 0.9850017991354088
+        }
+      }
+    }
+  }
+}

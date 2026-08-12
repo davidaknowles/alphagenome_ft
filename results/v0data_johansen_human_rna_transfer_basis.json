@@ -1,0 +1,72 @@
+{
+  "definition": "Held-out target projection onto right singular vectors learned from double-centered training-chromosome targets.",
+  "support": "fixed_window_full_span",
+  "gene_supervision": "outputs/v0data/johansen-rna-corrected/supervision/human/gene_expression_supervision.npz",
+  "held_out_chromosomes": [
+    "chr8",
+    "chr9"
+  ],
+  "training_genes": 7510,
+  "chromosomes": {
+    "chr8": {
+      "raw_cpm": {
+        "training_observations": 7510,
+        "evaluation_observations": 263,
+        "tracks": 47,
+        "training_numerical_rank": 46,
+        "rank_correlation_ceiling": {
+          "1": 0.3971492295576861,
+          "2": 0.561585990310466,
+          "4": 0.6877556026152986,
+          "8": 0.8405086155645725,
+          "16": 0.9592217618742183,
+          "32": 0.9891128058430813
+        }
+      },
+      "log1p_cpm": {
+        "training_observations": 7510,
+        "evaluation_observations": 263,
+        "tracks": 47,
+        "training_numerical_rank": 46,
+        "rank_correlation_ceiling": {
+          "1": 0.5325233799031553,
+          "2": 0.6458633352438344,
+          "4": 0.7446674370386973,
+          "8": 0.8374685590981219,
+          "16": 0.9267569830921538,
+          "32": 0.9850299144594332
+        }
+      }
+    },
+    "chr9": {
+      "raw_cpm": {
+        "training_observations": 7510,
+        "evaluation_observations": 308,
+        "tracks": 47,
+        "training_numerical_rank": 46,
+        "rank_correlation_ceiling": {
+          "1": 0.535978639981902,
+          "2": 0.6256871387173928,
+          "4": 0.8161586808943337,
+          "8": 0.8979045494247723,
+          "16": 0.9798491858871612,
+          "32": 0.9964272153808446
+        }
+      },
+      "log1p_cpm": {
+        "training_observations": 7510,
+        "evaluation_observations": 308,
+        "tracks": 47,
+        "training_numerical_rank": 46,
+        "rank_correlation_ceiling": {
+          "1": 0.5805561432205552,
+          "2": 0.642165889820681,
+          "4": 0.7584722044715588,
+          "8": 0.8570244115218859,
+          "16": 0.9372019501740345,
+          "32": 0.9878112474477746
+        }
+      }
+    }
+  }
+}
