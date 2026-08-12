@@ -6,6 +6,7 @@ from alphagenome_ft.finetune.reliability import (
     binomial_count_split,
     counts_per_million,
     double_centered_pearson,
+    double_centered_rank_summary,
     split_half_pseudobulks,
     spearman_brown,
 )
@@ -46,6 +47,23 @@ def test_double_centered_pearson_and_spearman_brown() -> None:
     values = np.asarray([[1, 4, 2], [3, 0, 5], [2, 6, 1]], dtype=float)
     assert double_centered_pearson(values, values) == pytest.approx(1.0)
     assert spearman_brown(0.8) == pytest.approx(8 / 9)
+
+
+def test_double_centered_rank_summary_recovers_rank_one_target() -> None:
+    observations = np.asarray([-2.0, -1.0, 1.0, 2.0])[:, None]
+    tracks = np.asarray([-1.0, 0.0, 1.0])[None, :]
+    values = observations @ tracks + np.arange(4.0)[:, None] + np.asarray([4.0, 8.0, 2.0])
+
+    summary = double_centered_rank_summary(values, ranks=(1, 2))
+
+    assert summary["numerical_rank"] == 1
+    assert summary["rank_correlation_ceiling"]["1"] == pytest.approx(1.0)
+    assert summary["rank_for_correlation"]["0.95"] == 1
+
+
+def test_double_centered_rank_summary_rejects_constant_target() -> None:
+    with pytest.raises(ValueError, match="no variance"):
+        double_centered_rank_summary(np.ones((3, 4)))
 
 
 def test_split_half_pseudobulks_balances_each_group_independently() -> None:

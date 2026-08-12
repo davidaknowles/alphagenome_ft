@@ -79,6 +79,62 @@ def double_centered_pearson(first: np.ndarray, second: np.ndarray) -> float:
     return float(np.sum(first * second) / denominator) if denominator > 0 else float("nan")
 
 
+def double_centered_rank_summary(
+    values: np.ndarray,
+    *,
+    ranks: tuple[int, ...] = (1, 2, 4, 8, 16, 32),
+    correlation_thresholds: tuple[float, ...] = (0.8, 0.9, 0.95),
+) -> dict[str, object]:
+    """Summarize the optimal low-rank approximation of a target matrix.
+
+    ``values`` has shape ``[G, C]``, where ``G`` is observations such as genes
+    and ``C`` is target tracks such as cell groups. Both axes are centered. The
+    rank-k correlation ceiling is the cosine between the centered matrix and
+    its optimal truncated singular-value decomposition.
+    """
+    values = np.asarray(values, dtype=np.float64)
+    if values.ndim != 2 or min(values.shape) < 2 or np.any(~np.isfinite(values)):
+        raise ValueError("values must be a finite two-dimensional matrix with both axes nontrivial.")
+    if not ranks or any(not isinstance(rank, int) or rank < 1 for rank in ranks):
+        raise ValueError("ranks must contain positive integers.")
+    if any(
+        not np.isfinite(threshold) or threshold <= 0 or threshold > 1
+        for threshold in correlation_thresholds
+    ):
+        raise ValueError("correlation thresholds must be finite and in (0, 1].")
+
+    centered = values - values.mean(axis=0) - values.mean(axis=1)[:, None] + values.mean()
+    eigenvalues = np.linalg.eigvalsh(centered.T @ centered)[::-1]
+    eigenvalues = np.maximum(eigenvalues, 0.0)
+    total = float(eigenvalues.sum())
+    if total <= 0:
+        raise ValueError("double-centered values have no variance.")
+    fractions = eigenvalues / total
+    cumulative = np.cumsum(fractions)
+    tolerance = np.finfo(np.float64).eps * max(centered.shape) * eigenvalues[0]
+    numerical_rank = int(np.sum(eigenvalues > tolerance))
+    positive = fractions[fractions > 0]
+
+    ceilings = {
+        str(rank): float(np.sqrt(cumulative[min(rank, len(cumulative)) - 1]))
+        for rank in sorted(set(ranks))
+        if rank <= min(centered.shape)
+    }
+    rank_for_correlation = {
+        str(threshold): int(np.searchsorted(cumulative, threshold * threshold) + 1)
+        for threshold in correlation_thresholds
+    }
+    return {
+        "observations": int(values.shape[0]),
+        "tracks": int(values.shape[1]),
+        "numerical_rank": numerical_rank,
+        "entropy_effective_rank": float(np.exp(-np.sum(positive * np.log(positive)))),
+        "participation_ratio": float(1.0 / np.sum(np.square(positive))),
+        "rank_correlation_ceiling": ceilings,
+        "rank_for_correlation": rank_for_correlation,
+    }
+
+
 def spearman_brown(split_half_correlation: float) -> float:
     """Estimate full-target reliability from equal-half correlation."""
     correlation = float(split_half_correlation)

@@ -1,0 +1,220 @@
+{
+  "definition": "Optimal singular-value approximation after centering genes and cell groups.",
+  "datasets": {
+    "HDA": {
+      "gene_supervision": "outputs/v0data/hda-joint/gene_expression_supervision.npz",
+      "raw_cpm": {
+        "observations": 59310,
+        "tracks": 134,
+        "numerical_rank": 133,
+        "entropy_effective_rank": 17.991097674916446,
+        "participation_ratio": 8.871042036399302,
+        "rank_correlation_ceiling": {
+          "1": 0.5272395968911665,
+          "2": 0.621052817942841,
+          "4": 0.725777841124631,
+          "8": 0.8515249639250693,
+          "16": 0.9336163547302446,
+          "32": 0.9755546998023408
+        },
+        "rank_for_correlation": {
+          "0.8": 6,
+          "0.9": 12,
+          "0.95": 20
+        }
+      },
+      "log1p_cpm": {
+        "observations": 59310,
+        "tracks": 134,
+        "numerical_rank": 133,
+        "entropy_effective_rank": 22.768149044062653,
+        "participation_ratio": 8.256166392458942,
+        "rank_correlation_ceiling": {
+          "1": 0.5419526766294844,
+          "2": 0.6581124132384685,
+          "4": 0.7545785751513825,
+          "8": 0.8271317392282246,
+          "16": 0.8851548836943137,
+          "32": 0.9314217763379564
+        },
+        "rank_for_correlation": {
+          "0.8": 7,
+          "0.9": 20,
+          "0.95": 44
+        }
+      }
+    },
+    "Liu": {
+      "gene_supervision": "outputs/v0data/liu-hdma/joint/gene_expression_supervision.npz",
+      "raw_cpm": {
+        "observations": 37400,
+        "tracks": 186,
+        "numerical_rank": 185,
+        "entropy_effective_rank": 7.90266808773382,
+        "participation_ratio": 4.142158729641001,
+        "rank_correlation_ceiling": {
+          "1": 0.5932566953672248,
+          "2": 0.8232844746465858,
+          "4": 0.8991102973806049,
+          "8": 0.9432401906300363,
+          "16": 0.9700962716612264,
+          "32": 0.9851980807201802
+        },
+        "rank_for_correlation": {
+          "0.8": 2,
+          "0.9": 5,
+          "0.95": 9
+        }
+      },
+      "log1p_cpm": {
+        "observations": 37400,
+        "tracks": 186,
+        "numerical_rank": 185,
+        "entropy_effective_rank": 29.4193804517466,
+        "participation_ratio": 12.396397606881465,
+        "rank_correlation_ceiling": {
+          "1": 0.4427483024381347,
+          "2": 0.5759225613059933,
+          "4": 0.7063030103267944,
+          "8": 0.8168663339882335,
+          "16": 0.8833076804913532,
+          "32": 0.9219040162348529
+        },
+        "rank_for_correlation": {
+          "0.8": 8,
+          "0.9": 22,
+          "0.95": 55
+        }
+      }
+    },
+    "Johansen-human": {
+      "gene_supervision": "outputs/v0data/johansen-rna-corrected/supervision/human/gene_expression_supervision.npz",
+      "raw_cpm": {
+        "observations": 13509,
+        "tracks": 47,
+        "numerical_rank": 46,
+        "entropy_effective_rank": 19.769968182938864,
+        "participation_ratio": 11.496926245508803,
+        "rank_correlation_ceiling": {
+          "1": 0.4701012543482561,
+          "2": 0.5891295715874953,
+          "4": 0.6956522414088147,
+          "8": 0.8023781450747675,
+          "16": 0.9141319196580749,
+          "32": 0.9884786086881839
+        },
+        "rank_for_correlation": {
+          "0.8": 8,
+          "0.9": 15,
+          "0.95": 21
+        }
+      },
+      "log1p_cpm": {
+        "observations": 13509,
+        "tracks": 47,
+        "numerical_rank": 46,
+        "entropy_effective_rank": 15.33967325636336,
+        "participation_ratio": 7.203355619162624,
+        "rank_correlation_ceiling": {
+          "1": 0.5739582445704168,
+          "2": 0.6587755741034906,
+          "4": 0.7583279999744038,
+          "8": 0.8479685429599598,
+          "16": 0.9303535398822639,
+          "32": 0.9857076961315373
+        },
+        "rank_for_correlation": {
+          "0.8": 6,
+          "0.9": 13,
+          "0.95": 20
+        }
+      }
+    },
+    "Johansen-macaque": {
+      "gene_supervision": "outputs/v0data/johansen-rna-corrected/supervision/macaque/gene_expression_supervision.npz",
+      "raw_cpm": {
+        "observations": 13495,
+        "tracks": 47,
+        "numerical_rank": 46,
+        "entropy_effective_rank": 19.761409476101495,
+        "participation_ratio": 11.38097951412545,
+        "rank_correlation_ceiling": {
+          "1": 0.469866617474894,
+          "2": 0.591578496417544,
+          "4": 0.6999325375078808,
+          "8": 0.8080583231173438,
+          "16": 0.9130522243977881,
+          "32": 0.9866587942203005
+        },
+        "rank_for_correlation": {
+          "0.8": 8,
+          "0.9": 15,
+          "0.95": 22
+        }
+      },
+      "log1p_cpm": {
+        "observations": 13495,
+        "tracks": 47,
+        "numerical_rank": 46,
+        "entropy_effective_rank": 15.320915377884788,
+        "participation_ratio": 7.117046717031007,
+        "rank_correlation_ceiling": {
+          "1": 0.57662913324749,
+          "2": 0.6594807983253269,
+          "4": 0.7615651631683013,
+          "8": 0.8489437447678072,
+          "16": 0.9277826432997471,
+          "32": 0.9851190110671043
+        },
+        "rank_for_correlation": {
+          "0.8": 6,
+          "0.9": 13,
+          "0.95": 21
+        }
+      }
+    },
+    "Johansen-marmoset": {
+      "gene_supervision": "outputs/v0data/johansen-rna-corrected/supervision/marmoset/gene_expression_supervision.npz",
+      "raw_cpm": {
+        "observations": 13506,
+        "tracks": 47,
+        "numerical_rank": 46,
+        "entropy_effective_rank": 21.598464113630794,
+        "participation_ratio": 12.98252342657262,
+        "rank_correlation_ceiling": {
+          "1": 0.45185978279303735,
+          "2": 0.5585152101758685,
+          "4": 0.6730583601942467,
+          "8": 0.7868110005193145,
+          "16": 0.900571198825547,
+          "32": 0.9866073951755792
+        },
+        "rank_for_correlation": {
+          "0.8": 9,
+          "0.9": 16,
+          "0.95": 23
+        }
+      },
+      "log1p_cpm": {
+        "observations": 13506,
+        "tracks": 47,
+        "numerical_rank": 46,
+        "entropy_effective_rank": 13.75648854679414,
+        "participation_ratio": 6.095941881453237,
+        "rank_correlation_ceiling": {
+          "1": 0.6085200902633344,
+          "2": 0.6800665249074398,
+          "4": 0.7801403043417888,
+          "8": 0.8585300983982593,
+          "16": 0.9352114854041846,
+          "32": 0.987507359046427
+        },
+        "rank_for_correlation": {
+          "0.8": 5,
+          "0.9": 12,
+          "0.95": 19
+        }
+      }
+    }
+  }
+}
