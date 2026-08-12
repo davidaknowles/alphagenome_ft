@@ -54,12 +54,20 @@ def test_optimizer_state_roundtrip(tmp_path):
     _save_optimizer_state(path, state)
     restored = _restore_optimizer_state(path, optimizer.init(params))
 
-    for actual, expected in zip(
-        jax.tree_util.tree_leaves(restored),
-        jax.tree_util.tree_leaves(state),
-        strict=True,
-    ):
-        np.testing.assert_array_equal(actual, expected)
+    def assert_same_state(actual_state, expected_state):
+        for actual, expected in zip(
+            jax.tree_util.tree_leaves(actual_state),
+            jax.tree_util.tree_leaves(expected_state),
+            strict=True,
+        ):
+            np.testing.assert_array_equal(actual, expected)
+
+    assert_same_state(restored, state)
+
+    _, newer_state = optimizer.update(gradients, state, params)
+    _save_optimizer_state(path, newer_state)
+    restored_newer = _restore_optimizer_state(path, optimizer.init(params))
+    assert_same_state(restored_newer, newer_state)
 
 
 def test_double_centered_correlation_loss_matches_metric_invariances():
