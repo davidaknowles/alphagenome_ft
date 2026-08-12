@@ -15,4 +15,4 @@ submit_screen() {
 }
 
 printf 'hda=%s\n' "$(submit_screen hda-joint outputs/v0data/hda-joint/targets.json)"
-printf 'liu=%s\n' "$(submit_screen liu-hdma outputs/v0data/liu-hdma/joint/targets.json)"
+printf 'liu=%s\n' "$(submit_screen liu-hdma outputs/v0data/liu-hdma/joint/targets_geneonly_corrw1.json)"
