@@ -8,6 +8,8 @@ The provisional five-dataset manifest validates all ten native sources and ten d
 
 Joint LoRA and LoRA plus LoCon smoke tasks 19936245_0 and 19936245_1 use the provisional manifest, two devices, five optimizer updates, and one limited validation and test batch from every native source. Five updates traverse all five dataset head layouts once; evaluation additionally checks repeated layouts across native species. No full joint run is dependency-submitted until the remaining target-layout screens and both joint smoke tasks succeed.
 
+The missing matched HDA shared-unstranded LoRA plus LoCon one-epoch arm is job 19936800_1. It uses the same gene-aware ordering, zero auxiliary correlation weight, disabled synthetic RNA coverage, batch size eight, and canonical chromosome split as completed LoRA job 19895394_0. HDA shared-unstranded target selection remains provisional until this matched strategy result completes.
+
 ## Multi-study adapter comparison
 
 The fine-tuning comparison uses signed double-centered Pearson correlation, (R), for checkpoint selection. For a prediction matrix (Y \in \mathbb{R}^{L \times C}), (L) is the number of genomic loci and (C) is the number of target channels. Predictions and targets are centered over loci and channels before their Pearson correlation is calculated. This is not the global coefficient of determination reported by some earlier runs. Validation now records a mean of each metric across heads so joint ATAC and ribonucleic-acid, RNA, runs do not select checkpoints from only the first head.
