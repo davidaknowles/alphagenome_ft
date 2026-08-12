@@ -106,6 +106,7 @@ def main() -> None:
     parser.add_argument("--markdown-output", required=True, type=Path)
     args = parser.parse_args()
     result = audit_targets(args.output_dir, sample_genes=args.sample_genes, seed=args.seed)
+    result["minimum_r"] = args.minimum_r
     args.json_output.parent.mkdir(parents=True, exist_ok=True)
     args.json_output.write_text(json.dumps(result, indent=2) + "\n")
     args.markdown_output.parent.mkdir(parents=True, exist_ok=True)

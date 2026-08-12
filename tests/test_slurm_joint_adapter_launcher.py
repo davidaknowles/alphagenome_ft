@@ -164,3 +164,15 @@ def test_zemke_direct_gene_screen_requires_complete_target_agreement() -> None:
     assert "zemke2023-gene-supervision/human/targets.json" in script
     assert "CORRELATION_LOSS_WEIGHT=${weight}" in script
     assert 'dependency="afterok:${smoke}_*"' in script
+
+
+def test_zemke2024_direct_gene_screen_requires_supported_group_agreement() -> None:
+    script = Path("scripts/v0data/submit_zemke2024_direct_gene_screen.sh").read_text()
+
+    assert "v0data_zemke2024_gene_track_agreement.json" in script
+    assert ".direct_gene_groups == 18" in script
+    assert "Astro1_all" in script and "Micro2_all" in script
+    assert ".raw_cpm_double_centered_r >= .minimum_r" in script
+    assert "zemke2024-gene-supervision/targets.json" in script
+    assert "BALANCE_GENE_WINDOWS=1" in script
+    assert 'dependency="afterok:${smoke}_*"' in script
