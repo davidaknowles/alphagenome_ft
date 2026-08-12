@@ -37,13 +37,13 @@
     {
       "study": "Liu HDMA",
       "canonical_dataset": "liu-hdma",
-      "canonical_status": "missing lora, lora+locon",
+      "canonical_status": "matched result available",
       "expected_native_species": [],
       "missing_native_evaluations": {
         "lora": [],
         "lora+locon": []
       },
-      "status": "missing lora, lora+locon"
+      "status": "comparison coverage complete"
     },
     {
       "study": "Zemke 2023",
@@ -59,8 +59,7 @@
         "lora": [
           "human",
           "macaque",
-          "marmoset",
-          "mouse"
+          "marmoset"
         ],
         "lora+locon": [
           "human",
@@ -127,15 +126,17 @@
       "dataset": "johansen-human",
       "completed_epochs": {
         "lora": [
-          1
+          1,
+          2
         ],
         "lora+locon": [
-          1
+          1,
+          2
         ]
       },
-      "latest_lora_epoch": 1,
-      "latest_lora_locon_epoch": 1,
-      "highest_matched_epoch": 1,
+      "latest_lora_epoch": 2,
+      "latest_lora_locon_epoch": 2,
+      "highest_matched_epoch": 2,
       "status": "matched result available"
     },
     {
@@ -152,13 +153,17 @@
     {
       "dataset": "liu-hdma",
       "completed_epochs": {
-        "lora": [],
-        "lora+locon": []
+        "lora": [
+          1
+        ],
+        "lora+locon": [
+          1
+        ]
       },
-      "latest_lora_epoch": null,
-      "latest_lora_locon_epoch": null,
-      "highest_matched_epoch": null,
-      "status": "missing lora, lora+locon"
+      "latest_lora_epoch": 1,
+      "latest_lora_locon_epoch": 1,
+      "highest_matched_epoch": 1,
+      "status": "matched result available"
     },
     {
       "dataset": "zemke2023-human",
