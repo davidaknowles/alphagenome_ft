@@ -174,6 +174,27 @@
     {
       "dataset": "hda-joint",
       "strategy": "lora",
+      "variant": "cosine3e4_screen",
+      "selected_epoch": 1,
+      "global_step": 2619,
+      "selection_mean_valid_r": 0.5061787256403703,
+      "heads": [
+        {
+          "head": "hda_atac",
+          "valid_r": 0.6990434300357417,
+          "test_r": 0.7099445874452163
+        },
+        {
+          "head": "hda_rna",
+          "valid_r": 0.3133140212449988,
+          "test_r": 0.48645090047928974
+        }
+      ],
+      "metrics_path": "checkpoints/v0data/hda-joint_lora_cosine3e4_screen/metrics.jsonl"
+    },
+    {
+      "dataset": "hda-joint",
+      "strategy": "lora",
       "variant": "geneonly_corrw0_screen",
       "selected_epoch": 1,
       "global_step": 2619,
