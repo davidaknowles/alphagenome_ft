@@ -6,4 +6,6 @@ The published all-age target has 22 RNA channels. The released cell metadata ide
 
 `prepare_gene_supervision.py` builds the direct targets and a modified target manifest. `audit_gene_track_agreement.py` integrates the corresponding published reads-per-kilobase-per-million, RPKM, tracks over sampled union exons, converts the integral to CPM scale, and gates subsequent training on signed double-centered agreement over the 18 valid groups.
 
+`smoke_donor_aggregation.py` validates one donor independently. It requires exact recovery of retained cell counts and raw RNA molecule totals from the release metadata before the longer all-donor build is trusted.
+
 After the audit passes, `../submit_zemke2024_direct_gene_screen.sh` can submit the matched one-epoch LoRA and LoRA plus LoCon screen. The launcher is intentionally dormant until the agreement artifact exists and validates all expected supported and masked groups.
