@@ -134,9 +134,15 @@ def read_gene_exons(
     chromosome_sizes: Mapping[str, int],
     gene_attribute: str = "gene_id",
     chromosome_aliases: Mapping[str, str] | None = None,
+    strip_gene_versions: bool = True,
 ) -> dict[str, GeneExons]:
     """Read and merge GTF exon records for requested stable Ensembl identifiers."""
-    wanted = {gene_id.split(".", 1)[0] for gene_id in gene_ids}
+    normalize_gene_id = (
+        (lambda value: value.split(".", 1)[0])
+        if strip_gene_versions
+        else (lambda value: value)
+    )
+    wanted = {normalize_gene_id(gene_id) for gene_id in gene_ids}
     gene_pattern = re.compile(rf'(?:^|;\s*){re.escape(gene_attribute)}\s+"([^"]+)"')
     chromosome_aliases = chromosome_aliases or {}
     raw: dict[str, tuple[str, str, list[tuple[int, int]]]] = {}
@@ -151,7 +157,7 @@ def read_gene_exons(
             match = gene_pattern.search(fields[8])
             if match is None:
                 continue
-            gene_id = match.group(1).split(".", 1)[0]
+            gene_id = normalize_gene_id(match.group(1))
             chromosome = chromosome_aliases.get(fields[0], fields[0])
             strand = fields[6]
             if (
@@ -343,10 +349,17 @@ def write_gene_expression_supervision(
     expression: PseudobulkExpression,
     *,
     genes: Mapping[str, GeneExons],
+    strip_gene_versions: bool = True,
 ) -> int:
     """Write exon geometry and matched group-by-gene CPM to a compact NPZ."""
+    normalize_gene_id = (
+        (lambda value: value.split(".", 1)[0])
+        if strip_gene_versions
+        else (lambda value: value)
+    )
     expression_index = {
-        gene_id.split(".", 1)[0]: idx for idx, gene_id in enumerate(expression.gene_ids)
+        normalize_gene_id(gene_id): idx
+        for idx, gene_id in enumerate(expression.gene_ids)
     }
     ordered = sorted(
         genes.values(), key=lambda gene: (gene.chromosome, gene.start, gene.end, gene.gene_id)

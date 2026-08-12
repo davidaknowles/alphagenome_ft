@@ -1,0 +1,7 @@
+# Zemke 2023 RNA reprocessing
+
+The published Zemke 2023 RNA BigWigs provide measured coordinate-resolved reads-per-kilobase-per-million targets for 20 subclasses in each of four species. The release also provides raw integer unique-molecular-identifier count matrices and cell metadata. Direct gene supervision is derived from those counts without replacing or rescaling the published tracks.
+
+`download_annotations.sh` downloads National Center for Biotechnology Information Reference Sequence, NCBI RefSeq, exon annotations from the University of California Santa Cruz, UCSC, browser for the exact `hg38`, `rheMac10`, `calJac4`, and `mm10` assemblies used by the target BigWigs. `prepare_gene_supervision.py` sums raw counts by subclass, excludes the unpublished chandelier-cell class, normalizes each subclass pseudobulk to counts per million, maps gene symbols to native-assembly union exons, and writes the standard compact gene-supervision artifact. The 20 retained subclasses must match the published RNA channels exactly after punctuation normalization.
+
+The derived manifest preserves the published RNA tracks, resolutions, scaling, and coordinate-level loss. It adds direct gene-level log-count supervision with equal outer weight and retains coordinate coverage weight one. An optional signed double-centered correlation weight applies to direct gene expression because the training contract prefers measured gene targets whenever they are present. This is an optimization variant and does not replace the canonical published-track comparison.
