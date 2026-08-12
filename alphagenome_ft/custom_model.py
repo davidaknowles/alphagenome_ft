@@ -34,7 +34,7 @@ and embeddings.
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
-from contextlib import nullcontext
+from contextlib import contextmanager, nullcontext
 import enum
 import json
 import os
@@ -76,7 +76,13 @@ except ImportError:
 from alphagenome.models import dna_output, dna_client
 from dataclasses import asdict, dataclass, is_dataclass, replace
 
-from alphagenome_research.model import dna_model, model as model_lib, embeddings as embeddings_module
+from alphagenome_research.model import (
+    attention as attention_module,
+    dna_model,
+    embeddings as embeddings_module,
+    heads as heads_module,
+    model as model_lib,
+)
 from alphagenome_research.model.metadata import metadata as metadata_lib
 
 from alphagenome_ft import parameter_utils
@@ -92,6 +98,68 @@ from alphagenome_ft.fp8_lora import (
     patch_haiku_linear,
 )
 from alphagenome_ft.lora import ADAPTER_LEAF_NAMES
+
+
+def _resolve_backbone_compute_dtype(dtype_name: str | None):
+    """Resolve the global AlphaGenome trunk compute and output dtype."""
+    normalized = "bfloat16" if dtype_name is None else str(dtype_name).strip().lower()
+    aliases = {
+        "float32": ("float32", jnp.float32),
+        "fp32": ("float32", jnp.float32),
+        "bfloat16": ("bfloat16", jnp.bfloat16),
+        "bf16": ("bfloat16", jnp.bfloat16),
+        "float16": ("float16", jnp.float16),
+        "fp16": ("float16", jnp.float16),
+    }
+    if normalized not in aliases:
+        raise ValueError(
+            "runtime_backbone_compute_dtype must be one of float32/fp32, "
+            f"bfloat16/bf16, or float16/fp16; got {dtype_name!r}."
+        )
+    return aliases[normalized]
+
+
+def _backbone_mixed_precision_policy(dtype_name: str | None):
+    """Build the Haiku policy used by the complete AlphaGenome trunk."""
+    import jmp
+
+    canonical_name, compute_dtype = _resolve_backbone_compute_dtype(dtype_name)
+    policy = jmp.get_policy(
+        f"params=float32,compute={canonical_name},output={canonical_name}"
+    )
+    return policy, compute_dtype
+
+
+@contextmanager
+def _backbone_attention_dot_compatibility(dtype_name: str | None):
+    """Avoid AlphaGenome's explicit BF16 dot preset on non-BF16 backbones."""
+    canonical_name, _ = _resolve_backbone_compute_dtype(dtype_name)
+    if canonical_name == "bfloat16":
+        yield
+        return
+
+    class _JaxNumpyProxy:
+        def __init__(self, original_jnp):
+            self._original_jnp = original_jnp
+
+        def __getattr__(self, name):
+            return getattr(self._original_jnp, name)
+
+        def einsum(self, *args, **kwargs):
+            if kwargs.get("precision") == jax.lax.DotAlgorithmPreset.BF16_BF16_F32:
+                kwargs = dict(kwargs)
+                kwargs.pop("precision")
+            return self._original_jnp.einsum(*args, **kwargs)
+
+    patched_modules = (attention_module, heads_module)
+    original_jnp_by_module = {module: module.jnp for module in patched_modules}
+    for module, original_jnp in original_jnp_by_module.items():
+        module.jnp = _JaxNumpyProxy(original_jnp)
+    try:
+        yield
+    finally:
+        for module, original_jnp in original_jnp_by_module.items():
+            module.jnp = original_jnp
 
 
 def _resolve_runtime_param_dtype(dtype_name: str | None):
@@ -2276,6 +2344,7 @@ def create_model_with_heads(
     backbone_locon_config: BackboneLoConConfig | None = None,
     backbone_effective_conv_paths: Sequence[str] | None = None,
     runtime_backbone_param_dtype: str | None = None,
+    runtime_backbone_compute_dtype: str | None = None,
 ) -> CustomAlphaGenomeModel:
     """Create an AlphaGenome model with specified heads replacing standard heads.
 
@@ -2314,6 +2383,9 @@ def create_model_with_heads(
             floating-point backbone parameters before final device placement.
             This reduces VRAM for frozen/base weights. Top-level custom head
             params and LoRA adapter leaves keep their own trainable dtypes.
+        runtime_backbone_compute_dtype: Compute and output dtype for the complete
+            AlphaGenome trunk. Defaults to bfloat16. Adapter projection compute
+            dtypes remain controlled by their LoRA and LoCon configurations.
 
     Returns:
         CustomAlphaGenomeModel with requested heads and pretrained backbone.
@@ -2401,9 +2473,9 @@ def create_model_with_heads(
     # Create forward function with requested heads
     print(f"Initializing heads: {normalized_heads}")
 
-    # Set mixed precision policy
-    import jmp
-    policy = jmp.get_policy('params=float32,compute=bfloat16,output=bfloat16')
+    policy, backbone_compute_dtype = _backbone_mixed_precision_policy(
+        runtime_backbone_compute_dtype
+    )
     hk.mixed_precision.set_policy(model_lib.AlphaGenome, policy)
 
     def _stop_gradient_embeddings(embeddings):
@@ -2483,19 +2555,20 @@ def create_model_with_heads(
             # This will use pretrained params for the backbone
             # Note: AlphaGenome always creates standard heads based on metadata,
             # but we only use the embeddings, not the standard head predictions
-            if not has_backbone_patch:
-                alphagenome = model_lib.AlphaGenome(metadata)
-                # Get embeddings from the backbone (without running standard heads)
-                # We only need the embeddings, not the standard predictions
-                _, embeddings = alphagenome(dna_sequence, organism_index)
-            else:
-                with patch_backbone_adapters(
-                    backbone_lora_config,
-                    backbone_locon_config,
-                    effective_conv_paths,
-                ):
+            with _backbone_attention_dot_compatibility(
+                runtime_backbone_compute_dtype
+            ):
+                if not has_backbone_patch:
                     alphagenome = model_lib.AlphaGenome(metadata)
                     _, embeddings = alphagenome(dna_sequence, organism_index)
+                else:
+                    with patch_backbone_adapters(
+                        backbone_lora_config,
+                        backbone_locon_config,
+                        effective_conv_paths,
+                    ):
+                        alphagenome = model_lib.AlphaGenome(metadata)
+                        _, embeddings = alphagenome(dna_sequence, organism_index)
             if detach_backbone:
                 embeddings = _stop_gradient_embeddings(embeddings)
 
@@ -2530,7 +2603,7 @@ def create_model_with_heads(
     # Initialize parameters with dummy data
     print(f"Initializing parameters... (seq_len={init_seq_len})")
     rng = jax.random.PRNGKey(42)
-    dummy_seq = jnp.zeros((1, init_seq_len, 4), dtype=jnp.bfloat16)
+    dummy_seq = jnp.zeros((1, init_seq_len, 4), dtype=backbone_compute_dtype)
     dummy_org = jnp.array([0])
 
     new_params, new_state = _forward_with_custom_heads.init(rng, dummy_seq, dummy_org)
@@ -2639,6 +2712,7 @@ def create_model_with_custom_heads(
     backbone_locon_config: BackboneLoConConfig | None = None,
     backbone_effective_conv_paths: Sequence[str] | None = None,
     runtime_backbone_param_dtype: str | None = None,
+    runtime_backbone_compute_dtype: str | None = None,
 ) -> CustomAlphaGenomeModel:
     """Backward-compatible wrapper for create_model_with_heads()."""
     return create_model_with_heads(
@@ -2655,6 +2729,7 @@ def create_model_with_custom_heads(
         backbone_locon_config=backbone_locon_config,
         backbone_effective_conv_paths=backbone_effective_conv_paths,
         runtime_backbone_param_dtype=runtime_backbone_param_dtype,
+        runtime_backbone_compute_dtype=runtime_backbone_compute_dtype,
     )
 
 
@@ -2865,6 +2940,8 @@ def load_checkpoint(
     backbone_lora_config: BackboneLoRAConfig | None = None,
     backbone_locon_config: BackboneLoConConfig | None = None,
     backbone_effective_conv_paths: Sequence[str] | None = None,
+    runtime_backbone_param_dtype: str | None = None,
+    runtime_backbone_compute_dtype: str | None = None,
 ) -> CustomAlphaGenomeModel:
     """Load a saved head checkpoint.
 
@@ -2884,6 +2961,10 @@ def load_checkpoint(
         init_seq_len: Optional sequence length for model initialization. If None and
             use_encoder_output=True, will be inferred from checkpoint parameters.
             This is critical for encoder-only models with flatten pooling.
+        runtime_backbone_param_dtype: Optional storage dtype for restored frozen
+            backbone parameters. Trainable heads and adapters retain their dtypes.
+        runtime_backbone_compute_dtype: Compute and output dtype for the complete
+            AlphaGenome trunk. Defaults to bfloat16.
 
     Returns:
         CustomAlphaGenomeModel with loaded parameters.
@@ -3072,6 +3153,8 @@ def load_checkpoint(
         backbone_lora_config=backbone_lora_config,
         backbone_locon_config=backbone_locon_config,
         backbone_effective_conv_paths=backbone_effective_conv_paths,
+        runtime_backbone_param_dtype=runtime_backbone_param_dtype,
+        runtime_backbone_compute_dtype=runtime_backbone_compute_dtype,
     )
     restore_target = template_model._checkpoint_slice_trees(
         save_full_model, save_minimal_model, save_lora_adapters
@@ -3232,8 +3315,9 @@ def load_checkpoint(
                                   f"(from {num_positions} encoder positions, input_size={input_size}, path={param_path})")
                             break
 
-            # Mixed precision policy (match training).
-            policy = jmp.get_policy('params=float32,compute=bfloat16,output=bfloat16')
+            policy, _ = _backbone_mixed_precision_policy(
+                runtime_backbone_compute_dtype
+            )
             hk.mixed_precision.set_policy(model_lib.AlphaGenome, policy)
 
             # Store inferred_seq_len in a way that will be captured by closure
@@ -3420,6 +3504,8 @@ def load_checkpoint(
                 checkpoint_path=base_checkpoint_path,
                 use_encoder_output=True,
                 init_seq_len=inferred_seq_len,
+                runtime_backbone_param_dtype=runtime_backbone_param_dtype,
+                runtime_backbone_compute_dtype=runtime_backbone_compute_dtype,
             )
 
             # Now merge minimal params (encoder + heads) into the model structure
@@ -3602,6 +3688,26 @@ def load_checkpoint(
         device = custom_model._device_context._device
         custom_model._params = jax.device_put(custom_model._params, device)
         custom_model._state = jax.device_put(custom_model._state, device)
+
+    if runtime_backbone_param_dtype is not None:
+        custom_model._params = _cast_runtime_backbone_params(
+            custom_model._params,
+            runtime_backbone_param_dtype,
+            trainable_head_names=custom_heads,
+            fp8_base_target_names=(
+                backbone_lora_config.normalized_target_names()
+                if backbone_lora_config is not None
+                else ()
+            ),
+            trainable_param_dtype=(
+                backbone_lora_config.lora_param_dtype
+                if backbone_lora_config is not None
+                else None
+            ),
+        )
+        custom_model._params = jax.device_put(
+            custom_model._params, custom_model._device_context._device
+        )
 
     print("✓ Checkpoint loaded successfully")
     print(f"  Total parameters: {custom_model.count_parameters():,}")

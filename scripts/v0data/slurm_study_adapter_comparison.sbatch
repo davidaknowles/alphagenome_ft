@@ -89,13 +89,14 @@ fi
   --lora-alpha "${LORA_ALPHA:-16}" \
   --locon-rank "${LOCON_RANK:-4}" \
   --locon-alpha "${LOCON_ALPHA:-1}" \
-  --base-param-dtype float32 \
-  --lora-param-dtype float32 \
-  --locon-param-dtype float32 \
-  --activation-dtype bfloat16 \
-  --base-compute-dtype bfloat16 \
-  --lora-compute-dtype bfloat16 \
-  --locon-compute-dtype bfloat16 \
+  --base-param-dtype "${BASE_PARAM_DTYPE:-float32}" \
+  --lora-param-dtype "${LORA_PARAM_DTYPE:-float32}" \
+  --locon-param-dtype "${LOCON_PARAM_DTYPE:-float32}" \
+  --activation-dtype "${ACTIVATION_DTYPE:-bfloat16}" \
+  --backbone-compute-dtype "${BACKBONE_COMPUTE_DTYPE:-bfloat16}" \
+  --base-compute-dtype "${BASE_COMPUTE_DTYPE:-bfloat16}" \
+  --lora-compute-dtype "${LORA_COMPUTE_DTYPE:-bfloat16}" \
+  --locon-compute-dtype "${LOCON_COMPUTE_DTYPE:-bfloat16}" \
   --best-metric "${BEST_METRIC}" \
   --best-metric-mode max \
   --early-stopping-patience "${EARLY_STOPPING_PATIENCE:-5}" \

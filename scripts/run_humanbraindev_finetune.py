@@ -278,6 +278,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--base-param-dtype", default="float32")
     parser.add_argument("--lora-param-dtype", default="float32")
     parser.add_argument("--activation-dtype", default="bfloat16")
+    parser.add_argument(
+        "--backbone-compute-dtype",
+        choices=("float32", "bfloat16", "float16"),
+        default="bfloat16",
+        help="Compute and output dtype for the complete AlphaGenome trunk.",
+    )
     parser.add_argument("--base-compute-dtype", default="bfloat16")
     parser.add_argument("--lora-compute-dtype", default=None)
     parser.add_argument(
@@ -805,6 +811,10 @@ def main() -> None:
                     ("adapter_strategy", args.adapter_strategy),
                     ("backbone_lora", metadata_value(args.backbone_lora)),
                     ("base_param_dtype", metadata_value(args.base_param_dtype)),
+                    (
+                        "backbone_compute_dtype",
+                        metadata_value(args.backbone_compute_dtype),
+                    ),
                     ("base_compute_dtype", metadata_value(args.base_compute_dtype)),
                     ("lora_param_dtype", metadata_value(args.lora_param_dtype)),
                     ("locon_param_dtype", metadata_value(args.locon_param_dtype)),
@@ -927,6 +937,7 @@ def main() -> None:
             backbone_lora_config=backbone_lora_config,
             backbone_locon_config=backbone_locon_config,
             runtime_backbone_param_dtype=args.base_param_dtype,
+            runtime_backbone_compute_dtype=args.backbone_compute_dtype,
         )
     else:
         resume_from = args.resume_from.expanduser().resolve()
@@ -946,6 +957,8 @@ def main() -> None:
             init_seq_len=args.window_size,
             backbone_lora_config=backbone_lora_config,
             backbone_locon_config=backbone_locon_config,
+            runtime_backbone_param_dtype=args.base_param_dtype,
+            runtime_backbone_compute_dtype=args.backbone_compute_dtype,
         )
     if args.backbone_lora:
         lora_paths = lora.get_lora_parameter_paths(model._params)
@@ -1006,6 +1019,7 @@ def main() -> None:
             "lora_alpha": args.lora_alpha if args.backbone_lora else None,
             "fp8_lora": args.fp8_lora if args.backbone_lora else None,
             "fp4_lora": args.fp4_lora if args.backbone_lora else None,
+            "backbone_compute_dtype": args.backbone_compute_dtype,
             "base_param_dtype": args.base_param_dtype if args.backbone_lora else None,
             "lora_param_dtype": args.lora_param_dtype if args.backbone_lora else None,
             "locon_param_dtype": args.locon_param_dtype if args.backbone_lora else None,

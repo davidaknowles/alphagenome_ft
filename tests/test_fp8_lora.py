@@ -12,7 +12,58 @@ from alphagenome_ft.fp8_lora import (
     patch_haiku_locon,
 )
 from alphagenome_ft.lora import get_lora_parameter_paths
-from alphagenome_ft.custom_model import _cast_runtime_backbone_params
+from alphagenome_ft.custom_model import (
+    _backbone_attention_dot_compatibility,
+    _backbone_mixed_precision_policy,
+    _cast_runtime_backbone_params,
+    _resolve_backbone_compute_dtype,
+)
+
+
+@pytest.mark.parametrize(
+    ("name", "expected"),
+    [
+        (None, jnp.bfloat16),
+        ("bf16", jnp.bfloat16),
+        ("float16", jnp.float16),
+        ("fp32", jnp.float32),
+    ],
+)
+def test_resolve_backbone_compute_dtype(name, expected):
+    _, dtype = _resolve_backbone_compute_dtype(name)
+    assert dtype == expected
+
+
+def test_backbone_mixed_precision_policy_uses_requested_compute_and_output_dtype():
+    policy, dtype = _backbone_mixed_precision_policy("float32")
+
+    assert dtype == jnp.float32
+    assert policy.compute_dtype == jnp.float32
+    assert policy.output_dtype == jnp.float32
+
+
+def test_backbone_compute_dtype_rejects_quantized_storage_names():
+    with pytest.raises(ValueError, match="runtime_backbone_compute_dtype"):
+        _resolve_backbone_compute_dtype("fp8")
+
+
+def test_non_bfloat16_backbone_replaces_explicit_attention_bfloat16_dot_preset():
+    from alphagenome_research.model import attention
+
+    lhs = jnp.ones((2, 3), dtype=jnp.float32)
+    rhs = jnp.ones((3, 4), dtype=jnp.float32)
+    original_jnp = attention.jnp
+
+    with _backbone_attention_dot_compatibility("float32"):
+        result = attention.jnp.einsum(
+            "ij,jk->ik",
+            lhs,
+            rhs,
+            precision=jax.lax.DotAlgorithmPreset.BF16_BF16_F32,
+        )
+
+    assert result.dtype == jnp.float32
+    assert attention.jnp is original_jnp
 
 
 def test_patch_haiku_linear_adds_lora_only_to_named_targets():
