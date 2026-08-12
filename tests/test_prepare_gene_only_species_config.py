@@ -12,7 +12,11 @@ def _config() -> dict:
             {
                 "id": "rna",
                 "resolutions": [1, 128],
-                "gene_supervision": {"loss_weight": 1.0, "coverage_loss_weight": 0.1},
+                "gene_supervision": {
+                    "path": "old.npz",
+                    "loss_weight": 1.0,
+                    "coverage_loss_weight": 0.1,
+                },
             },
         ]
     }
@@ -29,6 +33,17 @@ def test_make_gene_only_config_preserves_source_and_disables_coverage() -> None:
     assert rna["resolutions"] == [128]
     assert rna["gene_supervision"]["coverage_loss_weight"] == 0.0
     assert rna["double_centered_correlation_loss_weight"] == 0.1
+
+
+def test_make_gene_only_config_can_replace_supervision_path() -> None:
+    result = make_gene_only_config(
+        _config(),
+        head_id="rna",
+        correlation_loss_weight=1.0,
+        gene_supervision_path="corrected.npz",
+    )
+
+    assert result["heads"][1]["gene_supervision"]["path"] == "corrected.npz"
 
 
 def test_make_gene_only_config_rejects_negative_weight() -> None:

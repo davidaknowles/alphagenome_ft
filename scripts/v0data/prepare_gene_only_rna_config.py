@@ -16,6 +16,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--output", required=True, type=Path)
     parser.add_argument("--head", required=True)
     parser.add_argument("--correlation-loss-weight", type=float, default=0.0)
+    parser.add_argument("--gene-supervision-path", type=Path)
     return parser.parse_args()
 
 
@@ -24,6 +25,7 @@ def make_gene_only_config(
     *,
     head_id: str,
     correlation_loss_weight: float,
+    gene_supervision_path: str | None = None,
 ) -> dict[str, Any]:
     if correlation_loss_weight < 0:
         raise ValueError("Correlation loss weight must be non-negative.")
@@ -36,6 +38,8 @@ def make_gene_only_config(
     if not isinstance(gene_supervision, dict):
         raise ValueError(f'Head "{head_id}" does not define gene supervision.')
     gene_supervision["coverage_loss_weight"] = 0.0
+    if gene_supervision_path is not None:
+        gene_supervision["path"] = gene_supervision_path
     head["resolutions"] = [128]
     head["double_centered_correlation_loss_weight"] = correlation_loss_weight
     return config
@@ -48,6 +52,11 @@ def main() -> None:
         config,
         head_id=args.head,
         correlation_loss_weight=args.correlation_loss_weight,
+        gene_supervision_path=(
+            str(args.gene_supervision_path.expanduser().resolve())
+            if args.gene_supervision_path is not None
+            else None
+        ),
     )
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(config, indent=2) + "\n")
