@@ -54,6 +54,10 @@ fi
 if [[ -n "${RESUME_FROM:-}" ]]; then
   EXTRA_ARGS+=(--resume-from "${RESUME_FROM}")
 fi
+if [[ "${EVALUATE_ONLY:-0}" == "1" ]]; then
+  : "${RESUME_FROM:?EVALUATE_ONLY requires RESUME_FROM}"
+  EXTRA_ARGS+=(--evaluate-only)
+fi
 if [[ "${REPORT_HEAD_GRADIENT_NORMS:-0}" == "1" ]]; then
   EXTRA_ARGS+=(--report-head-gradient-norms)
 fi

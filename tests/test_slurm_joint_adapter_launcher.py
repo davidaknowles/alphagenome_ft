@@ -19,6 +19,14 @@ def test_multi_gpu_drop_last_is_applied_after_smoke_arguments() -> None:
     assert drop_last_position > smoke_position
 
 
+def test_joint_launcher_exposes_evaluate_only_with_checkpoint() -> None:
+    script = Path("scripts/v0data/slurm_joint_adapter_comparison.sbatch").read_text()
+
+    assert '"${EVALUATE_ONLY:-0}" == "1"' in script
+    assert "EVALUATE_ONLY requires RESUME_FROM" in script
+    assert "EXTRA_ARGS+=(--evaluate-only)" in script
+
+
 def test_smoke_runs_use_isolated_checkpoint_names() -> None:
     for path in LAUNCHERS:
         script = Path(path).read_text()
@@ -220,9 +228,13 @@ def test_liu_exon_window_screen_is_lora_only_and_staged() -> None:
     assert "prepare_gene_window_assignment.py" in script
     assert "max_exon_overlap_scaled" in script
     assert "targets_geneonly_corrw1.json" in script
-    assert script.count("--array=0") == 2
+    assert script.count("--array=0") == 4
     assert "NUM_EPOCHS=1" in script
     assert 'dependency="afterok:${smoke}_*"' in script
+    assert script.count('dependency="afterok:${full}_*"') == 2
+    assert "_canonical_exonwindow_eval" in script
+    assert "_exonwindow_train_fullspan_eval" in script
+    assert script.count("EVALUATE_ONLY=1") == 2
 
 
 def test_jax_launchers_expose_learning_rate_schedule() -> None:
