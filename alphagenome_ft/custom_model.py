@@ -1444,6 +1444,8 @@ class CustomAlphaGenomeModel:
             print("  Saved: Full model (encoder + transformer + decoder + custom heads)")
         elif save_minimal_model:
             print("  Saved: Minimal model (encoder + custom heads only, no transformer/decoder)")
+        elif save_lora_adapters:
+            print(f"  Saved: Heads {self._custom_heads} and backbone adapters")
         else:
             print(f"  Saved: Heads only {self._custom_heads}")
 
