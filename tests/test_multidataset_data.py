@@ -1,6 +1,6 @@
 import numpy as np
 
-from alphagenome_ft.finetune.data import MultiDatasetDataModule
+from alphagenome_ft.finetune.data import BigWigDataModule, MultiDatasetDataModule
 
 
 class _Spec:
@@ -31,6 +31,18 @@ class _Module:
                 "negative_strand_mask": np.zeros((self._batch_size,), dtype=bool),
                 "batch_index": np.asarray(index),
             }
+
+
+def test_single_dataset_batch_count_rounds_partial_batch():
+    module = BigWigDataModule.__new__(BigWigDataModule)
+    module._intervals = {"valid": list(range(9))}
+    module._batch_size = 4
+    module._drop_last = False
+
+    assert module.num_batches_per_epoch("valid") == 3
+
+    module._drop_last = True
+    assert module.num_batches_per_epoch("valid") == 2
 
 
 def test_multidataset_training_balances_datasets_and_native_sources():
