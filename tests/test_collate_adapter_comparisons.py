@@ -56,6 +56,11 @@ def test_variant_identity_excludes_technical_runs() -> None:
 
 
 def test_corrected_reconstructed_runs_are_canonical() -> None:
+    assert _run_identity("joint_all_nonencode_lora_provisional") == (
+        "joint-all-nonencode",
+        "lora",
+    )
+    assert _variant_run_identity("joint_all_nonencode_lora_provisional") is None
     assert canonical_run_directory("liu-hdma", "lora") == (
         "liu-hdma_lora_geneonly_corrw1"
     )

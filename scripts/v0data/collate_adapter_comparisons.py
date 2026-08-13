@@ -14,6 +14,10 @@ STRATEGY_SUFFIXES = (
     ("_lora", "lora"),
 )
 CORRECTED_CANONICAL_RUNS = {
+    ("joint-all-nonencode", "lora"): "joint_all_nonencode_lora_provisional",
+    ("joint-all-nonencode", "lora+locon"): (
+        "joint_all_nonencode_lora_locon_provisional"
+    ),
     ("liu-hdma", "lora"): "liu-hdma_lora_geneonly_corrw1",
     ("liu-hdma", "lora+locon"): "liu-hdma_lora_locon_geneonly_corrw1",
     ("johansen-human", "lora"): "johansen-human_lora_rawcount_geneonly_corrw1",

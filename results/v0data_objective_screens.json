@@ -44,6 +44,48 @@
       "metrics_path": "checkpoints/v0data/hda-joint_lora_locon_geneonly_corrw0p1_screen/metrics.jsonl"
     },
     {
+      "dataset": "hda-joint",
+      "strategy": "lora",
+      "variant": "geneonly_unstranded_balanced_screen",
+      "matched_epoch": 1,
+      "global_step": 2619,
+      "selection_mean_valid_r": 0.6239975344290584,
+      "heads": [
+        {
+          "head": "hda_atac",
+          "valid_r": 0.7692421927552482,
+          "test_r": 0.7835188162473763
+        },
+        {
+          "head": "hda_rna",
+          "valid_r": 0.4787528761028686,
+          "test_r": 0.5537321019584728
+        }
+      ],
+      "metrics_path": "checkpoints/v0data/hda-joint_lora_geneonly_unstranded_balanced_screen/metrics.jsonl"
+    },
+    {
+      "dataset": "hda-joint",
+      "strategy": "lora+locon",
+      "variant": "geneonly_unstranded_balanced_screen",
+      "matched_epoch": 1,
+      "global_step": 2619,
+      "selection_mean_valid_r": 0.6282362951460114,
+      "heads": [
+        {
+          "head": "hda_atac",
+          "valid_r": 0.778296020773181,
+          "test_r": 0.7934240415723047
+        },
+        {
+          "head": "hda_rna",
+          "valid_r": 0.47817656951884185,
+          "test_r": 0.5436463942310698
+        }
+      ],
+      "metrics_path": "checkpoints/v0data/hda-joint_lora_locon_geneonly_unstranded_balanced_screen/metrics.jsonl"
+    },
+    {
       "dataset": "zemke2023-human",
       "strategy": "lora",
       "variant": "corrw10",
@@ -359,6 +401,27 @@
         }
       ],
       "metrics_path": "checkpoints/v0data/hda-joint_lora_locon_geneonly_corrw0p1_screen/metrics.jsonl"
+    },
+    {
+      "dataset": "hda-joint",
+      "strategy": "lora+locon",
+      "variant": "geneonly_unstranded_balanced_screen",
+      "selected_epoch": 1,
+      "global_step": 2619,
+      "selection_mean_valid_r": 0.6282362951460114,
+      "heads": [
+        {
+          "head": "hda_atac",
+          "valid_r": 0.778296020773181,
+          "test_r": 0.7934240415723047
+        },
+        {
+          "head": "hda_rna",
+          "valid_r": 0.47817656951884185,
+          "test_r": 0.5436463942310698
+        }
+      ],
+      "metrics_path": "checkpoints/v0data/hda-joint_lora_locon_geneonly_unstranded_balanced_screen/metrics.jsonl"
     },
     {
       "dataset": "hda-joint",

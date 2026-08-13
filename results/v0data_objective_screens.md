@@ -10,6 +10,10 @@ These non-canonical runs test one change at a time. Paired strategies are compar
 | `hda-joint` | `lora` | `geneonly_corrw0p1_screen` | 1 | `hda_rna` | 0.4294 | 0.6274 |
 | `hda-joint` | `lora+locon` | `geneonly_corrw0p1_screen` | 1 | `hda_atac` | 0.7755 | 0.7862 |
 | `hda-joint` | `lora+locon` | `geneonly_corrw0p1_screen` | 1 | `hda_rna` | 0.4282 | 0.6262 |
+| `hda-joint` | `lora` | `geneonly_unstranded_balanced_screen` | 1 | `hda_atac` | 0.7692 | 0.7835 |
+| `hda-joint` | `lora` | `geneonly_unstranded_balanced_screen` | 1 | `hda_rna` | 0.4788 | 0.5537 |
+| `hda-joint` | `lora+locon` | `geneonly_unstranded_balanced_screen` | 1 | `hda_atac` | 0.7783 | 0.7934 |
+| `hda-joint` | `lora+locon` | `geneonly_unstranded_balanced_screen` | 1 | `hda_rna` | 0.4782 | 0.5436 |
 | `zemke2023-human` | `lora` | `corrw10` | 4 | `zemke2023_atac` | 0.6994 | 0.7220 |
 | `zemke2023-human` | `lora` | `corrw10` | 4 | `zemke2023_rna` | 0.5704 | 0.4399 |
 | `zemke2023-human` | `lora+locon` | `corrw10` | 4 | `zemke2023_atac` | 0.6998 | 0.7217 |
@@ -45,6 +49,8 @@ These non-canonical runs test one change at a time. Paired strategies are compar
 | `hda-joint` | `lora` | `geneonly_unstranded_balanced_screen` | 1 | `hda_rna` | 0.4788 | 0.5537 |
 | `hda-joint` | `lora+locon` | `geneonly_corrw0p1_screen` | 1 | `hda_atac` | 0.7755 | 0.7862 |
 | `hda-joint` | `lora+locon` | `geneonly_corrw0p1_screen` | 1 | `hda_rna` | 0.4282 | 0.6262 |
+| `hda-joint` | `lora+locon` | `geneonly_unstranded_balanced_screen` | 1 | `hda_atac` | 0.7783 | 0.7934 |
+| `hda-joint` | `lora+locon` | `geneonly_unstranded_balanced_screen` | 1 | `hda_rna` | 0.4782 | 0.5436 |
 | `hda-joint` | `lora` | `rnaw5` | 1 | `hda_atac` | 0.7538 | 0.7645 |
 | `hda-joint` | `lora` | `rnaw5` | 1 | `hda_rna` | 0.4310 | 0.5976 |
 | `liu-hdma` | `lora` | `legacy_exon_plus_gene` | 1 | `liu_atac` | 0.7648 | 0.7786 |
