@@ -154,59 +154,59 @@
     {
       "dataset": "joint-all-nonencode",
       "strategy": "lora",
-      "matched_epoch": 1,
-      "global_step": 13095,
-      "selection_mean_valid_r": 0.4606593012337303,
+      "matched_epoch": 2,
+      "global_step": 26190,
+      "selection_mean_valid_r": 0.48595136536744477,
       "heads": [
         {
           "head": "allen_atac",
-          "valid_r": 0.5068463546642062,
-          "test_r": 0.4662139228693602
+          "valid_r": 0.52197676732438,
+          "test_r": 0.48255190485060645
         },
         {
           "head": "allen_rna",
-          "valid_r": 0.25061335778242,
-          "test_r": 0.37153646257936923
+          "valid_r": 0.2622645575741445,
+          "test_r": 0.38348841565460845
         },
         {
           "head": "hda_atac",
-          "valid_r": 0.7474588982428206,
-          "test_r": 0.761454688402031
+          "valid_r": 0.7643229662856154,
+          "test_r": 0.7806209624009419
         },
         {
           "head": "hda_rna",
-          "valid_r": 0.39228476048770156,
-          "test_r": 0.49260808617478047
+          "valid_r": 0.4404147056471264,
+          "test_r": 0.6365644081221845
         },
         {
           "head": "liu_atac",
-          "valid_r": 0.7475151205720251,
-          "test_r": 0.76557877969981
+          "valid_r": 0.7552552740405827,
+          "test_r": 0.7731688080660007
         },
         {
           "head": "liu_rna",
-          "valid_r": 0.41197313098955424,
-          "test_r": 0.4115457514500527
+          "valid_r": 0.42053232521663203,
+          "test_r": 0.44366175229015836
         },
         {
           "head": "zemke2023_atac",
-          "valid_r": 0.3662876443156634,
-          "test_r": 0.6048403936715064
+          "valid_r": 0.3832770979967113,
+          "test_r": 0.6246257372999073
         },
         {
           "head": "zemke2023_rna",
-          "valid_r": 0.21337431731178394,
-          "test_r": 0.13397677692059945
+          "valid_r": 0.25583798617574927,
+          "test_r": 0.17146085105045064
         },
         {
           "head": "zemke2024_all_atac",
-          "valid_r": 0.7116763730580028,
-          "test_r": 0.7265517718951122
+          "valid_r": 0.7250024479032703,
+          "test_r": 0.7328664707369631
         },
         {
           "head": "zemke2024_all_rna",
-          "valid_r": 0.2585630549131252,
-          "test_r": 0.17465602981244063
+          "valid_r": 0.3306295255102361,
+          "test_r": 0.21941322187646753
         }
       ],
       "metrics_path": "checkpoints/v0data/joint_all_nonencode_lora_provisional/metrics.jsonl"
@@ -214,59 +214,59 @@
     {
       "dataset": "joint-all-nonencode",
       "strategy": "lora+locon",
-      "matched_epoch": 1,
-      "global_step": 13095,
-      "selection_mean_valid_r": 0.4652948312066397,
+      "matched_epoch": 2,
+      "global_step": 26190,
+      "selection_mean_valid_r": 0.4888439786289037,
       "heads": [
         {
           "head": "allen_atac",
-          "valid_r": 0.5051400363915407,
-          "test_r": 0.46424945957705743
+          "valid_r": 0.5222251896080489,
+          "test_r": 0.48255092547329437
         },
         {
           "head": "allen_rna",
-          "valid_r": 0.2648897331834211,
-          "test_r": 0.3738448115825317
+          "valid_r": 0.267281713190603,
+          "test_r": 0.3929247130687869
         },
         {
           "head": "hda_atac",
-          "valid_r": 0.7464982278948251,
-          "test_r": 0.7582702068721873
+          "valid_r": 0.7659671465033466,
+          "test_r": 0.7791502087013178
         },
         {
           "head": "hda_rna",
-          "valid_r": 0.4182238258362103,
-          "test_r": 0.5090811534385183
+          "valid_r": 0.4512132072438891,
+          "test_r": 0.635192261273123
         },
         {
           "head": "liu_atac",
-          "valid_r": 0.7464768115136305,
-          "test_r": 0.7650662974876955
+          "valid_r": 0.7561898059891062,
+          "test_r": 0.7740381099786089
         },
         {
           "head": "liu_rna",
-          "valid_r": 0.40207649226332814,
-          "test_r": 0.41539070945139855
+          "valid_r": 0.43309982022578375,
+          "test_r": 0.4353858500458593
         },
         {
           "head": "zemke2023_atac",
-          "valid_r": 0.3646939095551209,
-          "test_r": 0.6011853501339459
+          "valid_r": 0.38471329724497544,
+          "test_r": 0.6227787711667058
         },
         {
           "head": "zemke2023_rna",
-          "valid_r": 0.22138250119796332,
-          "test_r": 0.1423107296023416
+          "valid_r": 0.25824127572724087,
+          "test_r": 0.18489123847465597
         },
         {
           "head": "zemke2024_all_atac",
-          "valid_r": 0.713083405443165,
-          "test_r": 0.7261591443792631
+          "valid_r": 0.7221831686042925,
+          "test_r": 0.7292443523766217
         },
         {
           "head": "zemke2024_all_rna",
-          "valid_r": 0.27048336878719226,
-          "test_r": 0.18582492170212495
+          "valid_r": 0.3273251619517513,
+          "test_r": 0.22831019061170488
         }
       ],
       "metrics_path": "checkpoints/v0data/joint_all_nonencode_lora_locon_provisional/metrics.jsonl"
@@ -706,59 +706,59 @@
     {
       "dataset": "joint-all-nonencode",
       "strategy": "lora+locon",
-      "selected_epoch": 1,
-      "global_step": 13095,
-      "selection_mean_valid_r": 0.4652948312066397,
+      "selected_epoch": 2,
+      "global_step": 26190,
+      "selection_mean_valid_r": 0.4888439786289037,
       "heads": [
         {
           "head": "allen_atac",
-          "valid_r": 0.5051400363915407,
-          "test_r": 0.46424945957705743
+          "valid_r": 0.5222251896080489,
+          "test_r": 0.48255092547329437
         },
         {
           "head": "allen_rna",
-          "valid_r": 0.2648897331834211,
-          "test_r": 0.3738448115825317
+          "valid_r": 0.267281713190603,
+          "test_r": 0.3929247130687869
         },
         {
           "head": "hda_atac",
-          "valid_r": 0.7464982278948251,
-          "test_r": 0.7582702068721873
+          "valid_r": 0.7659671465033466,
+          "test_r": 0.7791502087013178
         },
         {
           "head": "hda_rna",
-          "valid_r": 0.4182238258362103,
-          "test_r": 0.5090811534385183
+          "valid_r": 0.4512132072438891,
+          "test_r": 0.635192261273123
         },
         {
           "head": "liu_atac",
-          "valid_r": 0.7464768115136305,
-          "test_r": 0.7650662974876955
+          "valid_r": 0.7561898059891062,
+          "test_r": 0.7740381099786089
         },
         {
           "head": "liu_rna",
-          "valid_r": 0.40207649226332814,
-          "test_r": 0.41539070945139855
+          "valid_r": 0.43309982022578375,
+          "test_r": 0.4353858500458593
         },
         {
           "head": "zemke2023_atac",
-          "valid_r": 0.3646939095551209,
-          "test_r": 0.6011853501339459
+          "valid_r": 0.38471329724497544,
+          "test_r": 0.6227787711667058
         },
         {
           "head": "zemke2023_rna",
-          "valid_r": 0.22138250119796332,
-          "test_r": 0.1423107296023416
+          "valid_r": 0.25824127572724087,
+          "test_r": 0.18489123847465597
         },
         {
           "head": "zemke2024_all_atac",
-          "valid_r": 0.713083405443165,
-          "test_r": 0.7261591443792631
+          "valid_r": 0.7221831686042925,
+          "test_r": 0.7292443523766217
         },
         {
           "head": "zemke2024_all_rna",
-          "valid_r": 0.27048336878719226,
-          "test_r": 0.18582492170212495
+          "valid_r": 0.3273251619517513,
+          "test_r": 0.22831019061170488
         }
       ],
       "metrics_path": "checkpoints/v0data/joint_all_nonencode_lora_locon_provisional/metrics.jsonl"
@@ -766,59 +766,59 @@
     {
       "dataset": "joint-all-nonencode",
       "strategy": "lora",
-      "selected_epoch": 1,
-      "global_step": 13095,
-      "selection_mean_valid_r": 0.4606593012337303,
+      "selected_epoch": 2,
+      "global_step": 26190,
+      "selection_mean_valid_r": 0.48595136536744477,
       "heads": [
         {
           "head": "allen_atac",
-          "valid_r": 0.5068463546642062,
-          "test_r": 0.4662139228693602
+          "valid_r": 0.52197676732438,
+          "test_r": 0.48255190485060645
         },
         {
           "head": "allen_rna",
-          "valid_r": 0.25061335778242,
-          "test_r": 0.37153646257936923
+          "valid_r": 0.2622645575741445,
+          "test_r": 0.38348841565460845
         },
         {
           "head": "hda_atac",
-          "valid_r": 0.7474588982428206,
-          "test_r": 0.761454688402031
+          "valid_r": 0.7643229662856154,
+          "test_r": 0.7806209624009419
         },
         {
           "head": "hda_rna",
-          "valid_r": 0.39228476048770156,
-          "test_r": 0.49260808617478047
+          "valid_r": 0.4404147056471264,
+          "test_r": 0.6365644081221845
         },
         {
           "head": "liu_atac",
-          "valid_r": 0.7475151205720251,
-          "test_r": 0.76557877969981
+          "valid_r": 0.7552552740405827,
+          "test_r": 0.7731688080660007
         },
         {
           "head": "liu_rna",
-          "valid_r": 0.41197313098955424,
-          "test_r": 0.4115457514500527
+          "valid_r": 0.42053232521663203,
+          "test_r": 0.44366175229015836
         },
         {
           "head": "zemke2023_atac",
-          "valid_r": 0.3662876443156634,
-          "test_r": 0.6048403936715064
+          "valid_r": 0.3832770979967113,
+          "test_r": 0.6246257372999073
         },
         {
           "head": "zemke2023_rna",
-          "valid_r": 0.21337431731178394,
-          "test_r": 0.13397677692059945
+          "valid_r": 0.25583798617574927,
+          "test_r": 0.17146085105045064
         },
         {
           "head": "zemke2024_all_atac",
-          "valid_r": 0.7116763730580028,
-          "test_r": 0.7265517718951122
+          "valid_r": 0.7250024479032703,
+          "test_r": 0.7328664707369631
         },
         {
           "head": "zemke2024_all_rna",
-          "valid_r": 0.2585630549131252,
-          "test_r": 0.17465602981244063
+          "valid_r": 0.3306295255102361,
+          "test_r": 0.21941322187646753
         }
       ],
       "metrics_path": "checkpoints/v0data/joint_all_nonencode_lora_provisional/metrics.jsonl"
