@@ -271,6 +271,14 @@ def parse_args() -> argparse.Namespace:
         help="Restore head and adapter parameters from a saved last/best checkpoint.",
     )
     parser.add_argument(
+        "--reset-optimizer",
+        action="store_true",
+        help=(
+            "When resuming, initialize a fresh optimizer instead of restoring its state. "
+            "This permits an intentional learning-rate change from a selected checkpoint."
+        ),
+    )
+    parser.add_argument(
         "--pretrained-head-initialization",
         choices=(
             "none",
@@ -1285,6 +1293,8 @@ def main() -> None:
     start_epoch = 1
     initial_global_step = 0
     initial_optimizer_state_path = None
+    if args.reset_optimizer and args.resume_from is None:
+        raise ValueError("--reset-optimizer requires --resume-from.")
     if args.resume_from is not None and args.pretrained_head_initialization != "none":
         raise ValueError(
             "--pretrained-head-initialization applies only to a new run, not --resume-from."
@@ -1311,7 +1321,7 @@ def main() -> None:
         start_epoch = int(resume_record["epoch"]) + 1
         initial_global_step = int(resume_record["global_step"])
         optimizer_state_path = resume_from / "optimizer_state"
-        if optimizer_state_path.exists() and not args.evaluate_only:
+        if optimizer_state_path.exists() and not args.evaluate_only and not args.reset_optimizer:
             optimizer_config_path = resume_from / "optimizer_config.json"
             if optimizer_config_path.exists():
                 saved_optimizer_config = json.loads(optimizer_config_path.read_text())

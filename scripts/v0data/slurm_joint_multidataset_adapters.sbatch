@@ -49,6 +49,12 @@ if [[ -n "${WANDB_PROJECT:-}" ]]; then
   extra_args+=(--wandb-project "$WANDB_PROJECT" --wandb-run-name "$run_name")
   [[ -n "${WANDB_ENTITY:-}" ]] && extra_args+=(--wandb-entity "$WANDB_ENTITY")
 fi
+if [[ -n "${RESUME_FROM:-}" ]]; then
+  extra_args+=(--resume-from "$RESUME_FROM")
+fi
+if [[ "${RESET_OPTIMIZER:-0}" == "1" ]]; then
+  extra_args+=(--reset-optimizer)
+fi
 
 "${HOME}/venv/jax/bin/python" scripts/run_humanbraindev_finetune.py \
   --dataset-config "$dataset_config" \

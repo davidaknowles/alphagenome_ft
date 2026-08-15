@@ -19,6 +19,22 @@ def test_multi_gpu_drop_last_is_applied_after_smoke_arguments() -> None:
     assert drop_last_position > smoke_position
 
 
+def test_all_study_lower_rate_continuation_snapshots_selected_checkpoint() -> None:
+    launcher = Path("scripts/v0data/slurm_joint_multidataset_adapters.sbatch").read_text()
+    submitter = Path(
+        "scripts/v0data/submit_joint_locon_lower_rate_continuation.sh"
+    ).read_text()
+
+    assert 'extra_args+=(--resume-from "$RESUME_FROM")' in launcher
+    assert "extra_args+=(--reset-optimizer)" in launcher
+    assert 'source_epoch="${SOURCE_EPOCH:-6}"' in submitter
+    assert 'cp -a "$source_checkpoint" "$snapshot"' in submitter
+    assert "Refusing to replace mismatched metric history" in submitter
+    assert "RESET_OPTIMIZER=1" in submitter
+    assert "LEARNING_RATE=${LEARNING_RATE:-3e-4}" in submitter
+    assert "--array=1" in submitter
+
+
 def test_joint_launcher_exposes_evaluate_only_with_checkpoint() -> None:
     script = Path("scripts/v0data/slurm_joint_adapter_comparison.sbatch").read_text()
 
