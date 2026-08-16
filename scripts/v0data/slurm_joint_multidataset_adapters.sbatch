@@ -16,6 +16,7 @@ mkdir -p logs/v0data checkpoints/v0data outputs/v0data/joint-all-nonencode
 export PYTHONPATH="$PWD:${PYTHONPATH:-}"
 export LD_LIBRARY_PATH="/nfs/sw/easybuild/software/Python/3.12.3-GCCcore-13.3.0/lib:${LD_LIBRARY_PATH:-}"
 export XLA_PYTHON_CLIENT_PREALLOCATE=false
+export TF_GPU_ALLOCATOR="${TF_GPU_ALLOCATOR:-cuda_malloc_async}"
 export JAX_COMPILATION_CACHE_DIR="${JAX_COMPILATION_CACHE_DIR:-$PWD/outputs/jax_compilation_cache}"
 export MPLCONFIGDIR="${MPLCONFIGDIR:-/tmp/matplotlib-${USER}}"
 

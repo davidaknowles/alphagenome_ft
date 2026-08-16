@@ -39,6 +39,12 @@ def test_all_study_lower_rate_continuation_snapshots_selected_checkpoint() -> No
     assert "--array=1" in submitter
 
 
+def test_all_study_launcher_uses_fragmentation_resistant_gpu_allocator() -> None:
+    launcher = Path("scripts/v0data/slurm_joint_multidataset_adapters.sbatch").read_text()
+
+    assert 'TF_GPU_ALLOCATOR="${TF_GPU_ALLOCATOR:-cuda_malloc_async}"' in launcher
+
+
 def test_joint_launcher_exposes_evaluate_only_with_checkpoint() -> None:
     script = Path("scripts/v0data/slurm_joint_adapter_comparison.sbatch").read_text()
 
