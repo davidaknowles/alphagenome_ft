@@ -41,8 +41,14 @@ source_checkpoint="${CHECKPOINT_ROOT:-checkpoints/v0data}/joint_all_nonencode_${
 route_path="${route/:/_}"
 evaluation_dir="${EVALUATION_ROOT:-evaluations/v0data/joint_all_nonencode}/${strategy}${run_suffix}/${route_path}"
 dataset_config="${DATASET_CONFIG:-outputs/v0data/joint-all-nonencode/datasets.json}"
-test -f "$dataset_config"
-test -f "$source_checkpoint/metrics.json"
+if [[ ! -f "$dataset_config" ]]; then
+  printf 'Missing joint dataset configuration: %s\n' "$dataset_config" >&2
+  exit 1
+fi
+if [[ ! -f "$source_checkpoint/metrics.json" ]]; then
+  printf 'Missing source checkpoint metadata: %s\n' "$source_checkpoint/metrics.json" >&2
+  exit 1
+fi
 
 "${HOME}/venv/jax/bin/python" scripts/run_humanbraindev_finetune.py \
   --dataset-config "$dataset_config" \

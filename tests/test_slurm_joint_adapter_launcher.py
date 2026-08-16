@@ -47,6 +47,21 @@ def test_all_study_launcher_preallocates_gpu_memory_and_aborts_failed_collective
     assert 'XLA_PYTHON_CLIENT_ABORT_COLLECTIVES_ON_FAILURE="${XLA_PYTHON_CLIENT_ABORT_COLLECTIVES_ON_FAILURE:-1}"' in launcher
 
 
+def test_all_study_native_evaluation_uses_and_validates_provisional_runs() -> None:
+    submitter = Path(
+        "scripts/v0data/submit_joint_multidataset_evaluations.sh"
+    ).read_text()
+    worker = Path("scripts/v0data/slurm_joint_multidataset_evaluate.sbatch").read_text()
+
+    assert 'run_suffix="${RUN_SUFFIX:-_provisional}"' in submitter
+    assert "for strategy in lora lora_locon" in submitter
+    assert "Missing evaluation checkpoint metadata" in submitter
+    assert "CHECKPOINT_ROOT=${checkpoint_root}" in submitter
+    assert "Set both LORA_JOB and LOCON_JOB, or neither" in submitter
+    assert 'if [[ -n "$lora_job" ]]' in submitter
+    assert "Missing source checkpoint metadata" in worker
+
+
 def test_joint_launcher_exposes_evaluate_only_with_checkpoint() -> None:
     script = Path("scripts/v0data/slurm_joint_adapter_comparison.sbatch").read_text()
 
