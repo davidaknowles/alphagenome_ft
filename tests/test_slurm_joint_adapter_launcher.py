@@ -31,7 +31,11 @@ def test_all_study_lower_rate_continuation_snapshots_selected_checkpoint() -> No
     assert 'cp -a "$source_checkpoint" "$snapshot"' in submitter
     assert "Refusing to replace mismatched metric history" in submitter
     assert "RESET_OPTIMIZER=1" in submitter
-    assert "LEARNING_RATE=${LEARNING_RATE:-3e-4}" in submitter
+    assert '"source_epoch": int(sys.argv[2])' in submitter
+    assert '"reset_optimizer": True' in submitter
+    assert 'run_dir/continuation.json' in submitter
+    assert 'learning_rate="${LEARNING_RATE:-3e-4}"' in submitter
+    assert "LEARNING_RATE=${learning_rate}" in submitter
     assert "--array=1" in submitter
 
 

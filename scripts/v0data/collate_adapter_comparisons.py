@@ -111,6 +111,23 @@ def _read_epochs(path: Path) -> list[dict[str, Any]]:
     return epochs
 
 
+def _read_reportable_epochs(path: Path) -> list[dict[str, Any]]:
+    """Exclude metric history inherited by a checkpoint continuation."""
+    epochs = _read_epochs(path)
+    provenance_path = path.parent / "continuation.json"
+    if not provenance_path.exists():
+        return epochs
+    provenance = json.loads(provenance_path.read_text())
+    source_epoch = provenance.get("source_epoch")
+    if not isinstance(source_epoch, int) or source_epoch < 1:
+        raise ValueError(f"Invalid source_epoch in {provenance_path}")
+    return [
+        record
+        for record in epochs
+        if isinstance(record.get("epoch"), int) and record["epoch"] > source_epoch
+    ]
+
+
 def has_complete_correlations(record: dict[str, Any]) -> bool:
     """Return whether every reported head has finite validation and test correlation."""
     metrics = record.get("metrics", {})
@@ -147,7 +164,9 @@ def collate(checkpoint_root: Path) -> dict[str, Any]:
         if identity is None:
             continue
         epochs = [
-            record for record in _read_epochs(metrics_path) if has_complete_correlations(record)
+            record
+            for record in _read_reportable_epochs(metrics_path)
+            if has_complete_correlations(record)
         ]
         if not epochs:
             continue
@@ -249,7 +268,9 @@ def collate_variants(checkpoint_root: Path) -> dict[str, Any]:
         if identity is None:
             continue
         epochs = [
-            record for record in _read_epochs(metrics_path) if has_complete_correlations(record)
+            record
+            for record in _read_reportable_epochs(metrics_path)
+            if has_complete_correlations(record)
         ]
         if not epochs:
             continue

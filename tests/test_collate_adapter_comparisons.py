@@ -113,6 +113,38 @@ def test_variant_comparison_uses_highest_common_epoch(tmp_path: Path) -> None:
     assert selected_lora["selected_epoch"] == 2
 
 
+def test_continuation_excludes_inherited_metric_history(tmp_path: Path) -> None:
+    run = "study_lora_locon_lr3e4_reset"
+    _write_metrics(tmp_path, run, 0.7, 0.6)
+    _append_metrics(tmp_path, run, 6, 0.8, 0.7)
+    (tmp_path / run / "continuation.json").write_text(
+        json.dumps({"source_epoch": 6}) + "\n"
+    )
+
+    assert collate_variants(tmp_path)["runs"] == []
+
+    _append_metrics(tmp_path, run, 7, 0.75, 0.65)
+    result = collate_variants(tmp_path)
+
+    assert len(result["runs"]) == 1
+    assert result["runs"][0]["selected_epoch"] == 7
+
+
+def test_continuation_requires_valid_source_epoch(tmp_path: Path) -> None:
+    run = "study_lora_locon_lr3e4_reset"
+    _write_metrics(tmp_path, run, 0.7, 0.6)
+    (tmp_path / run / "continuation.json").write_text(
+        json.dumps({"source_epoch": 0}) + "\n"
+    )
+
+    try:
+        collate_variants(tmp_path)
+    except ValueError as error:
+        assert "Invalid source_epoch" in str(error)
+    else:
+        raise AssertionError("Expected invalid continuation provenance to fail")
+
+
 def test_superseded_johansen_checkpoint_is_excluded(tmp_path: Path) -> None:
     _write_metrics(tmp_path, "johansen_joint_lora_locon", 0.8, 0.8)
 

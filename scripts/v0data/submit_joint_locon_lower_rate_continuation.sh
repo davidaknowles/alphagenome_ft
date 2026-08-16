@@ -7,6 +7,7 @@ mkdir -p logs/v0data checkpoints/v0data
 source_run="${SOURCE_RUN:-checkpoints/v0data/joint_all_nonencode_lora_locon_provisional}"
 source_checkpoint="${SOURCE_CHECKPOINT:-${source_run}/best}"
 source_epoch="${SOURCE_EPOCH:-6}"
+learning_rate="${LEARNING_RATE:-3e-4}"
 run_suffix="${RUN_SUFFIX:-_lr3e4_reset}"
 run_dir="checkpoints/v0data/joint_all_nonencode_lora_locon${run_suffix}"
 snapshot="checkpoints/v0data/joint_all_nonencode_lora_locon${run_suffix}_seed_epoch${source_epoch}"
@@ -47,9 +48,27 @@ if destination.exists() and destination.read_text() != payload:
 destination.write_text(payload)
 PY
 
+"${HOME}/venv/jax/bin/python" - "$run_dir/continuation.json" "$source_epoch" "$snapshot" "$learning_rate" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+destination = Path(sys.argv[1])
+payload = {
+    "source_epoch": int(sys.argv[2]),
+    "source_checkpoint": sys.argv[3],
+    "reset_optimizer": True,
+    "learning_rate": float(sys.argv[4]),
+}
+serialized = json.dumps(payload, indent=2, sort_keys=True) + "\n"
+if destination.exists() and destination.read_text() != serialized:
+    raise SystemExit(f"Refusing to replace mismatched provenance at {destination}.")
+destination.write_text(serialized)
+PY
+
 job=$(
   sbatch --parsable --array=1 \
-    --export="ALL,RUN_SUFFIX=${run_suffix},RESUME_FROM=${snapshot},RESET_OPTIMIZER=1,LEARNING_RATE=${LEARNING_RATE:-3e-4}" \
+    --export="ALL,RUN_SUFFIX=${run_suffix},RESUME_FROM=${snapshot},RESET_OPTIMIZER=1,LEARNING_RATE=${learning_rate}" \
     scripts/v0data/slurm_joint_multidataset_adapters.sbatch
 )
 printf 'joint LoRA plus LoCon lower-rate continuation=%s\n' "$job"
