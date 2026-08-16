@@ -44,7 +44,7 @@ def test_all_study_launcher_preallocates_gpu_memory_and_aborts_failed_collective
 
     assert 'XLA_PYTHON_CLIENT_PREALLOCATE="${XLA_PYTHON_CLIENT_PREALLOCATE:-true}"' in launcher
     assert 'XLA_PYTHON_CLIENT_MEM_FRACTION="${XLA_PYTHON_CLIENT_MEM_FRACTION:-0.97}"' in launcher
-    assert "XLA_PYTHON_CLIENT_ABORT_COLLECTIVES_ON_FAILURE" in launcher
+    assert 'XLA_PYTHON_CLIENT_ABORT_COLLECTIVES_ON_FAILURE="${XLA_PYTHON_CLIENT_ABORT_COLLECTIVES_ON_FAILURE:-1}"' in launcher
 
 
 def test_joint_launcher_exposes_evaluate_only_with_checkpoint() -> None:
