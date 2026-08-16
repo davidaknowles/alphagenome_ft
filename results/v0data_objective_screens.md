@@ -53,6 +53,16 @@ These non-canonical runs test one change at a time. Paired strategies are compar
 | `hda-joint` | `lora+locon` | `geneonly_unstranded_balanced_screen` | 1 | `hda_rna` | 0.4782 | 0.5436 |
 | `hda-joint` | `lora` | `rnaw5` | 1 | `hda_atac` | 0.7538 | 0.7645 |
 | `hda-joint` | `lora` | `rnaw5` | 1 | `hda_rna` | 0.4310 | 0.5976 |
+| `joint_all_nonencode` | `lora+locon` | `lr3e4_reset` | 7 | `allen_atac` | 0.5686 | 0.5254 |
+| `joint_all_nonencode` | `lora+locon` | `lr3e4_reset` | 7 | `allen_rna` | 0.3060 | 0.4474 |
+| `joint_all_nonencode` | `lora+locon` | `lr3e4_reset` | 7 | `hda_atac` | 0.7995 | 0.8142 |
+| `joint_all_nonencode` | `lora+locon` | `lr3e4_reset` | 7 | `hda_rna` | 0.4742 | 0.6418 |
+| `joint_all_nonencode` | `lora+locon` | `lr3e4_reset` | 7 | `liu_atac` | 0.7664 | 0.7854 |
+| `joint_all_nonencode` | `lora+locon` | `lr3e4_reset` | 7 | `liu_rna` | 0.7097 | 0.5023 |
+| `joint_all_nonencode` | `lora+locon` | `lr3e4_reset` | 7 | `zemke2023_atac` | 0.4257 | 0.6644 |
+| `joint_all_nonencode` | `lora+locon` | `lr3e4_reset` | 7 | `zemke2023_rna` | 0.3067 | 0.2159 |
+| `joint_all_nonencode` | `lora+locon` | `lr3e4_reset` | 7 | `zemke2024_all_atac` | 0.7469 | 0.7617 |
+| `joint_all_nonencode` | `lora+locon` | `lr3e4_reset` | 7 | `zemke2024_all_rna` | 0.3745 | 0.2825 |
 | `liu-hdma` | `lora` | `legacy_exon_plus_gene` | 1 | `liu_atac` | 0.7648 | 0.7786 |
 | `liu-hdma` | `lora` | `legacy_exon_plus_gene` | 1 | `liu_rna` | 0.4053 | 0.4390 |
 | `liu-hdma` | `lora` | `exonwindow_screen` | 1 | `liu_atac` | 0.7620 | 0.7795 |
