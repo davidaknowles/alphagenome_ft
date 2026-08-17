@@ -226,12 +226,14 @@ def test_train_reports_per_head_gradient_norms_once(capsys, tmp_path):
         eval_splits=("train",),
         prefetch_batches=0,
         evaluate_only=True,
+        start_epoch=10,
+        initial_global_step=123,
     )
 
     assert set(evaluation) == {"train"}
     evaluation_record = json.loads((tmp_path / "evaluation" / "evaluation.json").read_text())
-    assert evaluation_record["source_epoch"] is None
-    assert evaluation_record["source_global_step"] == 0
+    assert evaluation_record["source_epoch"] == 9
+    assert evaluation_record["source_global_step"] == 123
     for original, current in zip(
         jax.tree_util.tree_leaves(original_params),
         jax.tree_util.tree_leaves(evaluation_model._params),

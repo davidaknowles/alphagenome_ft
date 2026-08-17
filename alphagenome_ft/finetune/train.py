@@ -1007,7 +1007,7 @@ def train(
         raise ValueError(f"progress_interval must be at least 1, got {progress_interval}.")
     if prefetch_batches < 0:
         raise ValueError(f"prefetch_batches must be non-negative, got {prefetch_batches}.")
-    if start_epoch < 1 or start_epoch > num_epochs:
+    if start_epoch < 1 or (not evaluate_only and start_epoch > num_epochs):
         raise ValueError(
             f"start_epoch must be between 1 and num_epochs={num_epochs}, got {start_epoch}."
         )
