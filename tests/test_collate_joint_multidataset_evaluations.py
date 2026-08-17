@@ -62,6 +62,10 @@ def test_collate_requires_and_reports_every_strategy_source(tmp_path: Path):
         "heads": 4,
         "mean_valid_r": pytest.approx(0.65),
         "mean_test_r": pytest.approx(0.70),
+        "mean_atac_valid_r": pytest.approx(0.7),
+        "mean_atac_test_r": pytest.approx(0.75),
+        "mean_rna_valid_r": pytest.approx(0.6),
+        "mean_rna_test_r": pytest.approx(0.65),
     }
     markdown = render_markdown(result)
     assert "| `study` | `mouse` | `lora+locon` | 3 | `study_rna` |" in markdown

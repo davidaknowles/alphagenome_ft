@@ -1,0 +1,42 @@
+{
+  "metrics": {
+    "test": {
+      "zemke2023_atac": {
+        "differential_pearson_r": 0.5722844087046673,
+        "double_centered_r2": 0.32750944444645075,
+        "loss": 286.34019707507036,
+        "r2_global": 0.608272312377805,
+        "r2_over_cell_types": -0.8652266263961792,
+        "r2_over_loci": 0.6640462323359192
+      },
+      "zemke2023_rna": {
+        "differential_pearson_r": 0.14240769419485985,
+        "double_centered_r2": 0.02027995136589672,
+        "loss": 18.018042107266705,
+        "r2_global": 0.010101561380751356,
+        "r2_over_cell_types": -72.0867919921875,
+        "r2_over_loci": 0.008724280360191072
+      }
+    },
+    "valid": {
+      "zemke2023_atac": {
+        "differential_pearson_r": 0.6057122564875668,
+        "double_centered_r2": 0.36688733765925985,
+        "loss": 249.0574976682663,
+        "r2_global": 0.6544141619214511,
+        "r2_over_cell_types": -0.43476372957229614,
+        "r2_over_loci": 0.6734174128304145
+      },
+      "zemke2023_rna": {
+        "differential_pearson_r": 0.2929056256183626,
+        "double_centered_r2": 0.08579370551888439,
+        "loss": 19.450925319315864,
+        "r2_global": 0.21409740563131618,
+        "r2_over_cell_types": -63.92243957519531,
+        "r2_over_loci": 0.2661781559990578
+      }
+    }
+  },
+  "source_epoch": 9,
+  "source_global_step": 117855
+}

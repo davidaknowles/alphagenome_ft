@@ -90,6 +90,14 @@ def collate(
     summaries = []
     for strategy_label in STRATEGIES.values():
         strategy_rows = [row for row in rows if row["strategy"] == strategy_label]
+        modality_rows = {
+            modality: [
+                row
+                for row in strategy_rows
+                if row["head"].endswith(f"_{modality}")
+            ]
+            for modality in ("atac", "rna")
+        }
         summaries.append(
             {
                 "strategy": strategy_label,
@@ -101,6 +109,14 @@ def collate(
                 / len(strategy_rows),
                 "mean_test_r": sum(row["test_r"] for row in strategy_rows)
                 / len(strategy_rows),
+                **{
+                    f"mean_{modality}_{split}_r": sum(
+                        row[f"{split}_r"] for row in modality_rows[modality]
+                    )
+                    / len(modality_rows[modality])
+                    for modality in ("atac", "rna")
+                    for split in ("valid", "test")
+                },
             }
         )
     return {"rows": rows, "strategy_summaries": summaries}
@@ -125,15 +141,17 @@ def render_markdown(result: Mapping[str, Any]) -> str:
     lines.extend(
         [
             "",
-            "| Strategy | Native sources | Heads | Mean validation R | Mean test R |",
-            "|---|---:|---:|---:|---:|",
+            "| Strategy | Native sources | Heads | Mean validation R | Mean test R | ATAC validation R | ATAC test R | RNA validation R | RNA test R |",
+            "|---|---:|---:|---:|---:|---:|---:|---:|---:|",
         ]
     )
     for summary in result["strategy_summaries"]:
         lines.append(
             f"| `{summary['strategy']}` | {summary['native_sources']} | "
             f"{summary['heads']} | {summary['mean_valid_r']:.4f} | "
-            f"{summary['mean_test_r']:.4f} |"
+            f"{summary['mean_test_r']:.4f} | {summary['mean_atac_valid_r']:.4f} | "
+            f"{summary['mean_atac_test_r']:.4f} | {summary['mean_rna_valid_r']:.4f} | "
+            f"{summary['mean_rna_test_r']:.4f} |"
         )
     return "\n".join(lines) + "\n"
 
