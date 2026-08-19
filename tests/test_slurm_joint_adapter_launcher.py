@@ -47,6 +47,26 @@ def test_all_study_launcher_preallocates_gpu_memory_and_aborts_failed_collective
     assert 'XLA_PYTHON_CLIENT_ABORT_COLLECTIVES_ON_FAILURE="${XLA_PYTHON_CLIENT_ABORT_COLLECTIVES_ON_FAILURE:-1}"' in launcher
 
 
+def test_all_study_resumed_smoke_honors_epoch_horizon() -> None:
+    launcher = Path("scripts/v0data/slurm_joint_multidataset_adapters.sbatch").read_text()
+
+    assert '--num-epochs "${NUM_EPOCHS:-1}"' in launcher
+
+
+def test_parallel_joint_continuations_are_smoke_gated_and_matched() -> None:
+    script = Path("scripts/v0data/submit_joint_parallel_continuations.sh").read_text()
+
+    assert "lora_epoch=9" in script
+    assert "locon_epoch=17" in script
+    assert "_lr3e4_reset" in script
+    assert "_lr1e4_reset" in script
+    assert "_lr1e4_rnaw2_reset" in script
+    assert "prepare_joint_rna_objective_config.py" in script
+    assert "--loss-weight 2" in script
+    assert 'dependency="afterok:${smoke}_${task}"' in script
+    assert "RESET_OPTIMIZER=1" in script
+
+
 def test_all_study_native_evaluation_uses_and_validates_provisional_runs() -> None:
     submitter = Path(
         "scripts/v0data/submit_joint_multidataset_evaluations.sh"

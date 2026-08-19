@@ -39,7 +39,7 @@ extra_args=(
 )
 if [[ "${SMOKE:-0}" == "1" ]]; then
   extra_args=(
-    --num-epochs 1
+    --num-epochs "${NUM_EPOCHS:-1}"
     --max-train-steps 5
     --limit-train 8
     --limit-valid 8
