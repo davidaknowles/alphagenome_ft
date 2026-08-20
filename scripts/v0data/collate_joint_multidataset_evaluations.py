@@ -30,15 +30,23 @@ def collate(
     evaluation_root: Path,
     *,
     run_suffix: str = "",
+    runs: Mapping[str, str] | None = None,
 ) -> dict[str, Any]:
+    if runs is None:
+        runs = {
+            f"{strategy_path}{run_suffix}": strategy_label
+            for strategy_path, strategy_label in STRATEGIES.items()
+        }
+    if not runs or len(set(runs.values())) != len(runs):
+        raise ValueError("Evaluation run paths and labels must be nonempty and unique.")
     rows = []
     missing = []
-    for strategy_path, strategy_label in STRATEGIES.items():
+    for run_path, strategy_label in runs.items():
         for dataset, source in expected_routes(dataset_config):
             route_path = f"{dataset}_{source}"
             evaluation_path = (
                 evaluation_root
-                / f"{strategy_path}{run_suffix}"
+                / run_path
                 / route_path
                 / "evaluation.json"
             )
@@ -88,7 +96,7 @@ def collate(
             "Missing joint native-source evaluations:\n" + "\n".join(missing)
         )
     summaries = []
-    for strategy_label in STRATEGIES.values():
+    for strategy_label in runs.values():
         strategy_rows = [row for row in rows if row["strategy"] == strategy_label]
         modality_rows = {
             modality: [
@@ -170,6 +178,13 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--run-suffix", default="")
     parser.add_argument(
+        "--run",
+        action="append",
+        default=[],
+        metavar="PATH=LABEL",
+        help="Evaluation directory and display label. Repeat for multiple selected runs.",
+    )
+    parser.add_argument(
         "--json-output",
         type=Path,
         default=Path("results/v0data_joint_multidataset_evaluations.json"),
@@ -184,10 +199,21 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = parse_args()
+    runs = None
+    if args.run:
+        if args.run_suffix:
+            raise ValueError("--run-suffix cannot be combined with --run.")
+        runs = {}
+        for value in args.run:
+            path, separator, label = value.partition("=")
+            if not separator or not path or not label or path in runs:
+                raise ValueError(f"Invalid or duplicate --run value: {value!r}")
+            runs[path] = label
     result = collate(
         args.dataset_config,
         args.evaluation_root,
         run_suffix=args.run_suffix,
+        runs=runs,
     )
     args.json_output.parent.mkdir(parents=True, exist_ok=True)
     args.markdown_output.parent.mkdir(parents=True, exist_ok=True)

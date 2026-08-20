@@ -79,3 +79,30 @@ def test_collate_rejects_missing_native_source_evaluation(tmp_path: Path):
 
     with pytest.raises(FileNotFoundError, match="lora/study_human/evaluation.json"):
         collate(config, tmp_path / "evaluations")
+
+
+def test_collate_accepts_arbitrary_labeled_runs(tmp_path: Path):
+    config = tmp_path / "datasets.json"
+    config.write_text(
+        json.dumps({"datasets": [{"name": "study", "sources": [{"name": "human"}]}]})
+    )
+    root = tmp_path / "evaluations"
+    for run, epoch, offset in (("control", 4, 0.7), ("weighted", 5, 0.72)):
+        _write_evaluation(root / run / "study_human" / "evaluation.json", epoch, offset)
+
+    result = collate(
+        config,
+        root,
+        runs={"control": "LoCon control", "weighted": "LoCon RNA weight 2"},
+    )
+
+    assert [row["strategy"] for row in result["rows"]] == [
+        "LoCon control",
+        "LoCon control",
+        "LoCon RNA weight 2",
+        "LoCon RNA weight 2",
+    ]
+    assert [summary["strategy"] for summary in result["strategy_summaries"]] == [
+        "LoCon control",
+        "LoCon RNA weight 2",
+    ]

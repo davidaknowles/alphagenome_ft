@@ -32,14 +32,31 @@ routes=(
   zemke2024:human
 )
 strategies=(lora lora_locon)
-route_index=$((SLURM_ARRAY_TASK_ID % ${#routes[@]}))
-strategy_index=$((SLURM_ARRAY_TASK_ID / ${#routes[@]}))
+if [[ -n "${EVALUATION_STRATEGY:-}" ]]; then
+  strategy="$EVALUATION_STRATEGY"
+  if [[ "$strategy" != lora && "$strategy" != lora_locon ]]; then
+    printf 'Invalid evaluation strategy: %s\n' "$strategy" >&2
+    exit 1
+  fi
+  if (( SLURM_ARRAY_TASK_ID >= ${#routes[@]} )); then
+    printf 'Single-checkpoint task index is out of range: %s\n' "$SLURM_ARRAY_TASK_ID" >&2
+    exit 1
+  fi
+  route_index=$SLURM_ARRAY_TASK_ID
+  source_checkpoint="${SOURCE_CHECKPOINT:?SOURCE_CHECKPOINT is required}"
+  evaluation_tag="${EVALUATION_TAG:?EVALUATION_TAG is required}"
+  evaluation_base="${EVALUATION_ROOT:-evaluations/v0data/joint_all_nonencode}/${evaluation_tag}"
+else
+  route_index=$((SLURM_ARRAY_TASK_ID % ${#routes[@]}))
+  strategy_index=$((SLURM_ARRAY_TASK_ID / ${#routes[@]}))
+  strategy="${strategies[$strategy_index]}"
+  run_suffix="${RUN_SUFFIX:-}"
+  source_checkpoint="${CHECKPOINT_ROOT:-checkpoints/v0data}/joint_all_nonencode_${strategy}${run_suffix}/best"
+  evaluation_base="${EVALUATION_ROOT:-evaluations/v0data/joint_all_nonencode}/${strategy}${run_suffix}"
+fi
 route="${routes[$route_index]}"
-strategy="${strategies[$strategy_index]}"
-run_suffix="${RUN_SUFFIX:-}"
-source_checkpoint="${CHECKPOINT_ROOT:-checkpoints/v0data}/joint_all_nonencode_${strategy}${run_suffix}/best"
 route_path="${route/:/_}"
-evaluation_dir="${EVALUATION_ROOT:-evaluations/v0data/joint_all_nonencode}/${strategy}${run_suffix}/${route_path}"
+evaluation_dir="${evaluation_base}/${route_path}"
 dataset_config="${DATASET_CONFIG:-outputs/v0data/joint-all-nonencode/datasets.json}"
 if [[ ! -f "$dataset_config" ]]; then
   printf 'Missing joint dataset configuration: %s\n' "$dataset_config" >&2

@@ -82,6 +82,22 @@ def test_all_study_native_evaluation_uses_and_validates_provisional_runs() -> No
     assert "Missing source checkpoint metadata" in worker
 
 
+def test_single_checkpoint_native_evaluation_is_explicit_and_ten_tasks() -> None:
+    submitter = Path(
+        "scripts/v0data/submit_joint_checkpoint_evaluations.sh"
+    ).read_text()
+    worker = Path("scripts/v0data/slurm_joint_multidataset_evaluate.sbatch").read_text()
+
+    assert 'strategy="${STRATEGY:?' in submitter
+    assert 'source_checkpoint="${SOURCE_CHECKPOINT:?' in submitter
+    assert 'evaluation_tag="${EVALUATION_TAG:?' in submitter
+    assert "--array=0-9%4" in submitter
+    assert 'dependency="afterok:${source_job}"' in submitter
+    assert '"${EVALUATION_STRATEGY:-}"' in worker
+    assert 'source_checkpoint="${SOURCE_CHECKPOINT:?' in worker
+    assert 'evaluation_tag="${EVALUATION_TAG:?' in worker
+
+
 def test_joint_launcher_exposes_evaluate_only_with_checkpoint() -> None:
     script = Path("scripts/v0data/slurm_joint_adapter_comparison.sbatch").read_text()
 

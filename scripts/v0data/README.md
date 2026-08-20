@@ -10,6 +10,8 @@ The final deliverable is one jointly trained model across every retained non-ENC
 
 `slurm_joint_multidataset_evaluate.sbatch` restores each selected union checkpoint and evaluates its ten native sources separately, yielding 20 strategy-by-source tasks. `--evaluate-source` restricts data loading and active metrics without changing the union of checkpoint heads, so restored parameter shapes remain identical to joint training. `submit_joint_multidataset_evaluations.sh` dependency-gates this array on both joint strategies. Final reporting must use these source-specific results for human, macaque, marmoset, and mouse in addition to the aggregate validation criterion used for early stopping.
 
+`submit_joint_checkpoint_evaluations.sh` evaluates one explicitly named selected checkpoint as a ten-task native-source array. It accepts a strategy, checkpoint path, unique result tag, and optional completed-training dependency. This mode supports continuation and objective-screen checkpoints without rerunning unrelated strategies. The collator accepts repeated `--run PATH=LABEL` arguments to place any set of these selected runs in one table.
+
 `collate_joint_multidataset_evaluations.py` requires all 20 evaluation artifacts, verifies finite validation and test correlations and source-checkpoint provenance, and writes the native-source result table plus equally weighted strategy summaries. Missing sources are fatal rather than silently omitted.
 
 Every launcher appends `_smoke` to its checkpoint and Weights & Biases run name when `SMOKE=1`. Smoke checkpoints are therefore isolated from full-data histories even when a caller does not provide a distinct run suffix.
