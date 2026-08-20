@@ -55,6 +55,7 @@ def test_all_study_resumed_smoke_honors_epoch_horizon() -> None:
 
 def test_parallel_joint_continuations_are_smoke_gated_and_matched() -> None:
     script = Path("scripts/v0data/submit_joint_parallel_continuations.sh").read_text()
+    library = Path("scripts/v0data/joint_continuation_lib.sh").read_text()
 
     assert "lora_epoch=9" in script
     assert "locon_epoch=17" in script
@@ -63,8 +64,20 @@ def test_parallel_joint_continuations_are_smoke_gated_and_matched() -> None:
     assert "_lr1e4_rnaw2_reset" in script
     assert "prepare_joint_rna_objective_config.py" in script
     assert "--loss-weight 2" in script
-    assert 'dependency="afterok:${smoke}_${task}"' in script
-    assert "RESET_OPTIMIZER=1" in script
+    assert "joint_continuation_lib.sh" in script
+    assert 'dependency="afterok:${smoke}_${task}"' in library
+    assert "RESET_OPTIMIZER=1" in library
+
+
+def test_metric_aligned_pair_uses_one_snapshot_and_matched_reset_control() -> None:
+    script = Path("scripts/v0data/submit_joint_metric_aligned_pair.sh").read_text()
+
+    assert "prepare_joint_metric_aligned_config.py" in script
+    assert 'source_epoch="${SOURCE_EPOCH:-22}"' in script
+    assert "snapshot_checkpoint" in script
+    assert "_lr1e4_epoch22_reset_control" in script
+    assert "_lr1e4_epoch22_metric_aligned_reset" in script
+    assert script.count("submit_continuation 1") == 2
 
 
 def test_all_study_native_evaluation_uses_and_validates_provisional_runs() -> None:
