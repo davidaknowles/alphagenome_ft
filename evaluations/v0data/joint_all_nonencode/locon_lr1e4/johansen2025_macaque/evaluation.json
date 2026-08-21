@@ -1,0 +1,42 @@
+{
+  "metrics": {
+    "test": {
+      "allen_atac": {
+        "differential_pearson_r": 0.4503154466213195,
+        "double_centered_r2": 0.20278400146575845,
+        "loss": 69.80405104254174,
+        "r2_global": 0.4964882015731803,
+        "r2_over_cell_types": -14200.9326171875,
+        "r2_over_loci": 0.680132421754374
+      },
+      "allen_rna": {
+        "differential_pearson_r": 0.5154643535472289,
+        "double_centered_r2": 0.26570349977786256,
+        "loss": 0.44764949129087717,
+        "r2_global": 0.49033872995104943,
+        "r2_over_cell_types": -15.559309005737305,
+        "r2_over_loci": 0.6009635573781249
+      }
+    },
+    "valid": {
+      "allen_atac": {
+        "differential_pearson_r": 0.6065074083781709,
+        "double_centered_r2": 0.3678512364176053,
+        "loss": 61.066347549143046,
+        "r2_global": 0.6990212025560649,
+        "r2_over_cell_types": -3910.529541015625,
+        "r2_over_loci": 0.7180335057972534
+      },
+      "allen_rna": {
+        "differential_pearson_r": 0.37114086323816864,
+        "double_centered_r2": 0.137745540365173,
+        "loss": 0.4628723981331332,
+        "r2_global": 0.3878779435387193,
+        "r2_over_cell_types": -591.6575927734375,
+        "r2_over_loci": 0.46139390257148877
+      }
+    }
+  },
+  "source_epoch": 23,
+  "source_global_step": 301185
+}

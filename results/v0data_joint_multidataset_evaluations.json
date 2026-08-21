@@ -3,7 +3,7 @@
     {
       "dataset": "hda",
       "source": "human",
-      "strategy": "lora",
+      "strategy": "LoRA, lr 3e-4",
       "source_epoch": 9,
       "source_global_step": 117855,
       "head": "hda_atac",
@@ -13,7 +13,7 @@
     {
       "dataset": "hda",
       "source": "human",
-      "strategy": "lora",
+      "strategy": "LoRA, lr 3e-4",
       "source_epoch": 9,
       "source_global_step": 117855,
       "head": "hda_rna",
@@ -23,7 +23,7 @@
     {
       "dataset": "liu_hdma",
       "source": "human",
-      "strategy": "lora",
+      "strategy": "LoRA, lr 3e-4",
       "source_epoch": 9,
       "source_global_step": 117855,
       "head": "liu_atac",
@@ -33,7 +33,7 @@
     {
       "dataset": "liu_hdma",
       "source": "human",
-      "strategy": "lora",
+      "strategy": "LoRA, lr 3e-4",
       "source_epoch": 9,
       "source_global_step": 117855,
       "head": "liu_rna",
@@ -43,7 +43,7 @@
     {
       "dataset": "johansen2025",
       "source": "human",
-      "strategy": "lora",
+      "strategy": "LoRA, lr 3e-4",
       "source_epoch": 9,
       "source_global_step": 117855,
       "head": "allen_atac",
@@ -53,7 +53,7 @@
     {
       "dataset": "johansen2025",
       "source": "human",
-      "strategy": "lora",
+      "strategy": "LoRA, lr 3e-4",
       "source_epoch": 9,
       "source_global_step": 117855,
       "head": "allen_rna",
@@ -63,7 +63,7 @@
     {
       "dataset": "johansen2025",
       "source": "macaque",
-      "strategy": "lora",
+      "strategy": "LoRA, lr 3e-4",
       "source_epoch": 9,
       "source_global_step": 117855,
       "head": "allen_atac",
@@ -73,7 +73,7 @@
     {
       "dataset": "johansen2025",
       "source": "macaque",
-      "strategy": "lora",
+      "strategy": "LoRA, lr 3e-4",
       "source_epoch": 9,
       "source_global_step": 117855,
       "head": "allen_rna",
@@ -83,7 +83,7 @@
     {
       "dataset": "johansen2025",
       "source": "marmoset",
-      "strategy": "lora",
+      "strategy": "LoRA, lr 3e-4",
       "source_epoch": 9,
       "source_global_step": 117855,
       "head": "allen_atac",
@@ -93,7 +93,7 @@
     {
       "dataset": "johansen2025",
       "source": "marmoset",
-      "strategy": "lora",
+      "strategy": "LoRA, lr 3e-4",
       "source_epoch": 9,
       "source_global_step": 117855,
       "head": "allen_rna",
@@ -103,7 +103,7 @@
     {
       "dataset": "zemke2023",
       "source": "human",
-      "strategy": "lora",
+      "strategy": "LoRA, lr 3e-4",
       "source_epoch": 9,
       "source_global_step": 117855,
       "head": "zemke2023_atac",
@@ -113,7 +113,7 @@
     {
       "dataset": "zemke2023",
       "source": "human",
-      "strategy": "lora",
+      "strategy": "LoRA, lr 3e-4",
       "source_epoch": 9,
       "source_global_step": 117855,
       "head": "zemke2023_rna",
@@ -123,7 +123,7 @@
     {
       "dataset": "zemke2023",
       "source": "macaque",
-      "strategy": "lora",
+      "strategy": "LoRA, lr 3e-4",
       "source_epoch": 9,
       "source_global_step": 117855,
       "head": "zemke2023_atac",
@@ -133,7 +133,7 @@
     {
       "dataset": "zemke2023",
       "source": "macaque",
-      "strategy": "lora",
+      "strategy": "LoRA, lr 3e-4",
       "source_epoch": 9,
       "source_global_step": 117855,
       "head": "zemke2023_rna",
@@ -143,7 +143,7 @@
     {
       "dataset": "zemke2023",
       "source": "marmoset",
-      "strategy": "lora",
+      "strategy": "LoRA, lr 3e-4",
       "source_epoch": 9,
       "source_global_step": 117855,
       "head": "zemke2023_atac",
@@ -153,7 +153,7 @@
     {
       "dataset": "zemke2023",
       "source": "marmoset",
-      "strategy": "lora",
+      "strategy": "LoRA, lr 3e-4",
       "source_epoch": 9,
       "source_global_step": 117855,
       "head": "zemke2023_rna",
@@ -163,7 +163,7 @@
     {
       "dataset": "zemke2023",
       "source": "mouse",
-      "strategy": "lora",
+      "strategy": "LoRA, lr 3e-4",
       "source_epoch": 9,
       "source_global_step": 117855,
       "head": "zemke2023_atac",
@@ -173,7 +173,7 @@
     {
       "dataset": "zemke2023",
       "source": "mouse",
-      "strategy": "lora",
+      "strategy": "LoRA, lr 3e-4",
       "source_epoch": 9,
       "source_global_step": 117855,
       "head": "zemke2023_rna",
@@ -183,7 +183,7 @@
     {
       "dataset": "zemke2024",
       "source": "human",
-      "strategy": "lora",
+      "strategy": "LoRA, lr 3e-4",
       "source_epoch": 9,
       "source_global_step": 117855,
       "head": "zemke2024_all_atac",
@@ -193,7 +193,7 @@
     {
       "dataset": "zemke2024",
       "source": "human",
-      "strategy": "lora",
+      "strategy": "LoRA, lr 3e-4",
       "source_epoch": 9,
       "source_global_step": 117855,
       "head": "zemke2024_all_rna",
@@ -203,207 +203,407 @@
     {
       "dataset": "hda",
       "source": "human",
-      "strategy": "lora+locon",
-      "source_epoch": 6,
-      "source_global_step": 78570,
+      "strategy": "LoRA+LoCon, lr 1e-4",
+      "source_epoch": 23,
+      "source_global_step": 301185,
       "head": "hda_atac",
-      "valid_r": 0.7937827940287834,
-      "test_r": 0.8072380738507677
+      "valid_r": 0.8083714289978582,
+      "test_r": 0.8192192705749497
     },
     {
       "dataset": "hda",
       "source": "human",
-      "strategy": "lora+locon",
-      "source_epoch": 6,
-      "source_global_step": 78570,
+      "strategy": "LoRA+LoCon, lr 1e-4",
+      "source_epoch": 23,
+      "source_global_step": 301185,
       "head": "hda_rna",
-      "valid_r": 0.4573863634112221,
-      "test_r": 0.6339128188243913
+      "valid_r": 0.465526602823825,
+      "test_r": 0.6553471339409364
     },
     {
       "dataset": "liu_hdma",
       "source": "human",
-      "strategy": "lora+locon",
-      "source_epoch": 6,
-      "source_global_step": 78570,
+      "strategy": "LoRA+LoCon, lr 1e-4",
+      "source_epoch": 23,
+      "source_global_step": 301185,
       "head": "liu_atac",
-      "valid_r": 0.7635537946915268,
-      "test_r": 0.7815558390988219
+      "valid_r": 0.7686116787816917,
+      "test_r": 0.7883166302265538
     },
     {
       "dataset": "liu_hdma",
       "source": "human",
-      "strategy": "lora+locon",
-      "source_epoch": 6,
-      "source_global_step": 78570,
+      "strategy": "LoRA+LoCon, lr 1e-4",
+      "source_epoch": 23,
+      "source_global_step": 301185,
       "head": "liu_rna",
-      "valid_r": 0.6735137524140155,
-      "test_r": 0.47586433885733365
+      "valid_r": 0.7473635939945997,
+      "test_r": 0.4831222285683321
     },
     {
       "dataset": "johansen2025",
       "source": "human",
-      "strategy": "lora+locon",
-      "source_epoch": 6,
-      "source_global_step": 78570,
+      "strategy": "LoRA+LoCon, lr 1e-4",
+      "source_epoch": 23,
+      "source_global_step": 301185,
       "head": "allen_atac",
-      "valid_r": 0.5676217941235092,
-      "test_r": 0.6029996493242067
+      "valid_r": 0.5951566950033987,
+      "test_r": 0.629669555544615
     },
     {
       "dataset": "johansen2025",
       "source": "human",
-      "strategy": "lora+locon",
-      "source_epoch": 6,
-      "source_global_step": 78570,
+      "strategy": "LoRA+LoCon, lr 1e-4",
+      "source_epoch": 23,
+      "source_global_step": 301185,
       "head": "allen_rna",
-      "valid_r": 0.5599568539751479,
-      "test_r": 0.48098360765547993
+      "valid_r": 0.6046192858334799,
+      "test_r": 0.5418358027591269
     },
     {
       "dataset": "johansen2025",
       "source": "macaque",
-      "strategy": "lora+locon",
-      "source_epoch": 6,
-      "source_global_step": 78570,
+      "strategy": "LoRA+LoCon, lr 1e-4",
+      "source_epoch": 23,
+      "source_global_step": 301185,
       "head": "allen_atac",
-      "valid_r": 0.5733971764844942,
-      "test_r": 0.4265275798556603
+      "valid_r": 0.6065074083781709,
+      "test_r": 0.4503154466213195
     },
     {
       "dataset": "johansen2025",
       "source": "macaque",
-      "strategy": "lora+locon",
-      "source_epoch": 6,
-      "source_global_step": 78570,
+      "strategy": "LoRA+LoCon, lr 1e-4",
+      "source_epoch": 23,
+      "source_global_step": 301185,
       "head": "allen_rna",
-      "valid_r": 0.2963716563102749,
-      "test_r": 0.4213992102920301
+      "valid_r": 0.37114086323816864,
+      "test_r": 0.5154643535472289
     },
     {
       "dataset": "johansen2025",
       "source": "marmoset",
-      "strategy": "lora+locon",
-      "source_epoch": 6,
-      "source_global_step": 78570,
+      "strategy": "LoRA+LoCon, lr 1e-4",
+      "source_epoch": 23,
+      "source_global_step": 301185,
       "head": "allen_atac",
-      "valid_r": 0.49574220565749577,
-      "test_r": 0.5292163243528054
+      "valid_r": 0.5443775287155967,
+      "test_r": 0.5799199652767405
     },
     {
       "dataset": "johansen2025",
       "source": "marmoset",
-      "strategy": "lora+locon",
-      "source_epoch": 6,
-      "source_global_step": 78570,
+      "strategy": "LoRA+LoCon, lr 1e-4",
+      "source_epoch": 23,
+      "source_global_step": 301185,
       "head": "allen_rna",
-      "valid_r": 0.19865117079869568,
-      "test_r": 0.4118649270836133
+      "valid_r": 0.25217794109245567,
+      "test_r": 0.4278453077865711
     },
     {
       "dataset": "zemke2023",
       "source": "human",
-      "strategy": "lora+locon",
-      "source_epoch": 6,
-      "source_global_step": 78570,
+      "strategy": "LoRA+LoCon, lr 1e-4",
+      "source_epoch": 23,
+      "source_global_step": 301185,
       "head": "zemke2023_atac",
-      "valid_r": 0.6817415886846696,
-      "test_r": 0.7070048392247003
+      "valid_r": 0.6981710428489718,
+      "test_r": 0.7198938699460727
     },
     {
       "dataset": "zemke2023",
       "source": "human",
-      "strategy": "lora+locon",
-      "source_epoch": 6,
-      "source_global_step": 78570,
+      "strategy": "LoRA+LoCon, lr 1e-4",
+      "source_epoch": 23,
+      "source_global_step": 301185,
       "head": "zemke2023_rna",
-      "valid_r": 0.32444479568567275,
-      "test_r": 0.3478611610997018
+      "valid_r": 0.3913715368866894,
+      "test_r": 0.3957475491840094
     },
     {
       "dataset": "zemke2023",
       "source": "macaque",
-      "strategy": "lora+locon",
-      "source_epoch": 6,
-      "source_global_step": 78570,
+      "strategy": "LoRA+LoCon, lr 1e-4",
+      "source_epoch": 23,
+      "source_global_step": 301185,
       "head": "zemke2023_atac",
-      "valid_r": 0.21828645972194943,
-      "test_r": 0.6102789344736637
+      "valid_r": 0.3414079310086333,
+      "test_r": 0.6355462560260348
     },
     {
       "dataset": "zemke2023",
       "source": "macaque",
-      "strategy": "lora+locon",
-      "source_epoch": 6,
-      "source_global_step": 78570,
+      "strategy": "LoRA+LoCon, lr 1e-4",
+      "source_epoch": 23,
+      "source_global_step": 301185,
       "head": "zemke2023_rna",
-      "valid_r": 0.24196203650048456,
-      "test_r": 0.31802782128929447
+      "valid_r": 0.2888523775889491,
+      "test_r": 0.37050186021093107
     },
     {
       "dataset": "zemke2023",
       "source": "marmoset",
-      "strategy": "lora+locon",
-      "source_epoch": 6,
-      "source_global_step": 78570,
+      "strategy": "LoRA+LoCon, lr 1e-4",
+      "source_epoch": 23,
+      "source_global_step": 301185,
       "head": "zemke2023_atac",
-      "valid_r": 0.5957165639592343,
-      "test_r": 0.5643916350963317
+      "valid_r": 0.6247645842889987,
+      "test_r": 0.5896416863775793
     },
     {
       "dataset": "zemke2023",
       "source": "marmoset",
-      "strategy": "lora+locon",
-      "source_epoch": 6,
-      "source_global_step": 78570,
+      "strategy": "LoRA+LoCon, lr 1e-4",
+      "source_epoch": 23,
+      "source_global_step": 301185,
       "head": "zemke2023_rna",
-      "valid_r": 0.2655702266666611,
-      "test_r": 0.16879859708296432
+      "valid_r": 0.3248888969047093,
+      "test_r": 0.16977990809409754
     },
     {
       "dataset": "zemke2023",
       "source": "mouse",
-      "strategy": "lora+locon",
-      "source_epoch": 6,
-      "source_global_step": 78570,
+      "strategy": "LoRA+LoCon, lr 1e-4",
+      "source_epoch": 23,
+      "source_global_step": 301185,
       "head": "zemke2023_atac",
-      "valid_r": 0.690177289774441,
-      "test_r": 0.6875572178732171
+      "valid_r": 0.7144907808473973,
+      "test_r": 0.7130594485307433
     },
     {
       "dataset": "zemke2023",
       "source": "mouse",
-      "strategy": "lora+locon",
-      "source_epoch": 6,
-      "source_global_step": 78570,
+      "strategy": "LoRA+LoCon, lr 1e-4",
+      "source_epoch": 23,
+      "source_global_step": 301185,
       "head": "zemke2023_rna",
-      "valid_r": 0.24859286351457585,
-      "test_r": 0.2589627802975272
+      "valid_r": 0.3136206511436162,
+      "test_r": 0.31919632528052705
     },
     {
       "dataset": "zemke2024",
       "source": "human",
-      "strategy": "lora+locon",
-      "source_epoch": 6,
-      "source_global_step": 78570,
+      "strategy": "LoRA+LoCon, lr 1e-4",
+      "source_epoch": 23,
+      "source_global_step": 301185,
       "head": "zemke2024_all_atac",
-      "valid_r": 0.7355403101254606,
-      "test_r": 0.7499299103914713
+      "valid_r": 0.749155815531111,
+      "test_r": 0.7595762166459517
     },
     {
       "dataset": "zemke2024",
       "source": "human",
-      "strategy": "lora+locon",
-      "source_epoch": 6,
-      "source_global_step": 78570,
+      "strategy": "LoRA+LoCon, lr 1e-4",
+      "source_epoch": 23,
+      "source_global_step": 301185,
       "head": "zemke2024_all_rna",
-      "valid_r": 0.3538984270025232,
-      "test_r": 0.2630087497191426
+      "valid_r": 0.4091832195532781,
+      "test_r": 0.27923756499751357
+    },
+    {
+      "dataset": "hda",
+      "source": "human",
+      "strategy": "LoRA+LoCon, lr 1e-4, RNA weight 2",
+      "source_epoch": 22,
+      "source_global_step": 288090,
+      "head": "hda_atac",
+      "valid_r": 0.8064761748041543,
+      "test_r": 0.8184014838203484
+    },
+    {
+      "dataset": "hda",
+      "source": "human",
+      "strategy": "LoRA+LoCon, lr 1e-4, RNA weight 2",
+      "source_epoch": 22,
+      "source_global_step": 288090,
+      "head": "hda_rna",
+      "valid_r": 0.48287569406785885,
+      "test_r": 0.6528581001995358
+    },
+    {
+      "dataset": "liu_hdma",
+      "source": "human",
+      "strategy": "LoRA+LoCon, lr 1e-4, RNA weight 2",
+      "source_epoch": 22,
+      "source_global_step": 288090,
+      "head": "liu_atac",
+      "valid_r": 0.767371693314721,
+      "test_r": 0.7877664548885916
+    },
+    {
+      "dataset": "liu_hdma",
+      "source": "human",
+      "strategy": "LoRA+LoCon, lr 1e-4, RNA weight 2",
+      "source_epoch": 22,
+      "source_global_step": 288090,
+      "head": "liu_rna",
+      "valid_r": 0.7154552242215898,
+      "test_r": 0.4976664430858032
+    },
+    {
+      "dataset": "johansen2025",
+      "source": "human",
+      "strategy": "LoRA+LoCon, lr 1e-4, RNA weight 2",
+      "source_epoch": 22,
+      "source_global_step": 288090,
+      "head": "allen_atac",
+      "valid_r": 0.5932535161553879,
+      "test_r": 0.6291772470287429
+    },
+    {
+      "dataset": "johansen2025",
+      "source": "human",
+      "strategy": "LoRA+LoCon, lr 1e-4, RNA weight 2",
+      "source_epoch": 22,
+      "source_global_step": 288090,
+      "head": "allen_rna",
+      "valid_r": 0.5949798016927162,
+      "test_r": 0.5571361788575743
+    },
+    {
+      "dataset": "johansen2025",
+      "source": "macaque",
+      "strategy": "LoRA+LoCon, lr 1e-4, RNA weight 2",
+      "source_epoch": 22,
+      "source_global_step": 288090,
+      "head": "allen_atac",
+      "valid_r": 0.6044952870103303,
+      "test_r": 0.4475281852206422
+    },
+    {
+      "dataset": "johansen2025",
+      "source": "macaque",
+      "strategy": "LoRA+LoCon, lr 1e-4, RNA weight 2",
+      "source_epoch": 22,
+      "source_global_step": 288090,
+      "head": "allen_rna",
+      "valid_r": 0.3711864536131177,
+      "test_r": 0.514563311210525
+    },
+    {
+      "dataset": "johansen2025",
+      "source": "marmoset",
+      "strategy": "LoRA+LoCon, lr 1e-4, RNA weight 2",
+      "source_epoch": 22,
+      "source_global_step": 288090,
+      "head": "allen_atac",
+      "valid_r": 0.5417687646243191,
+      "test_r": 0.5770562134745706
+    },
+    {
+      "dataset": "johansen2025",
+      "source": "marmoset",
+      "strategy": "LoRA+LoCon, lr 1e-4, RNA weight 2",
+      "source_epoch": 22,
+      "source_global_step": 288090,
+      "head": "allen_rna",
+      "valid_r": 0.2455934332883081,
+      "test_r": 0.4224948316787272
+    },
+    {
+      "dataset": "zemke2023",
+      "source": "human",
+      "strategy": "LoRA+LoCon, lr 1e-4, RNA weight 2",
+      "source_epoch": 22,
+      "source_global_step": 288090,
+      "head": "zemke2023_atac",
+      "valid_r": 0.6963284354691313,
+      "test_r": 0.7195991052311562
+    },
+    {
+      "dataset": "zemke2023",
+      "source": "human",
+      "strategy": "LoRA+LoCon, lr 1e-4, RNA weight 2",
+      "source_epoch": 22,
+      "source_global_step": 288090,
+      "head": "zemke2023_rna",
+      "valid_r": 0.39274533744939577,
+      "test_r": 0.4005902781324277
+    },
+    {
+      "dataset": "zemke2023",
+      "source": "macaque",
+      "strategy": "LoRA+LoCon, lr 1e-4, RNA weight 2",
+      "source_epoch": 22,
+      "source_global_step": 288090,
+      "head": "zemke2023_atac",
+      "valid_r": 0.3047376225172075,
+      "test_r": 0.6297820014774227
+    },
+    {
+      "dataset": "zemke2023",
+      "source": "macaque",
+      "strategy": "LoRA+LoCon, lr 1e-4, RNA weight 2",
+      "source_epoch": 22,
+      "source_global_step": 288090,
+      "head": "zemke2023_rna",
+      "valid_r": 0.28468988413835117,
+      "test_r": 0.37753379319637587
+    },
+    {
+      "dataset": "zemke2023",
+      "source": "marmoset",
+      "strategy": "LoRA+LoCon, lr 1e-4, RNA weight 2",
+      "source_epoch": 22,
+      "source_global_step": 288090,
+      "head": "zemke2023_atac",
+      "valid_r": 0.6226823830304853,
+      "test_r": 0.5873638847105295
+    },
+    {
+      "dataset": "zemke2023",
+      "source": "marmoset",
+      "strategy": "LoRA+LoCon, lr 1e-4, RNA weight 2",
+      "source_epoch": 22,
+      "source_global_step": 288090,
+      "head": "zemke2023_rna",
+      "valid_r": 0.3278278624221176,
+      "test_r": 0.15238877949352925
+    },
+    {
+      "dataset": "zemke2023",
+      "source": "mouse",
+      "strategy": "LoRA+LoCon, lr 1e-4, RNA weight 2",
+      "source_epoch": 22,
+      "source_global_step": 288090,
+      "head": "zemke2023_atac",
+      "valid_r": 0.7131879264219795,
+      "test_r": 0.7117665403098643
+    },
+    {
+      "dataset": "zemke2023",
+      "source": "mouse",
+      "strategy": "LoRA+LoCon, lr 1e-4, RNA weight 2",
+      "source_epoch": 22,
+      "source_global_step": 288090,
+      "head": "zemke2023_rna",
+      "valid_r": 0.310711891385509,
+      "test_r": 0.3129971806189553
+    },
+    {
+      "dataset": "zemke2024",
+      "source": "human",
+      "strategy": "LoRA+LoCon, lr 1e-4, RNA weight 2",
+      "source_epoch": 22,
+      "source_global_step": 288090,
+      "head": "zemke2024_all_atac",
+      "valid_r": 0.7476548013530484,
+      "test_r": 0.7611647339003504
+    },
+    {
+      "dataset": "zemke2024",
+      "source": "human",
+      "strategy": "LoRA+LoCon, lr 1e-4, RNA weight 2",
+      "source_epoch": 22,
+      "source_global_step": 288090,
+      "head": "zemke2024_all_rna",
+      "valid_r": 0.42072892227674286,
+      "test_r": 0.28594351358590764
     }
   ],
   "strategy_summaries": [
     {
-      "strategy": "lora",
+      "strategy": "LoRA, lr 3e-4",
       "native_sources": 10,
       "heads": 20,
       "mean_valid_r": 0.5054222851275838,
@@ -414,15 +614,26 @@
       "mean_rna_test_r": 0.39934059312897
     },
     {
-      "strategy": "lora+locon",
+      "strategy": "LoRA+LoCon, lr 1e-4",
       "native_sources": 10,
       "heads": 20,
-      "mean_valid_r": 0.4867954061765419,
-      "mean_test_r": 0.5123692007871562,
-      "mean_atac_valid_r": 0.6115559977251565,
-      "mean_atac_test_r": 0.6466700003541647,
-      "mean_rna_valid_r": 0.36203481462792736,
-      "mean_rna_test_r": 0.37806840122014784
+      "mean_valid_r": 0.53098799317308,
+      "mean_test_r": 0.5421618190069917,
+      "mean_atac_valid_r": 0.6451014894401828,
+      "mean_atac_test_r": 0.668515834577056,
+      "mean_rna_valid_r": 0.4168744969059771,
+      "mean_rna_test_r": 0.4158078034369274
+    },
+    {
+      "strategy": "LoRA+LoCon, lr 1e-4, RNA weight 2",
+      "native_sources": 10,
+      "heads": 20,
+      "mean_valid_r": 0.5272375554628236,
+      "mean_test_r": 0.542188913006079,
+      "mean_atac_valid_r": 0.6397956604700765,
+      "mean_atac_test_r": 0.6669605850062219,
+      "mean_rna_valid_r": 0.41467945045557075,
+      "mean_rna_test_r": 0.41741724100593613
     }
   ]
 }
