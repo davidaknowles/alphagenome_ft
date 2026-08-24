@@ -19,14 +19,24 @@ CORRELATION_WEIGHTS = {
 
 
 def prepare_config(
-    source: dict[str, Any], *, source_path: Path, output_dir: Path
+    source: dict[str, Any],
+    *,
+    source_path: Path,
+    output_dir: Path,
+    zemke_weight: float = 10.0,
 ) -> dict[str, Any]:
+    if not 0 < zemke_weight <= 10:
+        raise ValueError(f"zemke_weight must be in (0, 10], got {zemke_weight}.")
+    policy_by_dataset = json.loads(json.dumps(CORRELATION_WEIGHTS))
+    policy_by_dataset["zemke2023"]["zemke2023_atac"] = zemke_weight
+    policy_by_dataset["zemke2023"]["zemke2023_rna"] = zemke_weight
+    policy_by_dataset["zemke2024"]["zemke2024_all_rna"] = zemke_weight
     result = json.loads(json.dumps(source))
     source_root = source_path.resolve().parent
     observed: dict[str, set[str]] = {}
     for dataset in result.get("datasets", ()):
         dataset_name = dataset["name"]
-        policy = CORRELATION_WEIGHTS.get(dataset_name)
+        policy = policy_by_dataset.get(dataset_name)
         if policy is None:
             raise ValueError(f"No metric-alignment policy for dataset {dataset_name!r}.")
         for source_entry in dataset.get("sources", ()):
@@ -48,12 +58,12 @@ def prepare_config(
             destination.write_text(json.dumps(manifest, indent=2) + "\n")
             source_entry["targets_config"] = str(destination)
 
-    expected = {dataset: set(policy) for dataset, policy in CORRELATION_WEIGHTS.items()}
+    expected = {dataset: set(policy) for dataset, policy in policy_by_dataset.items()}
     if observed != expected:
         raise ValueError(f"Incomplete metric-alignment coverage: {observed!r}")
     result["objective_variant"] = {
-        "name": "metric_aligned",
-        "double_centered_correlation_loss_weights": CORRELATION_WEIGHTS,
+        "name": "metric_aligned" if zemke_weight == 10 else "metric_tempered",
+        "double_centered_correlation_loss_weights": policy_by_dataset,
     }
     return result
 
@@ -62,6 +72,7 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--input", required=True, type=Path)
     parser.add_argument("--output-dir", required=True, type=Path)
+    parser.add_argument("--zemke-weight", type=float, default=10.0)
     return parser.parse_args()
 
 
@@ -73,6 +84,7 @@ def main() -> None:
         json.loads(source_path.read_text()),
         source_path=source_path,
         output_dir=output_dir,
+        zemke_weight=args.zemke_weight,
     )
     output_dir.mkdir(parents=True, exist_ok=True)
     destination = output_dir / "datasets.json"

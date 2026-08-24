@@ -14,6 +14,8 @@ The final deliverable is one jointly trained model across every retained non-ENC
 
 `prepare_joint_metric_aligned_config.py` copies every native-source manifest and applies correlation objectives supported by completed single-study screens. HDA RNA uses weight 0.1, Liu and Johansen RNA retain weight 1, Zemke 2023 ATAC and RNA use weight 10, and Zemke 2024 RNA uses weight 10. `submit_joint_metric_aligned_pair.sh` compares this configuration with a canonical-objective control from the same immutable selected checkpoint, resetting AdamW and retaining all other training settings in both arms. Shared continuation preparation, history validation, provenance, and smoke gating live in `joint_continuation_lib.sh`.
 
+`submit_joint_consolidation_triplet.sh` starts three matched LoRA plus LoCon continuations from the selected metric-aligned checkpoint with fresh AdamW at learning rate $3\times10^{-5}$. The arms use canonical objectives, unchanged metric-aligned objectives, or a tempered metric objective with the Zemke correlation weights reduced from 10 to 3. This tests whether lower-rate consolidation can recover studies that regressed under the high-weight Zemke objectives while preserving the acquired Zemke gains.
+
 `collate_joint_multidataset_evaluations.py` requires all 20 evaluation artifacts, verifies finite validation and test correlations and source-checkpoint provenance, and writes the native-source result table plus equally weighted strategy summaries. Missing sources are fatal rather than silently omitted.
 
 Every launcher appends `_smoke` to its checkpoint and Weights & Biases run name when `SMOKE=1`. Smoke checkpoints are therefore isolated from full-data histories even when a caller does not provide a distinct run suffix.
