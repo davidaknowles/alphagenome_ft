@@ -84,6 +84,46 @@ Each row evaluates one head from the same union model on one native source. R is
 | `zemke2023` | `mouse` | `LoRA+LoCon, metric-aligned` | 31 | `zemke2023_rna` | 0.3347 | 0.3609 |
 | `zemke2024` | `human` | `LoRA+LoCon, metric-aligned` | 31 | `zemke2024_all_atac` | 0.7451 | 0.7627 |
 | `zemke2024` | `human` | `LoRA+LoCon, metric-aligned` | 31 | `zemke2024_all_rna` | 0.6411 | 0.3915 |
+| `hda` | `human` | `LoRA+LoCon, aligned consolidation` | 32 | `hda_atac` | 0.8055 | 0.8180 |
+| `hda` | `human` | `LoRA+LoCon, aligned consolidation` | 32 | `hda_rna` | 0.4519 | 0.6827 |
+| `liu_hdma` | `human` | `LoRA+LoCon, aligned consolidation` | 32 | `liu_atac` | 0.7641 | 0.7850 |
+| `liu_hdma` | `human` | `LoRA+LoCon, aligned consolidation` | 32 | `liu_rna` | 0.6697 | 0.4727 |
+| `johansen2025` | `human` | `LoRA+LoCon, aligned consolidation` | 32 | `allen_atac` | 0.5952 | 0.6310 |
+| `johansen2025` | `human` | `LoRA+LoCon, aligned consolidation` | 32 | `allen_rna` | 0.5885 | 0.5542 |
+| `johansen2025` | `macaque` | `LoRA+LoCon, aligned consolidation` | 32 | `allen_atac` | 0.6057 | 0.4480 |
+| `johansen2025` | `macaque` | `LoRA+LoCon, aligned consolidation` | 32 | `allen_rna` | 0.4036 | 0.5208 |
+| `johansen2025` | `marmoset` | `LoRA+LoCon, aligned consolidation` | 32 | `allen_atac` | 0.5422 | 0.5797 |
+| `johansen2025` | `marmoset` | `LoRA+LoCon, aligned consolidation` | 32 | `allen_rna` | 0.2509 | 0.4309 |
+| `zemke2023` | `human` | `LoRA+LoCon, aligned consolidation` | 32 | `zemke2023_atac` | 0.7034 | 0.7295 |
+| `zemke2023` | `human` | `LoRA+LoCon, aligned consolidation` | 32 | `zemke2023_rna` | 0.5124 | 0.4866 |
+| `zemke2023` | `macaque` | `LoRA+LoCon, aligned consolidation` | 32 | `zemke2023_atac` | 0.3999 | 0.6456 |
+| `zemke2023` | `macaque` | `LoRA+LoCon, aligned consolidation` | 32 | `zemke2023_rna` | 0.3425 | 0.4523 |
+| `zemke2023` | `marmoset` | `LoRA+LoCon, aligned consolidation` | 32 | `zemke2023_atac` | 0.6413 | 0.6029 |
+| `zemke2023` | `marmoset` | `LoRA+LoCon, aligned consolidation` | 32 | `zemke2023_rna` | 0.3882 | 0.1584 |
+| `zemke2023` | `mouse` | `LoRA+LoCon, aligned consolidation` | 32 | `zemke2023_atac` | 0.7317 | 0.7268 |
+| `zemke2023` | `mouse` | `LoRA+LoCon, aligned consolidation` | 32 | `zemke2023_rna` | 0.3486 | 0.3600 |
+| `zemke2024` | `human` | `LoRA+LoCon, aligned consolidation` | 32 | `zemke2024_all_atac` | 0.7462 | 0.7612 |
+| `zemke2024` | `human` | `LoRA+LoCon, aligned consolidation` | 32 | `zemke2024_all_rna` | 0.6575 | 0.3922 |
+| `hda` | `human` | `LoRA+LoCon, tempered consolidation` | 32 | `hda_atac` | 0.8067 | 0.8189 |
+| `hda` | `human` | `LoRA+LoCon, tempered consolidation` | 32 | `hda_rna` | 0.4532 | 0.6833 |
+| `liu_hdma` | `human` | `LoRA+LoCon, tempered consolidation` | 32 | `liu_atac` | 0.7650 | 0.7859 |
+| `liu_hdma` | `human` | `LoRA+LoCon, tempered consolidation` | 32 | `liu_rna` | 0.6820 | 0.4754 |
+| `johansen2025` | `human` | `LoRA+LoCon, tempered consolidation` | 32 | `allen_atac` | 0.5961 | 0.6318 |
+| `johansen2025` | `human` | `LoRA+LoCon, tempered consolidation` | 32 | `allen_rna` | 0.5916 | 0.5587 |
+| `johansen2025` | `macaque` | `LoRA+LoCon, tempered consolidation` | 32 | `allen_atac` | 0.6064 | 0.4484 |
+| `johansen2025` | `macaque` | `LoRA+LoCon, tempered consolidation` | 32 | `allen_rna` | 0.4079 | 0.5231 |
+| `johansen2025` | `marmoset` | `LoRA+LoCon, tempered consolidation` | 32 | `allen_atac` | 0.5434 | 0.5807 |
+| `johansen2025` | `marmoset` | `LoRA+LoCon, tempered consolidation` | 32 | `allen_rna` | 0.2500 | 0.4309 |
+| `zemke2023` | `human` | `LoRA+LoCon, tempered consolidation` | 32 | `zemke2023_atac` | 0.7036 | 0.7295 |
+| `zemke2023` | `human` | `LoRA+LoCon, tempered consolidation` | 32 | `zemke2023_rna` | 0.5077 | 0.4834 |
+| `zemke2023` | `macaque` | `LoRA+LoCon, tempered consolidation` | 32 | `zemke2023_atac` | 0.3889 | 0.6453 |
+| `zemke2023` | `macaque` | `LoRA+LoCon, tempered consolidation` | 32 | `zemke2023_rna` | 0.3445 | 0.4440 |
+| `zemke2023` | `marmoset` | `LoRA+LoCon, tempered consolidation` | 32 | `zemke2023_atac` | 0.6414 | 0.6034 |
+| `zemke2023` | `marmoset` | `LoRA+LoCon, tempered consolidation` | 32 | `zemke2023_rna` | 0.3941 | 0.1571 |
+| `zemke2023` | `mouse` | `LoRA+LoCon, tempered consolidation` | 32 | `zemke2023_atac` | 0.7317 | 0.7271 |
+| `zemke2023` | `mouse` | `LoRA+LoCon, tempered consolidation` | 32 | `zemke2023_rna` | 0.3470 | 0.3604 |
+| `zemke2024` | `human` | `LoRA+LoCon, tempered consolidation` | 32 | `zemke2024_all_atac` | 0.7474 | 0.7621 |
+| `zemke2024` | `human` | `LoRA+LoCon, tempered consolidation` | 32 | `zemke2024_all_rna` | 0.6435 | 0.3894 |
 
 | Strategy | Native sources | Heads | Mean validation R | Mean test R | ATAC validation R | ATAC test R | RNA validation R | RNA test R |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
@@ -91,3 +131,5 @@ Each row evaluates one head from the same union model on one native source. R is
 | `LoRA+LoCon, lr 1e-4` | 10 | 20 | 0.5310 | 0.5422 | 0.6451 | 0.6685 | 0.4169 | 0.4158 |
 | `LoRA+LoCon, lr 1e-4, RNA weight 2` | 10 | 20 | 0.5272 | 0.5422 | 0.6398 | 0.6670 | 0.4147 | 0.4174 |
 | `LoRA+LoCon, metric-aligned` | 10 | 20 | 0.5573 | 0.5608 | 0.6539 | 0.6718 | 0.4608 | 0.4498 |
+| `LoRA+LoCon, aligned consolidation` | 10 | 20 | 0.5575 | 0.5619 | 0.6535 | 0.6728 | 0.4614 | 0.4511 |
+| `LoRA+LoCon, tempered consolidation` | 10 | 20 | 0.5576 | 0.5619 | 0.6531 | 0.6733 | 0.4621 | 0.4506 |
