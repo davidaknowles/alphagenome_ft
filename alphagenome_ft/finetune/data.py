@@ -2073,10 +2073,18 @@ class MultiDatasetDataModule:
         if target_count == 0:
             return
         if self._sampling_strategy == "equal_sources":
+            source_rounds = [
+                iterator
+                for source_position in range(
+                    max(len(iterators) for iterators in dataset_iterators.values())
+                )
+                for iterators in dataset_iterators.values()
+                if source_position < len(iterators)
+                for iterator in (iterators[source_position],)
+            ]
             for _ in range(target_count):
-                for iterators in dataset_iterators.values():
-                    for iterator in iterators:
-                        yield next(iterator)
+                for iterator in source_rounds:
+                    yield next(iterator)
             return
         source_positions = {dataset: 0 for dataset in self._datasets}
         produced = {dataset: 0 for dataset in self._datasets}

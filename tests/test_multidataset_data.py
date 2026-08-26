@@ -130,6 +130,35 @@ def test_multidataset_training_can_balance_native_sources():
     ] * 3
 
 
+def test_equal_source_order_visits_each_dataset_before_additional_sources():
+    module = MultiDatasetDataModule(
+        {
+            "hda": {"hda_human": _Module("hda", ("hda_atac",), 1)},
+            "johansen": {
+                "johansen_human": _Module("johansen_human", ("allen_atac",), 1),
+                "johansen_macaque": _Module("johansen_macaque", ("allen_atac",), 1),
+                "johansen_marmoset": _Module("johansen_marmoset", ("allen_atac",), 1),
+            },
+            "zemke": {
+                "zemke_human": _Module("zemke_human", ("zemke_atac",), 1),
+                "zemke_mouse": _Module("zemke_mouse", ("zemke_atac",), 1),
+            },
+        },
+        sampling_strategy="equal_sources",
+    )
+
+    batches = list(module.iter_batches("train", seed=7))
+
+    assert [batch["_source_name"] for batch in batches] == [
+        "hda_human",
+        "johansen_human",
+        "zemke_human",
+        "johansen_macaque",
+        "zemke_mouse",
+        "johansen_marmoset",
+    ]
+
+
 def test_multidataset_rejects_unknown_sampling_strategy():
     with np.testing.assert_raises_regex(ValueError, "sampling_strategy"):
         MultiDatasetDataModule(
