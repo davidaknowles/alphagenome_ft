@@ -341,6 +341,11 @@ def parse_args() -> argparse.Namespace:
         help="Override every head's optional one-minus double-centered Pearson loss weight.",
     )
     parser.add_argument("--backbone-lora", action="store_true")
+    parser.add_argument(
+        "--freeze-backbone-adapters",
+        action="store_true",
+        help="Keep restored LoRA and LoCon adapters in the forward pass but optimize heads only.",
+    )
     parser.add_argument("--lora-rank", type=int, default=16)
     parser.add_argument("--lora-alpha", type=float, default=16.0)
     parser.add_argument("--fp8-lora", action="store_true")
@@ -586,6 +591,10 @@ def main() -> None:
         )
     if args.backend == "torch" and args.defer_test_evaluation:
         raise ValueError("--defer-test-evaluation is currently implemented for JAX only.")
+    if args.freeze_backbone_adapters and not args.backbone_lora:
+        raise ValueError("--freeze-backbone-adapters requires --backbone-lora.")
+    if args.freeze_backbone_adapters and args.backend != "jax":
+        raise ValueError("--freeze-backbone-adapters is currently implemented for JAX only.")
 
     bigwig_dir = args.bigwig_dir.expanduser().resolve()
     fasta_path = args.fasta_path.expanduser().resolve()
@@ -1380,7 +1389,7 @@ def main() -> None:
         seed=args.seed,
         max_train_steps=args.max_train_steps,
         heads_only=True,
-        train_lora=args.backbone_lora,
+        train_lora=args.backbone_lora and not args.freeze_backbone_adapters,
         checkpoint_dir=checkpoint_dir,
         organism=args.organism,
         best_metric=args.best_metric,
@@ -1417,6 +1426,7 @@ def main() -> None:
             "target_cache_dtype": args.target_cache_dtype,
             "gene_window_repeats": args.gene_window_repeats,
             "backbone_lora": args.backbone_lora,
+            "freeze_backbone_adapters": args.freeze_backbone_adapters,
             "lora_rank": args.lora_rank if args.backbone_lora else None,
             "lora_alpha": args.lora_alpha if args.backbone_lora else None,
             "fp8_lora": args.fp8_lora if args.backbone_lora else None,

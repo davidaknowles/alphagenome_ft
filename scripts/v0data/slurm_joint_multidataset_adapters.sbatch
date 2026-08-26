@@ -57,6 +57,9 @@ fi
 if [[ "${RESET_OPTIMIZER:-0}" == "1" ]]; then
   extra_args+=(--reset-optimizer)
 fi
+if [[ "${FREEZE_BACKBONE_ADAPTERS:-0}" == "1" ]]; then
+  extra_args+=(--freeze-backbone-adapters)
+fi
 
 "${HOME}/venv/jax/bin/python" scripts/run_humanbraindev_finetune.py \
   --dataset-config "$dataset_config" \

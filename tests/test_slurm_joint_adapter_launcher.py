@@ -80,6 +80,23 @@ def test_metric_aligned_pair_uses_one_snapshot_and_matched_reset_control() -> No
     assert script.count("submit_continuation 1") == 2
 
 
+def test_joint_head_refit_freezes_adapters_and_screens_matched_rates() -> None:
+    script = Path("scripts/v0data/submit_joint_head_refit_triplet.sh").read_text()
+    launcher = Path("scripts/v0data/slurm_joint_multidataset_adapters.sbatch").read_text()
+    library = Path("scripts/v0data/joint_continuation_lib.sh").read_text()
+    entrypoint = Path("scripts/run_humanbraindev_finetune.py").read_text()
+
+    assert "freeze_backbone_adapters=1" in script
+    assert 'source_epoch="${SOURCE_EPOCH:-32}"' in script
+    assert script.count("submit_continuation 1") == 3
+    for rate in ("1e-4", "3e-4", "1e-3"):
+        assert rate in script
+    assert "FREEZE_BACKBONE_ADAPTERS=${freeze_backbone_adapters:-0}" in library
+    assert '"freeze_backbone_adapters": bool(int(sys.argv[7]))' in library
+    assert "extra_args+=(--freeze-backbone-adapters)" in launcher
+    assert "args.backbone_lora and not args.freeze_backbone_adapters" in entrypoint
+
+
 def test_all_study_native_evaluation_uses_and_validates_provisional_runs() -> None:
     submitter = Path(
         "scripts/v0data/submit_joint_multidataset_evaluations.sh"

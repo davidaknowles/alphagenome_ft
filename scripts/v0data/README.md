@@ -16,6 +16,8 @@ The final deliverable is one jointly trained model across every retained non-ENC
 
 `submit_joint_consolidation_triplet.sh` starts three matched LoRA plus LoCon continuations from the selected metric-aligned checkpoint with fresh AdamW at learning rate $3\times10^{-5}$. The arms use canonical objectives, unchanged metric-aligned objectives, or a tempered metric objective with the Zemke correlation weights reduced from 10 to 3. This tests whether lower-rate consolidation can recover studies that regressed under the high-weight Zemke objectives while preserving the acquired Zemke gains.
 
+`--freeze-backbone-adapters` restores LoRA and LoCon parameters and uses them in every forward pass while excluding them from AdamW updates. `submit_joint_head_refit_triplet.sh` uses this mode to refit only the separate dataset heads from one selected tempered checkpoint at learning rates $10^{-4}$, $3\times10^{-4}$, and $10^{-3}$. This tests whether head underfitting limits RNA correlation without introducing further cross-study movement in the shared backbone.
+
 `collate_joint_multidataset_evaluations.py` requires all 20 evaluation artifacts, verifies finite validation and test correlations and source-checkpoint provenance, and writes the native-source result table plus equally weighted strategy summaries. Missing sources are fatal rather than silently omitted.
 
 Every launcher appends `_smoke` to its checkpoint and Weights & Biases run name when `SMOKE=1`. Smoke checkpoints are therefore isolated from full-data histories even when a caller does not provide a distinct run suffix.
