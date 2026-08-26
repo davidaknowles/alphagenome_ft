@@ -1,0 +1,228 @@
+{
+  "gene_id": "ANO6",
+  "excluded_repeat": {
+    "label": "SSU-rRNA_Hsa",
+    "chromosome": "chr9",
+    "start": 27738607,
+    "end": 27738948,
+    "repeat_class": "rRNA",
+    "repeat_family": "rRNA"
+  },
+  "num_equal_width_bins": 2048,
+  "gene_summaries": {
+    "human": {
+      "present": true,
+      "chromosome": "chr12",
+      "start": 45216094,
+      "end": 45440404,
+      "maximum_cpm": 122.4897232055664,
+      "maximum_cpm_group": "OPC",
+      "median_cpm": 44.83045768737793
+    },
+    "macaque": {
+      "present": true,
+      "chromosome": "chr11",
+      "start": 44709986,
+      "end": 44924999,
+      "maximum_cpm": 188.75466918945312,
+      "maximum_cpm_group": "VLMC",
+      "median_cpm": 68.33582305908203
+    },
+    "marmoset": {
+      "present": true,
+      "chromosome": "chr9",
+      "start": 27638374,
+      "end": 27848510,
+      "maximum_cpm": 7951.52294921875,
+      "maximum_cpm_group": "Endo",
+      "median_cpm": 2295.912353515625
+    },
+    "mouse": {
+      "present": false
+    }
+  },
+  "outlier_region": {
+    "label": "SSU-rRNA_Hsa",
+    "chromosome": "chr9",
+    "start": 27738607,
+    "end": 27738948,
+    "track_maxima": {
+      "ASC": 45546.19921875,
+      "Endo": 106835.0,
+      "L2_3_IT": 28208.19921875,
+      "L4_5_IT": 32779.19921875,
+      "L5_6_NP": 27975.099609375,
+      "L5_ET": 23345.69921875,
+      "L5_IT": 25429.099609375,
+      "L6_CT": 30498.099609375,
+      "L6_IT": 26787.19921875,
+      "L6_IT_CAR3": 33481.80078125,
+      "L6b": 31620.400390625,
+      "LAMP5": 34429.30078125,
+      "MGC": 31880.900390625,
+      "ODC": 39492.6015625,
+      "OPC": 38538.80078125,
+      "PVALB": 29947.900390625,
+      "SNCG": 35146.8984375,
+      "SST": 35160.8984375,
+      "VIP": 38507.3984375,
+      "VLMC": 84359.3984375
+    },
+    "chromosome_maxima": {
+      "ASC": 45546.19921875,
+      "Endo": 106835.0,
+      "L2_3_IT": 28208.19921875,
+      "L4_5_IT": 32779.19921875,
+      "L5_6_NP": 27975.099609375,
+      "L5_ET": 23345.69921875,
+      "L5_IT": 25429.099609375,
+      "L6_CT": 30498.099609375,
+      "L6_IT": 26787.19921875,
+      "L6_IT_CAR3": 33481.80078125,
+      "L6b": 31620.400390625,
+      "LAMP5": 34429.30078125,
+      "MGC": 31880.900390625,
+      "ODC": 39492.6015625,
+      "OPC": 38538.80078125,
+      "PVALB": 29947.900390625,
+      "SNCG": 35146.8984375,
+      "SST": 35160.8984375,
+      "VIP": 38507.3984375,
+      "VLMC": 84359.3984375
+    },
+    "tracks_with_chromosome_maximum_in_region": 20,
+    "minimum_track_maximum": 23345.69921875,
+    "median_track_maximum": 33130.5,
+    "maximum_track_maximum": 106835.0,
+    "maximum_track_label": "Endo"
+  },
+  "chromosome_audits": [
+    {
+      "nonzero_fraction": 0.9355224609375,
+      "standard_deviation": 2.1618012715863055,
+      "double_centered_standard_deviation": 1.5049157010057863,
+      "median_pairwise_track_correlation": 0.5703649864339657,
+      "maximum_locus_variance_fraction": 0.03493757435129786,
+      "maximum_track_variance_fraction": 0.17142879736728797,
+      "maximum_track_index": 13,
+      "species": "human",
+      "chromosome": "chr8",
+      "chromosome_size": 145138636,
+      "maximum_track_label": "ODC"
+    },
+    {
+      "nonzero_fraction": 0.85009765625,
+      "standard_deviation": 2.0182612319672617,
+      "double_centered_standard_deviation": 1.4201905498794947,
+      "median_pairwise_track_correlation": 0.6471786124390013,
+      "maximum_locus_variance_fraction": 0.33873737893713673,
+      "maximum_track_variance_fraction": 0.24448707467515582,
+      "maximum_track_index": 13,
+      "species": "human",
+      "chromosome": "chr9",
+      "chromosome_size": 138394717,
+      "maximum_track_label": "ODC"
+    },
+    {
+      "nonzero_fraction": 0.95537109375,
+      "standard_deviation": 2.311576374269385,
+      "double_centered_standard_deviation": 1.4798152784916734,
+      "median_pairwise_track_correlation": 0.6149162461440931,
+      "maximum_locus_variance_fraction": 0.15256607205736888,
+      "maximum_track_variance_fraction": 0.18367587554205606,
+      "maximum_track_index": 1,
+      "species": "macaque",
+      "chromosome": "chr8",
+      "chromosome_size": 145679320,
+      "maximum_track_label": "Endo"
+    },
+    {
+      "nonzero_fraction": 0.954443359375,
+      "standard_deviation": 2.1936008065274444,
+      "double_centered_standard_deviation": 1.5201439051839898,
+      "median_pairwise_track_correlation": 0.4801371175724693,
+      "maximum_locus_variance_fraction": 0.1200795932857126,
+      "maximum_track_variance_fraction": 0.17603265864711173,
+      "maximum_track_index": 12,
+      "species": "macaque",
+      "chromosome": "chr9",
+      "chromosome_size": 134124166,
+      "maximum_track_label": "MGC"
+    },
+    {
+      "nonzero_fraction": 0.965478515625,
+      "standard_deviation": 2.0618746953592155,
+      "double_centered_standard_deviation": 1.3271824348942063,
+      "median_pairwise_track_correlation": 0.6523878366226104,
+      "maximum_locus_variance_fraction": 0.07306489426127759,
+      "maximum_track_variance_fraction": 0.22143275980834862,
+      "maximum_track_index": 14,
+      "species": "marmoset",
+      "chromosome": "chr8",
+      "chromosome_size": 126850804,
+      "maximum_track_label": "OPC"
+    },
+    {
+      "nonzero_fraction": 0.9646484375,
+      "standard_deviation": 4.834488723300395,
+      "double_centered_standard_deviation": 2.3134035106941315,
+      "median_pairwise_track_correlation": 0.9106059532766244,
+      "maximum_locus_variance_fraction": 0.7069205406893377,
+      "maximum_track_variance_fraction": 0.46977847348728385,
+      "maximum_track_index": 1,
+      "excluded_bin_count": 1,
+      "excluded_locus_variance_fraction": 0.7069205406893377,
+      "retained_double_centered_standard_deviation": 1.2519705517237738,
+      "species": "marmoset",
+      "chromosome": "chr9",
+      "chromosome_size": 134044658,
+      "maximum_track_label": "Endo"
+    },
+    {
+      "nonzero_fraction": 0.9158203125,
+      "standard_deviation": 2.7770602626234373,
+      "double_centered_standard_deviation": 1.839896431570559,
+      "median_pairwise_track_correlation": 0.5842611390049506,
+      "maximum_locus_variance_fraction": 0.0975926870650972,
+      "maximum_track_variance_fraction": 0.2403674681691159,
+      "maximum_track_index": 0,
+      "species": "mouse",
+      "chromosome": "chr8",
+      "chromosome_size": 129401213,
+      "maximum_track_label": "ASC"
+    },
+    {
+      "nonzero_fraction": 0.9223876953125,
+      "standard_deviation": 2.7443808460835952,
+      "double_centered_standard_deviation": 1.704611956162223,
+      "median_pairwise_track_correlation": 0.7318600029898092,
+      "maximum_locus_variance_fraction": 0.13780520405542387,
+      "maximum_track_variance_fraction": 0.3190929432106536,
+      "maximum_track_index": 13,
+      "species": "mouse",
+      "chromosome": "chr9",
+      "chromosome_size": 124595110,
+      "maximum_track_label": "ODC"
+    }
+  ],
+  "matched_evaluation": {
+    "source_epoch": 32,
+    "source_global_step": 419040,
+    "baseline_evaluation": "evaluations/v0data/zemke2023_marmoset_ano6_audit/baseline/evaluation.json",
+    "repeat_excluded_evaluation": "evaluations/v0data/zemke2023_marmoset_ano6_audit/exclude_rrna_locus/evaluation.json",
+    "baseline_windows": 1022,
+    "repeat_excluded_windows": 1021,
+    "heads": {
+      "zemke2023_atac": {
+        "baseline_r": 0.6046176653139893,
+        "repeat_excluded_r": 0.6156225869014591,
+        "difference": 0.011004921587469796
+      },
+      "zemke2023_rna": {
+        "baseline_r": 0.15704631687582515,
+        "repeat_excluded_r": 0.629068654281937,
+        "difference": 0.4720223374061119
+      }
+    }
+  }
+}

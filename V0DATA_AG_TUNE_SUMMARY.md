@@ -55,11 +55,17 @@ The table reports the nominal tempered checkpoint. Values are validation/test $R
 | Johansen/Allen, marmoset | 0.543 / 0.581 | 0.250 / 0.431 | RNA is among the most difficult endpoints. |
 | Zemke 2023, human | 0.704 / 0.730 | 0.508 / 0.483 | ATAC is strong; coordinate-resolved RNA remains moderate. |
 | Zemke 2023, macaque | 0.389 / 0.645 | 0.345 / 0.444 | Large validation/test asymmetry indicates chromosome or assembly heterogeneity. |
-| Zemke 2023, marmoset | 0.641 / 0.603 | 0.394 / **0.157** | RNA test performance is the weakest endpoint. |
+| Zemke 2023, marmoset | 0.641 / 0.603 | 0.394 / 0.157; 0.629 excluding one ribosomal-repeat window | The canonical RNA test metric is dominated by one target artifact. |
 | Zemke 2023, mouse | 0.732 / 0.727 | 0.347 / 0.360 | ATAC is strong and stable; RNA is difficult. |
 | Zemke 2024, human | 0.747 / 0.762 | 0.644 / 0.389 | Metric alignment helps validation RNA, but the gain does not transfer fully to test. |
 
-ATAC is consistently easier than RNA. HDA ATAC reaches the target range near $R=0.8$, and Liu and Zemke ATAC are generally strong. Human Johansen is intermediate. The hardest targets are Johansen marmoset RNA and Zemke 2023 RNA, particularly marmoset test RNA. Several studies show large validation/test differences, which makes chromosome-specific target composition and genome/assembly effects important alongside model capacity.
+ATAC is consistently easier than RNA. HDA ATAC reaches the target range near $R=0.8$, and Liu and Zemke ATAC are generally strong. Human Johansen is intermediate. The hardest remaining targets include Johansen marmoset RNA and Zemke 2023 RNA. Several studies show large validation/test differences, which makes chromosome-specific target composition and genome/assembly effects important alongside model capacity.
+
+### Zemke 2023 marmoset RNA test artifact
+
+The canonical marmoset RNA test value of $R=0.157$ is primarily caused by one chromosome-9 locus rather than broad failure across the test chromosome. All 20 released RNA tracks reach their chromosome-wide maximum at `chr9:27738607-27738948`, with values from 23,346 to 106,835 RPKM. The [UCSC `calJac4` RepeatMasker annotation](https://api.genome.ucsc.edu/getData/track?genome=calJac4&track=rmsk&chrom=chr9&start=27737000&end=27741000) identifies this 341 bp sequence as the small-subunit ribosomal RNA repeat `SSU-rRNA_Hsa`, embedded within the annotated `ANO6` span. The released raw count matrix is concordant with the tracks: marmoset `ANO6` reaches 7,952 counts per million and has a median of 2,296 across subclasses, compared with maxima of 122 in human and 189 in macaque. The source processing assigned both intronic and exonic reads to genes, making repeat-derived intronic alignments a plausible origin of the signal ([GSE229169 processing record](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE229169)).
+
+The repeat-overlapping coarse bin accounts for 70.7% of chromosome-9 double-centered RNA target variance. A matched evaluation restored the same selected checkpoint and changed only genomic support: the baseline evaluated all 1,022 chromosome-9 windows, while the diagnostic omitted the single 131 kb window containing the repeat. RNA $R$ increased from 0.1570 to 0.6291; ATAC changed from 0.6046 to 0.6156. The assembly and track chromosome sizes agree, and every strategy had previously produced marmoset RNA test values between 0.142 and 0.170, so neither checkpoint choice nor assembly routing explains the extreme canonical value. The repeat-filtered result remains below 0.8, but it is the appropriate estimate of broader chromosome-9 performance for this checkpoint.
 
 ## Interpretation and next step
 

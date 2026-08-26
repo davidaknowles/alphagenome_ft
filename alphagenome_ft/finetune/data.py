@@ -844,6 +844,57 @@ def load_intervals_from_bed(
     )
 
 
+def load_excluded_regions_from_bed(
+    bed_path: Path,
+) -> dict[str, tuple[tuple[int, int], ...]]:
+    """Load genomic half-open intervals to exclude from generated windows."""
+    regions: dict[str, list[tuple[int, int]]] = defaultdict(list)
+    opened = gzip.open if Path(bed_path).suffix == ".gz" else open
+    with opened(bed_path, "rt") as handle:
+        for line_number, raw in enumerate(handle, start=1):
+            line = raw.strip()
+            if not line or line.startswith("#"):
+                continue
+            fields = line.split()
+            if len(fields) < 3:
+                raise ValueError(
+                    f"Excluded-region BED line {line_number} has fewer than three fields."
+                )
+            chromosome, start_raw, end_raw = fields[:3]
+            start, end = int(start_raw), int(end_raw)
+            if start < 0 or end <= start:
+                raise ValueError(
+                    f"Invalid excluded region on line {line_number}: {chromosome}:{start}-{end}."
+                )
+            regions[chromosome].append((start, end))
+    if not regions:
+        raise ValueError(f"No excluded regions found in {bed_path}.")
+    return {
+        chromosome: tuple(sorted(chromosome_regions))
+        for chromosome, chromosome_regions in regions.items()
+    }
+
+
+def exclude_overlapping_intervals(
+    intervals: Mapping[str, Sequence[genome.Interval]],
+    excluded_regions: Mapping[str, Sequence[tuple[int, int]]],
+) -> dict[str, list[genome.Interval]]:
+    """Remove sequence windows that overlap any excluded genomic region."""
+    filtered: dict[str, list[genome.Interval]] = {}
+    for split, split_intervals in intervals.items():
+        kept = []
+        for interval in split_intervals:
+            overlaps = any(
+                interval.start < end and start < interval.end
+                for start, end in excluded_regions.get(interval.chromosome, ())
+            )
+            if not overlaps:
+                kept.append(interval)
+        if kept:
+            filtered[split] = kept
+    return filtered
+
+
 def prepare_intervals_from_fold(
     fold: str | int,
     window_size: int | None = WINDOW_SIZE,

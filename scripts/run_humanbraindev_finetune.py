@@ -38,6 +38,8 @@ from alphagenome_ft.finetune import (
     TorchSubprocessBackend,
     WindowedTargetCache,
     build_fasta_index,
+    exclude_overlapping_intervals,
+    load_excluded_regions_from_bed,
     load_intervals_from_dataframe,
     load_targets_config,
     prepare_head_specs,
@@ -657,7 +659,9 @@ def main() -> None:
             dataset_specs = None
             for raw_source in raw_sources:
                 source = dict(raw_source)
-                for key in ("fasta", "targets_config"):
+                for key in ("fasta", "targets_config", "exclude_intervals_bed"):
+                    if key not in source:
+                        continue
                     path = Path(source[key]).expanduser()
                     if not path.is_absolute():
                         path = config_root / path
@@ -704,7 +708,9 @@ def main() -> None:
         normalized_entries = []
         for entry in species_entries:
             normalized = dict(entry)
-            for key in ("fasta", "targets_config"):
+            for key in ("fasta", "targets_config", "exclude_intervals_bed"):
+                if key not in normalized:
+                    continue
                 path = Path(normalized[key]).expanduser()
                 if not path.is_absolute():
                     path = config_root / path
@@ -860,6 +866,19 @@ def main() -> None:
                         parse_chrom_set(str(entry.get("include_chroms", ""))) or None
                     ),
                 )
+                if "exclude_intervals_bed" in entry:
+                    original_counts = {
+                        split: len(windows) for split, windows in source_intervals.items()
+                    }
+                    source_intervals = exclude_overlapping_intervals(
+                        source_intervals,
+                        load_excluded_regions_from_bed(entry["exclude_intervals_bed"]),
+                    )
+                    removed = {
+                        split: original_counts[split] - len(source_intervals.get(split, ()))
+                        for split in original_counts
+                    }
+                    print(f"{route_name}: excluded overlapping windows {removed}")
                 source_modules[route_name] = BigWigDataModule(
                     intervals=source_intervals,
                     fasta_path=source_fasta,
@@ -999,6 +1018,11 @@ def main() -> None:
                 limit_test=args.limit_test,
                 include_chroms=parse_chrom_set(str(entry.get("include_chroms", ""))) or None,
             )
+            if "exclude_intervals_bed" in entry:
+                species_intervals = exclude_overlapping_intervals(
+                    species_intervals,
+                    load_excluded_regions_from_bed(entry["exclude_intervals_bed"]),
+                )
             species_modules[species_name] = BigWigDataModule(
                 intervals=species_intervals,
                 fasta_path=species_fasta,

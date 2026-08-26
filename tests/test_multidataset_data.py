@@ -1,6 +1,12 @@
 import numpy as np
 
-from alphagenome_ft.finetune.data import BigWigDataModule, MultiDatasetDataModule
+from alphagenome_ft.finetune.data import (
+    BigWigDataModule,
+    MultiDatasetDataModule,
+    build_interval,
+    exclude_overlapping_intervals,
+    load_excluded_regions_from_bed,
+)
 
 
 class _Spec:
@@ -43,6 +49,27 @@ def test_single_dataset_batch_count_rounds_partial_batch():
 
     module._drop_last = True
     assert module.num_batches_per_epoch("valid") == 2
+
+
+def test_excluded_regions_remove_only_overlapping_windows(tmp_path):
+    bed = tmp_path / "excluded.bed"
+    bed.write_text("chr9\t150\t250\tANO6\n")
+    intervals = {
+        "valid": [build_interval(chromosome="chr8", start=100, end=200)],
+        "test": [
+            build_interval(chromosome="chr9", start=0, end=100),
+            build_interval(chromosome="chr9", start=100, end=200),
+            build_interval(chromosome="chr9", start=250, end=350),
+        ],
+    }
+
+    filtered = exclude_overlapping_intervals(
+        intervals,
+        load_excluded_regions_from_bed(bed),
+    )
+
+    assert filtered["valid"] == intervals["valid"]
+    assert filtered["test"] == [intervals["test"][0], intervals["test"][2]]
 
 
 def test_multidataset_training_balances_datasets_and_native_sources():

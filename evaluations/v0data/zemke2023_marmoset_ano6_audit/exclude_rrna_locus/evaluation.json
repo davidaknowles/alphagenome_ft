@@ -1,0 +1,24 @@
+{
+  "metrics": {
+    "test": {
+      "zemke2023_atac": {
+        "differential_pearson_r": 0.6156225869014591,
+        "double_centered_r2": 0.3789911695032446,
+        "loss": 288.34834057092667,
+        "r2_global": 0.6456632951373003,
+        "r2_over_cell_types": -0.8932259678840637,
+        "r2_over_loci": 0.6936732592379751
+      },
+      "zemke2023_rna": {
+        "differential_pearson_r": 0.629068654281937,
+        "double_centered_r2": 0.3957273718000872,
+        "loss": 19.972428392618895,
+        "r2_global": 0.36439935747164987,
+        "r2_over_cell_types": -21.85130500793457,
+        "r2_over_loci": 0.3910896748201764
+      }
+    }
+  },
+  "source_epoch": 32,
+  "source_global_step": 419040
+}
