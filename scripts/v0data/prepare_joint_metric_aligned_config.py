@@ -24,6 +24,7 @@ def prepare_config(
     source_path: Path,
     output_dir: Path,
     zemke_weight: float = 10.0,
+    sampling_strategy: str | None = None,
 ) -> dict[str, Any]:
     if not 0 < zemke_weight <= 10:
         raise ValueError(f"zemke_weight must be in (0, 10], got {zemke_weight}.")
@@ -32,6 +33,21 @@ def prepare_config(
     policy_by_dataset["zemke2023"]["zemke2023_rna"] = zemke_weight
     policy_by_dataset["zemke2024"]["zemke2024_all_rna"] = zemke_weight
     result = json.loads(json.dumps(source))
+    if sampling_strategy is not None:
+        if sampling_strategy not in {"equal_datasets", "equal_sources"}:
+            raise ValueError(
+                "sampling_strategy must be 'equal_datasets' or 'equal_sources', "
+                f"got {sampling_strategy!r}."
+            )
+        result["sampling_strategy"] = sampling_strategy
+        result["sampling"] = (
+            "equal optimizer updates per native source using the largest "
+            "single-source batch count as the epoch budget"
+            if sampling_strategy == "equal_sources"
+            else "equal optimizer updates per dataset using the largest single-source "
+            "batch count as the epoch budget; round-robin native-source updates within "
+            "each dataset"
+        )
     source_root = source_path.resolve().parent
     observed: dict[str, set[str]] = {}
     for dataset in result.get("datasets", ()):
@@ -73,6 +89,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--input", required=True, type=Path)
     parser.add_argument("--output-dir", required=True, type=Path)
     parser.add_argument("--zemke-weight", type=float, default=10.0)
+    parser.add_argument(
+        "--sampling-strategy",
+        choices=("equal_datasets", "equal_sources"),
+        default=None,
+    )
     return parser.parse_args()
 
 
@@ -85,6 +106,7 @@ def main() -> None:
         source_path=source_path,
         output_dir=output_dir,
         zemke_weight=args.zemke_weight,
+        sampling_strategy=args.sampling_strategy,
     )
     output_dir.mkdir(parents=True, exist_ok=True)
     destination = output_dir / "datasets.json"

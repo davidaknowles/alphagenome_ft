@@ -103,6 +103,41 @@ def test_multidataset_training_balances_datasets_and_native_sources():
     assert np.all(batches[3]["organism_index"] == 1)
 
 
+def test_multidataset_training_can_balance_native_sources():
+    hda = _Module("hda", ("hda_atac", "hda_rna"), 2)
+    zemke_human = _Module("zemke_human", ("zemke_atac", "zemke_rna"), 3)
+    zemke_mouse = _Module("zemke_mouse", ("zemke_atac", "zemke_rna"), 1)
+    module = MultiDatasetDataModule(
+        {
+            "hda": {"hda_human": hda},
+            "zemke": {
+                "zemke_human": zemke_human,
+                "zemke_mouse": zemke_mouse,
+            },
+        },
+        organism_indices={"hda_human": 0, "zemke_human": 0, "zemke_mouse": 1},
+        sampling_strategy="equal_sources",
+    )
+
+    batches = list(module.iter_batches("train", seed=7))
+
+    assert module.num_batches_per_epoch("train") == 9
+    assert len(batches) == 9
+    assert [batch["_source_name"] for batch in batches] == [
+        "hda_human",
+        "zemke_human",
+        "zemke_mouse",
+    ] * 3
+
+
+def test_multidataset_rejects_unknown_sampling_strategy():
+    with np.testing.assert_raises_regex(ValueError, "sampling_strategy"):
+        MultiDatasetDataModule(
+            {"hda": {"hda_human": _Module("hda", ("hda_atac",), 2)}},
+            sampling_strategy="largest_dataset",
+        )
+
+
 def test_multidataset_evaluation_visits_each_batch_once():
     first = _Module("first", ("first_head",), 2)
     second = _Module("second", ("second_head",), 1)

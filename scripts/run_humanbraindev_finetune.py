@@ -638,6 +638,14 @@ def main() -> None:
             raise ValueError("Multi-dataset training currently requires --backend=jax.")
         dataset_config_path = args.dataset_config.expanduser().resolve()
         dataset_payload = json.loads(dataset_config_path.read_text())
+        dataset_sampling_strategy = dataset_payload.get(
+            "sampling_strategy", "equal_datasets"
+        )
+        if dataset_sampling_strategy not in {"equal_datasets", "equal_sources"}:
+            raise ValueError(
+                "Dataset config sampling_strategy must be 'equal_datasets' or "
+                f"'equal_sources', got {dataset_sampling_strategy!r}."
+            )
         raw_datasets = dataset_payload.get("datasets")
         if not raw_datasets or len(raw_datasets) < 2:
             raise ValueError("Dataset config must contain at least two dataset entries.")
@@ -938,6 +946,7 @@ def main() -> None:
                 for sources in selected_modules.values()
                 for route in sources
             },
+            sampling_strategy=dataset_sampling_strategy,
         )
         if args.evaluate_dataset is not None or args.evaluate_source is not None:
             print(

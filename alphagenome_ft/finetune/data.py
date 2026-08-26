@@ -1899,10 +1899,10 @@ class MultiSpeciesDataModule:
 class MultiDatasetDataModule:
     """Balanced batches from heterogeneous datasets with dataset-specific heads.
 
-    Training gives each dataset the same global single-source batch budget and
-    alternates native sources within a dataset. Short sources cycle when needed.
-    Evaluation visits every source batch exactly once. Routing fields prefixed
-    with an underscore are host metadata and are not copied to a JAX device.
+    Training can give each dataset or each native source the same global
+    single-source batch budget. Short sources cycle when needed. Evaluation
+    visits every source batch exactly once. Routing fields prefixed with an
+    underscore are host metadata and are not copied to a JAX device.
     """
 
     def __init__(
@@ -1910,6 +1910,7 @@ class MultiDatasetDataModule:
         datasets: Mapping[str, Mapping[str, BigWigDataModule]],
         *,
         organism_indices: Mapping[str, int] | None = None,
+        sampling_strategy: str = "equal_datasets",
     ) -> None:
         if not datasets:
             raise ValueError("At least one dataset is required.")
@@ -1927,6 +1928,12 @@ class MultiDatasetDataModule:
         if len(self._modules) != sum(len(sources) for sources in self._datasets.values()):
             raise ValueError("Source names must be unique across datasets.")
         self._organism_indices = dict(organism_indices or {})
+        if sampling_strategy not in {"equal_datasets", "equal_sources"}:
+            raise ValueError(
+                "sampling_strategy must be 'equal_datasets' or 'equal_sources', "
+                f"got {sampling_strategy!r}."
+            )
+        self._sampling_strategy = sampling_strategy
         unknown_sources = set(self._organism_indices) - set(self._modules)
         if unknown_sources:
             raise ValueError(
@@ -1986,7 +1993,12 @@ class MultiDatasetDataModule:
     def num_batches_per_epoch(self, split: str) -> int:
         counts = [self._dataset_batch_count(dataset, split) for dataset in self._datasets]
         if split == "train":
-            return self._train_batches_per_dataset() * len(counts)
+            balanced_units = (
+                len(self._datasets)
+                if self._sampling_strategy == "equal_datasets"
+                else len(self._modules)
+            )
+            return self._train_batches_per_dataset() * balanced_units
         return sum(counts)
 
     def num_examples_per_epoch(self, split: str) -> int:
@@ -2059,6 +2071,12 @@ class MultiDatasetDataModule:
 
         target_count = self._train_batches_per_dataset()
         if target_count == 0:
+            return
+        if self._sampling_strategy == "equal_sources":
+            for _ in range(target_count):
+                for iterators in dataset_iterators.values():
+                    for iterator in iterators:
+                        yield next(iterator)
             return
         source_positions = {dataset: 0 for dataset in self._datasets}
         produced = {dataset: 0 for dataset in self._datasets}
