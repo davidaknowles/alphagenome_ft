@@ -8,12 +8,40 @@ from alphagenome.data import genome
 from alphagenome_ft.finetune.config import HeadSpec, TrackInfo
 from alphagenome_ft.finetune.data import GeneExpressionSupervision
 from alphagenome_ft.finetune.rna_tracks import (
+    gene_supervision_exon_density_nonzero_means,
     read_gene_exons,
     read_pseudobulk_expression,
     remap_expression_gene_ids,
     write_gene_expression_supervision,
     write_stranded_exon_bigwigs,
 )
+
+
+def test_gene_supervision_exon_density_nonzero_means_uses_union_coverage(
+    tmp_path: Path,
+):
+    path = tmp_path / "genes.npz"
+    np.savez_compressed(
+        path,
+        gene_ids=np.asarray(["a", "b"]),
+        chromosomes=np.asarray(["chr1", "chr1"]),
+        starts=np.asarray([0, 5]),
+        ends=np.asarray([10, 15]),
+        strands=np.asarray(["+", "+"]),
+        exon_offsets=np.asarray([0, 1, 2]),
+        exon_starts=np.asarray([0, 5]),
+        exon_ends=np.asarray([10, 15]),
+        groups=np.asarray(["both", "first", "masked"]),
+        cpm=np.asarray([[10.0, 20.0], [10.0, 0.0], [0.0, 0.0]]),
+        group_valid=np.asarray([True, True, False]),
+    )
+
+    groups, means, valid = gene_supervision_exon_density_nonzero_means(path)
+
+    assert groups == ("both", "first", "masked")
+    np.testing.assert_allclose(means[:2], [2.0, 1.0])
+    assert np.isnan(means[2])
+    assert valid.tolist() == [True, True, False]
 
 
 def _tiny_expression(tmp_path: Path):

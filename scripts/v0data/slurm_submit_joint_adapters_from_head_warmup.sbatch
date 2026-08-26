@@ -17,7 +17,13 @@ source_run="${SOURCE_RUN:?SOURCE_RUN is required}"
 source_checkpoint="${source_run}/best"
 source_epoch="$(jq -er '.epoch' "${source_checkpoint}/metrics.json")"
 dataset_config="${DATASET_CONFIG:?DATASET_CONFIG is required}"
-snapshot="checkpoints/v0data/joint_all_nonencode_head_warmup_seed_epoch${source_epoch}"
+branch_tag="${BRANCH_TAG:-}"
+if [[ -n "$branch_tag" && ! "$branch_tag" =~ ^[A-Za-z0-9_]+$ ]]; then
+  printf 'Invalid branch tag: %s\n' "$branch_tag" >&2
+  exit 1
+fi
+tag_prefix="${branch_tag:+${branch_tag}_}"
+snapshot="checkpoints/v0data/joint_all_nonencode_${tag_prefix}head_warmup_seed_epoch${source_epoch}"
 learning_rate=3e-4
 num_epochs="${NUM_EPOCHS:-100}"
 target_workers="${TARGET_WORKERS:-12}"
@@ -32,7 +38,7 @@ locon_targets=default
 snapshot_checkpoint "$source_checkpoint" "$source_epoch" "$snapshot"
 test -f "$dataset_config"
 
-suffix="_headwarm${source_epoch}_adapters_lr3e4_reset"
+suffix="_${tag_prefix}headwarm${source_epoch}_adapters_lr3e4_reset"
 submit_continuation 0 "$source_run" "$source_epoch" "$snapshot" "$learning_rate" \
   "$suffix" "$dataset_config"
 submit_continuation 1 "$source_run" "$source_epoch" "$snapshot" "$learning_rate" \

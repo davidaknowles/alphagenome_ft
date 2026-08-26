@@ -24,13 +24,20 @@ def prepare_config(
     source_path: Path,
     output_dir: Path,
     zemke_weight: float = 10.0,
+    zemke_rna_weight: float | None = None,
     sampling_strategy: str | None = None,
 ) -> dict[str, Any]:
     if not 0 < zemke_weight <= 10:
         raise ValueError(f"zemke_weight must be in (0, 10], got {zemke_weight}.")
+    if zemke_rna_weight is not None and not 0 < zemke_rna_weight <= 10:
+        raise ValueError(
+            f"zemke_rna_weight must be in (0, 10], got {zemke_rna_weight}."
+        )
     policy_by_dataset = json.loads(json.dumps(CORRELATION_WEIGHTS))
     policy_by_dataset["zemke2023"]["zemke2023_atac"] = zemke_weight
-    policy_by_dataset["zemke2023"]["zemke2023_rna"] = zemke_weight
+    policy_by_dataset["zemke2023"]["zemke2023_rna"] = (
+        zemke_weight if zemke_rna_weight is None else zemke_rna_weight
+    )
     policy_by_dataset["zemke2024"]["zemke2024_all_rna"] = zemke_weight
     result = json.loads(json.dumps(source))
     if sampling_strategy is not None:
@@ -89,6 +96,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--input", required=True, type=Path)
     parser.add_argument("--output-dir", required=True, type=Path)
     parser.add_argument("--zemke-weight", type=float, default=10.0)
+    parser.add_argument("--zemke-rna-weight", type=float)
     parser.add_argument(
         "--sampling-strategy",
         choices=("equal_datasets", "equal_sources"),
@@ -106,6 +114,7 @@ def main() -> None:
         source_path=source_path,
         output_dir=output_dir,
         zemke_weight=args.zemke_weight,
+        zemke_rna_weight=args.zemke_rna_weight,
         sampling_strategy=args.sampling_strategy,
     )
     output_dir.mkdir(parents=True, exist_ok=True)

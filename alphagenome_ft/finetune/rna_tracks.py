@@ -289,6 +289,57 @@ def _bigwig_nonzero_mean(path: Path) -> float:
     return weighted_sum / max(covered_bases, 1)
 
 
+def gene_supervision_exon_density_nonzero_means(
+    path: Path,
+) -> tuple[tuple[str, ...], np.ndarray, np.ndarray]:
+    """Calculate synthetic exon-density scales from compact gene supervision."""
+    with np.load(Path(path).expanduser().resolve(), allow_pickle=False) as data:
+        groups = _decode(data["groups"])
+        chromosomes = np.asarray(data["chromosomes"]).astype(str)
+        exon_offsets = np.asarray(data["exon_offsets"], dtype=np.int64)
+        exon_starts = np.asarray(data["exon_starts"], dtype=np.int64)
+        exon_ends = np.asarray(data["exon_ends"], dtype=np.int64)
+        cpm = np.asarray(data["cpm"], dtype=np.float64)
+        group_valid = np.asarray(
+            data["group_valid"] if "group_valid" in data else np.ones(len(groups)),
+            dtype=bool,
+        )
+    if cpm.shape != (len(groups), len(chromosomes)):
+        raise ValueError("Gene supervision CPM dimensions do not match groups and genes.")
+    if exon_offsets.shape != (len(chromosomes) + 1,):
+        raise ValueError("Gene supervision exon offsets have invalid dimensions.")
+    if group_valid.shape != (len(groups),):
+        raise ValueError("Gene supervision group validity has invalid dimensions.")
+
+    means = np.full(len(groups), np.nan, dtype=np.float64)
+    for group_index in np.flatnonzero(group_valid):
+        positive_genes = np.flatnonzero(cpm[group_index] > 0)
+        intervals: dict[str, list[tuple[int, int]]] = defaultdict(list)
+        total_cpm = 0.0
+        for gene_index in positive_genes:
+            start_offset = int(exon_offsets[gene_index])
+            end_offset = int(exon_offsets[gene_index + 1])
+            if start_offset == end_offset:
+                continue
+            intervals[chromosomes[gene_index]].extend(
+                zip(
+                    exon_starts[start_offset:end_offset].tolist(),
+                    exon_ends[start_offset:end_offset].tolist(),
+                    strict=True,
+                )
+            )
+            total_cpm += float(cpm[group_index, gene_index])
+        covered_bases = sum(
+            end - start
+            for chromosome_intervals in intervals.values()
+            for start, end in _merge_intervals(chromosome_intervals)
+        )
+        if total_cpm <= 0 or covered_bases <= 0:
+            raise ValueError(f"Valid group {groups[group_index]!r} has no exon-density signal.")
+        means[group_index] = total_cpm / covered_bases
+    return groups, means, group_valid
+
+
 def write_stranded_exon_bigwigs(
     expression: PseudobulkExpression,
     *,
@@ -407,6 +458,7 @@ __all__ = [
     "GeneBody",
     "GeneExons",
     "PseudobulkExpression",
+    "gene_supervision_exon_density_nonzero_means",
     "read_gene_bodies",
     "read_gene_exons",
     "read_pseudobulk_expression",
