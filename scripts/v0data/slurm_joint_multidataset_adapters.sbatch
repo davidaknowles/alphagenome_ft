@@ -24,6 +24,10 @@ export MPLCONFIGDIR="${MPLCONFIGDIR:-/tmp/matplotlib-${USER}}"
 strategies=(lora lora+locon)
 strategy="${strategies[$SLURM_ARRAY_TASK_ID]}"
 dataset_config="${DATASET_CONFIG:-outputs/v0data/joint-all-nonencode/datasets.json}"
+locon_targets="${LOCON_TARGETS:-default}"
+locon_targets="${locon_targets//;/,}"
+lora_targets="${LORA_TARGETS:-default}"
+lora_targets="${lora_targets//;/,}"
 run_name="joint_all_nonencode_${strategy//+/_}${RUN_SUFFIX:-}"
 if [[ "${SMOKE:-0}" == "1" && "$run_name" != *_smoke ]]; then
   run_name="${run_name}_smoke"
@@ -60,6 +64,9 @@ fi
 if [[ "${FREEZE_BACKBONE_ADAPTERS:-0}" == "1" ]]; then
   extra_args+=(--freeze-backbone-adapters)
 fi
+if [[ "${EXPAND_BACKBONE_ADAPTERS:-0}" == "1" ]]; then
+  extra_args+=(--expand-backbone-adapters)
+fi
 
 "${HOME}/venv/jax/bin/python" scripts/run_humanbraindev_finetune.py \
   --dataset-config "$dataset_config" \
@@ -78,6 +85,7 @@ fi
   --lora-alpha "${LORA_ALPHA:-16}" \
   --locon-rank "${LOCON_RANK:-4}" \
   --locon-alpha "${LOCON_ALPHA:-1}" \
+  --locon-targets "$locon_targets" \
   --base-param-dtype "${BASE_PARAM_DTYPE:-float32}" \
   --lora-param-dtype "${LORA_PARAM_DTYPE:-float32}" \
   --locon-param-dtype "${LOCON_PARAM_DTYPE:-float32}" \
@@ -85,6 +93,7 @@ fi
   --backbone-compute-dtype "${BACKBONE_COMPUTE_DTYPE:-bfloat16}" \
   --base-compute-dtype "${BASE_COMPUTE_DTYPE:-bfloat16}" \
   --lora-compute-dtype "${LORA_COMPUTE_DTYPE:-bfloat16}" \
+  --lora-targets "$lora_targets" \
   --locon-compute-dtype "${LOCON_COMPUTE_DTYPE:-bfloat16}" \
   --target-workers "${TARGET_WORKERS:-24}" \
   --window-workers "${WINDOW_WORKERS:-8}" \

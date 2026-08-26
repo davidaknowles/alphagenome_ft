@@ -8,6 +8,7 @@ import pytest
 from alphagenome_ft.fp8_lora import (
     BackboneLoConConfig,
     BackboneLoRAConfig,
+    expand_adapter_parameter_tree,
     patch_haiku_linear,
     patch_haiku_locon,
 )
@@ -127,6 +128,89 @@ def test_patch_haiku_locon_adds_locon_only_to_matching_conv_paths():
         f"{adapted_key}/locon_down_w",
         f"{adapted_key}/locon_up_w",
     ]
+
+
+def test_expand_adapter_parameter_tree_preserves_existing_residuals():
+    source = {
+        "linear": {
+            "w": jnp.ones((3, 2)),
+            "lora_a": jnp.arange(6, dtype=jnp.float32).reshape(3, 2),
+            "lora_b": jnp.arange(8, dtype=jnp.float32).reshape(2, 4),
+        },
+        "conv": {
+            "w": jnp.ones((3, 2, 4)),
+            "locon_down_w": jnp.arange(12, dtype=jnp.float32).reshape(3, 2, 2),
+            "locon_up_w": jnp.arange(8, dtype=jnp.float32).reshape(1, 2, 4),
+        },
+    }
+    target = {
+        "linear": {
+            "w": jnp.zeros((3, 2)),
+            "lora_a": jnp.full((3, 4), 7.0),
+            "lora_b": jnp.zeros((4, 4)),
+        },
+        "conv": {
+            "w": jnp.zeros((3, 2, 4)),
+            "locon_down_w": jnp.full((3, 2, 4), 5.0),
+            "locon_up_w": jnp.zeros((1, 4, 4)),
+        },
+        "new_conv": {
+            "locon_down_w": jnp.ones((3, 4, 4)),
+            "locon_up_w": jnp.zeros((1, 4, 4)),
+        },
+    }
+    source_lora = BackboneLoRAConfig(rank=2, alpha=2.0)
+    target_lora = BackboneLoRAConfig(rank=4, alpha=2.0)
+    source_locon = BackboneLoConConfig(rank=2, alpha=1.0)
+    target_locon = BackboneLoConConfig(rank=4, alpha=1.0)
+
+    expanded, stats = expand_adapter_parameter_tree(
+        source,
+        target,
+        source_lora_config=source_lora,
+        target_lora_config=target_lora,
+        source_locon_config=source_locon,
+        target_locon_config=target_locon,
+    )
+
+    source_linear = source["linear"]["lora_a"] @ source["linear"]["lora_b"]
+    target_linear = expanded["linear"]["lora_a"] @ expanded["linear"]["lora_b"]
+    assert jnp.allclose(
+        source_linear * (source_lora.alpha / source_lora.rank),
+        target_linear * (target_lora.alpha / target_lora.rank),
+    )
+    source_conv = jnp.einsum(
+        "wir,uro->wio",
+        source["conv"]["locon_down_w"],
+        source["conv"]["locon_up_w"],
+    ) * (source_locon.alpha / source_locon.rank)
+    target_conv = jnp.einsum(
+        "wir,uro->wio",
+        expanded["conv"]["locon_down_w"],
+        expanded["conv"]["locon_up_w"],
+    ) * (target_locon.alpha / target_locon.rank)
+    assert jnp.allclose(source_conv, target_conv)
+    assert jnp.all(expanded["new_conv"]["locon_up_w"] == 0)
+    assert stats == {
+        "copied_leaves": 2,
+        "expanded_leaves": 4,
+        "initialized_adapter_leaves": 2,
+    }
+
+
+def test_expand_adapter_parameter_tree_rejects_rank_reduction():
+    source = {"linear": {"lora_a": jnp.ones((3, 4))}}
+    target = {"linear": {"lora_a": jnp.ones((3, 2))}}
+
+    with pytest.raises(ValueError, match="Cannot expand"):
+        expand_adapter_parameter_tree(
+            source,
+            target,
+            source_lora_config=BackboneLoRAConfig(rank=4),
+            target_lora_config=BackboneLoRAConfig(rank=2),
+            source_locon_config=None,
+            target_locon_config=None,
+        )
 
 
 def test_locon_does_not_change_shared_lora_or_reserved_head_initialization():

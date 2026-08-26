@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterator, Sequence
+from collections.abc import Iterator, Mapping, Sequence
 from contextlib import ExitStack, contextmanager
 from dataclasses import dataclass
 import hashlib
@@ -848,6 +848,123 @@ def parse_locon_target_names(raw: str | None) -> tuple[str, ...]:
     return tuple(item.strip() for item in raw.split(",") if item.strip())
 
 
+def expand_adapter_parameter_tree(
+    source,
+    target,
+    *,
+    source_lora_config: BackboneLoRAConfig | None,
+    target_lora_config: BackboneLoRAConfig | None,
+    source_locon_config: BackboneLoConConfig | None,
+    target_locon_config: BackboneLoConConfig | None,
+):
+    """Transplant a checkpoint into a model with expanded LoRA or LoCon adapters.
+
+    Existing low-rank directions occupy the leading rank dimensions. Newly added
+    directions retain the target model's deterministic down-projection and zero
+    up-projection initialization. Up projections are rescaled when ``alpha / rank``
+    changes, preserving the source model's effective adapter residual exactly.
+    """
+
+    stats = {
+        "copied_leaves": 0,
+        "expanded_leaves": 0,
+        "initialized_adapter_leaves": 0,
+    }
+    adapter_leaf_names = {"lora_a", "lora_b", "locon_down_w", "locon_up_w"}
+
+    def count_initialized_adapters(node) -> int:
+        if not isinstance(node, Mapping):
+            return 0
+        return sum(
+            1 if str(key) in adapter_leaf_names else count_initialized_adapters(value)
+            for key, value in node.items()
+        )
+
+    def adapter_scale(config, *, kind: str) -> float:
+        if config is None:
+            raise ValueError(f"Cannot transplant a source {kind} leaf without its config.")
+        return float(config.alpha) / int(config.rank)
+
+    def transplant_leaf(path: tuple[str, ...], source_leaf, target_leaf):
+        name = path[-1]
+        source_shape = tuple(source_leaf.shape)
+        target_shape = tuple(target_leaf.shape)
+
+        if name == "lora_a":
+            if source_shape[:-1] != target_shape[:-1] or source_shape[-1] > target_shape[-1]:
+                raise ValueError(f"Cannot expand {'/'.join(path)} from {source_shape} to {target_shape}.")
+            result = target_leaf.at[..., : source_shape[-1]].set(source_leaf.astype(target_leaf.dtype))
+        elif name == "lora_b":
+            if source_shape[1:] != target_shape[1:] or source_shape[0] > target_shape[0]:
+                raise ValueError(f"Cannot expand {'/'.join(path)} from {source_shape} to {target_shape}.")
+            ratio = adapter_scale(source_lora_config, kind="LoRA") / adapter_scale(
+                target_lora_config, kind="LoRA"
+            )
+            result = target_leaf.at[: source_shape[0], ...].set(
+                source_leaf.astype(target_leaf.dtype) * ratio
+            )
+        elif name == "locon_down_w":
+            if source_shape[:-1] != target_shape[:-1] or source_shape[-1] > target_shape[-1]:
+                raise ValueError(f"Cannot expand {'/'.join(path)} from {source_shape} to {target_shape}.")
+            result = target_leaf.at[..., : source_shape[-1]].set(source_leaf.astype(target_leaf.dtype))
+        elif name == "locon_up_w":
+            if (
+                source_shape[0] != target_shape[0]
+                or source_shape[2:] != target_shape[2:]
+                or source_shape[1] > target_shape[1]
+            ):
+                raise ValueError(f"Cannot expand {'/'.join(path)} from {source_shape} to {target_shape}.")
+            ratio = adapter_scale(source_locon_config, kind="LoCon") / adapter_scale(
+                target_locon_config, kind="LoCon"
+            )
+            result = target_leaf.at[:, : source_shape[1], ...].set(
+                source_leaf.astype(target_leaf.dtype) * ratio
+            )
+        elif source_shape == target_shape:
+            stats["copied_leaves"] += 1
+            return source_leaf.astype(target_leaf.dtype)
+        else:
+            raise ValueError(
+                f"Non-adapter leaf {'/'.join(path)} changed shape from "
+                f"{source_shape} to {target_shape}."
+            )
+
+        if source_shape == target_shape:
+            stats["copied_leaves"] += 1
+        else:
+            stats["expanded_leaves"] += 1
+        return result
+
+    def visit(source_node, target_node, path: tuple[str, ...]):
+        if isinstance(target_node, Mapping):
+            if not isinstance(source_node, Mapping):
+                raise ValueError(f"Checkpoint tree mismatch at {'/'.join(path)}.")
+            missing_targets = set(source_node) - set(target_node)
+            if missing_targets:
+                raise ValueError(
+                    f"Expanded model dropped source keys at {'/'.join(path)}, "
+                    f"{sorted(str(key) for key in missing_targets)}."
+                )
+            result = {}
+            for key, target_value in target_node.items():
+                key_path = (*path, str(key))
+                if key in source_node:
+                    result[key] = visit(source_node[key], target_value, key_path)
+                else:
+                    result[key] = target_value
+                    stats["initialized_adapter_leaves"] += (
+                        1
+                        if str(key) in adapter_leaf_names
+                        else count_initialized_adapters(target_value)
+                    )
+            return result
+        if isinstance(source_node, Mapping):
+            raise ValueError(f"Checkpoint tree mismatch at {'/'.join(path)}.")
+        return transplant_leaf(path, source_node, target_node)
+
+    return visit(source, target, ()), stats
+
+
 __all__ = [
     "BackboneLoConConfig",
     "BackboneLoRAConfig",
@@ -855,6 +972,7 @@ __all__ = [
     "DEFAULT_BACKBONE_LORA_TARGETS",
     "LinearWithLoRA",
     "StandardizedConv1DWithLoCon",
+    "expand_adapter_parameter_tree",
     "parse_locon_target_names",
     "parse_lora_target_names",
     "patch_backbone_adapters",

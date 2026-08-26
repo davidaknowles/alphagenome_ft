@@ -57,7 +57,9 @@ submit_continuation() {
   "${HOME}/venv/jax/bin/python" - \
     "$run_dir/continuation.json" "$smoke_dir/continuation.json" "$source_epoch" \
     "$snapshot" "$learning_rate" "$dataset_config" \
-    "${freeze_backbone_adapters:-0}" <<'PY'
+    "${freeze_backbone_adapters:-0}" "${expand_backbone_adapters:-0}" \
+    "${lora_rank:-16}" "${lora_alpha:-16}" "${locon_rank:-4}" \
+    "${locon_alpha:-1}" "${locon_targets:-default}" <<'PY'
 import json
 import sys
 from pathlib import Path
@@ -69,6 +71,12 @@ payload = {
     "learning_rate": float(sys.argv[5]),
     "dataset_config": sys.argv[6],
     "freeze_backbone_adapters": bool(int(sys.argv[7])),
+    "expand_backbone_adapters": bool(int(sys.argv[8])),
+    "lora_rank": int(sys.argv[9]),
+    "lora_alpha": float(sys.argv[10]),
+    "locon_rank": int(sys.argv[11]),
+    "locon_alpha": float(sys.argv[12]),
+    "locon_targets": sys.argv[13],
 }
 serialized = json.dumps(payload, indent=2, sort_keys=True) + "\n"
 for value in sys.argv[1:3]:
@@ -80,7 +88,7 @@ for value in sys.argv[1:3]:
 PY
 
   local exports
-  exports="ALL,RUN_SUFFIX=${run_suffix},RESUME_FROM=${snapshot},RESET_OPTIMIZER=1,LEARNING_RATE=${learning_rate},NUM_EPOCHS=${num_epochs},DATASET_CONFIG=${dataset_config},TARGET_WORKERS=${target_workers},WINDOW_WORKERS=${window_workers},FREEZE_BACKBONE_ADAPTERS=${freeze_backbone_adapters:-0}"
+  exports="ALL,RUN_SUFFIX=${run_suffix},RESUME_FROM=${snapshot},RESET_OPTIMIZER=1,LEARNING_RATE=${learning_rate},NUM_EPOCHS=${num_epochs},DATASET_CONFIG=${dataset_config},TARGET_WORKERS=${target_workers},WINDOW_WORKERS=${window_workers},FREEZE_BACKBONE_ADAPTERS=${freeze_backbone_adapters:-0},EXPAND_BACKBONE_ADAPTERS=${expand_backbone_adapters:-0},LORA_RANK=${lora_rank:-16},LORA_ALPHA=${lora_alpha:-16},LOCON_RANK=${locon_rank:-4},LOCON_ALPHA=${locon_alpha:-1},LOCON_TARGETS=${locon_targets:-default}"
   local smoke full
   smoke=$(
     "$sbatch_bin" --parsable --array="$task" --time=00:30:00 \

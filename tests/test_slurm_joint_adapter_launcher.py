@@ -97,6 +97,23 @@ def test_joint_head_refit_freezes_adapters_and_screens_matched_rates() -> None:
     assert "args.backbone_lora and not args.freeze_backbone_adapters" in entrypoint
 
 
+def test_joint_adapter_expansion_is_function_preserving_and_smoke_gated() -> None:
+    script = Path("scripts/v0data/submit_joint_adapter_expansion_pair.sh").read_text()
+    launcher = Path("scripts/v0data/slurm_joint_multidataset_adapters.sbatch").read_text()
+    library = Path("scripts/v0data/joint_continuation_lib.sh").read_text()
+
+    assert "expand_backbone_adapters=1" in script
+    assert 'source_epoch="${SOURCE_EPOCH:-32}"' in script
+    assert script.count("submit_continuation 1") == 2
+    assert "downres_block_2;downres_block_3;downres_block_4;downres_block_5" in script
+    assert "lora_rank=32" in script
+    assert "locon_rank=8" in script
+    assert "EXPAND_BACKBONE_ADAPTERS=${expand_backbone_adapters:-0}" in library
+    assert 'dependency="afterok:${smoke}_${task}"' in library
+    assert "extra_args+=(--expand-backbone-adapters)" in launcher
+    assert 'locon_targets="${locon_targets//;/,}"' in launcher
+
+
 def test_all_study_native_evaluation_uses_and_validates_provisional_runs() -> None:
     submitter = Path(
         "scripts/v0data/submit_joint_multidataset_evaluations.sh"

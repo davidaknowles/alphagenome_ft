@@ -69,6 +69,7 @@ from alphagenome_ft.fp8_lora import (
     DEFAULT_BACKBONE_LORA_TARGETS,
     LinearWithLoRA,
     StandardizedConv1DWithLoCon,
+    expand_adapter_parameter_tree,
     parse_locon_target_names,
     parse_lora_target_names,
 )
@@ -132,6 +133,7 @@ __all__ = [
     'DEFAULT_BACKBONE_LORA_TARGETS',
     'LinearWithLoRA',
     'StandardizedConv1DWithLoCon',
+    'expand_adapter_parameter_tree',
     'parse_locon_target_names',
     'parse_lora_target_names',
     # Optimizer masking (true backbone freeze during training)

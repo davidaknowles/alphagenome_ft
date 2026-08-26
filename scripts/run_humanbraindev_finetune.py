@@ -22,6 +22,7 @@ from alphagenome_ft import (
     BackboneLoConConfig,
     BackboneLoRAConfig,
     create_model_with_heads,
+    expand_adapter_parameter_tree,
     load_checkpoint,
     lora,
     parse_locon_target_names,
@@ -276,6 +277,14 @@ def parse_args() -> argparse.Namespace:
         help=(
             "When resuming, initialize a fresh optimizer instead of restoring its state. "
             "This permits an intentional learning-rate change from a selected checkpoint."
+        ),
+    )
+    parser.add_argument(
+        "--expand-backbone-adapters",
+        action="store_true",
+        help=(
+            "Rebuild a resumed model with the requested LoRA and LoCon ranks and targets, "
+            "then transplant the source adapters with function-preserving zero extensions."
         ),
     )
     parser.add_argument(
@@ -1304,6 +1313,10 @@ def main() -> None:
     initial_optimizer_state_path = None
     if args.reset_optimizer and args.resume_from is None:
         raise ValueError("--reset-optimizer requires --resume-from.")
+    if args.expand_backbone_adapters and not args.reset_optimizer:
+        raise ValueError("--expand-backbone-adapters requires --reset-optimizer.")
+    if args.expand_backbone_adapters and not args.backbone_lora:
+        raise ValueError("--expand-backbone-adapters requires --backbone-lora.")
     if args.resume_from is not None and args.pretrained_head_initialization != "none":
         raise ValueError(
             "--pretrained-head-initialization applies only to a new run, not --resume-from."
@@ -1356,16 +1369,48 @@ def main() -> None:
                         f"{mismatches}."
                     )
             initial_optimizer_state_path = optimizer_state_path
-        model = load_checkpoint(
-            resume_from,
-            base_model_version=args.model_version,
-            base_checkpoint_path=args.checkpoint_path,
-            init_seq_len=args.window_size,
-            backbone_lora_config=backbone_lora_config,
-            backbone_locon_config=backbone_locon_config,
-            runtime_backbone_param_dtype=args.base_param_dtype,
-            runtime_backbone_compute_dtype=args.backbone_compute_dtype,
-        )
+        if args.expand_backbone_adapters:
+            source_model = load_checkpoint(
+                resume_from,
+                base_model_version=args.model_version,
+                base_checkpoint_path=args.checkpoint_path,
+                init_seq_len=args.window_size,
+                runtime_backbone_param_dtype=args.base_param_dtype,
+                runtime_backbone_compute_dtype=args.backbone_compute_dtype,
+            )
+            model = create_model_with_heads(
+                args.model_version,
+                heads=head_ids,
+                checkpoint_path=args.checkpoint_path,
+                detach_backbone=False,
+                init_seq_len=args.window_size,
+                backbone_lora_config=backbone_lora_config,
+                backbone_locon_config=backbone_locon_config,
+                runtime_backbone_param_dtype=args.base_param_dtype,
+                runtime_backbone_compute_dtype=args.backbone_compute_dtype,
+            )
+            model._params, expansion_stats = expand_adapter_parameter_tree(
+                source_model._params,
+                model._params,
+                source_lora_config=getattr(source_model, "_backbone_lora_config", None),
+                target_lora_config=backbone_lora_config,
+                source_locon_config=getattr(source_model, "_backbone_locon_config", None),
+                target_locon_config=backbone_locon_config,
+            )
+            model._state = source_model._state
+            print(f"Expanded backbone adapters: {expansion_stats}")
+            del source_model
+        else:
+            model = load_checkpoint(
+                resume_from,
+                base_model_version=args.model_version,
+                base_checkpoint_path=args.checkpoint_path,
+                init_seq_len=args.window_size,
+                backbone_lora_config=backbone_lora_config,
+                backbone_locon_config=backbone_locon_config,
+                runtime_backbone_param_dtype=args.base_param_dtype,
+                runtime_backbone_compute_dtype=args.backbone_compute_dtype,
+            )
     if args.backbone_lora:
         lora_paths = lora.get_lora_parameter_paths(model._params)
         total_params = parameter_utils.count_parameters(model._params)
@@ -1427,6 +1472,7 @@ def main() -> None:
             "gene_window_repeats": args.gene_window_repeats,
             "backbone_lora": args.backbone_lora,
             "freeze_backbone_adapters": args.freeze_backbone_adapters,
+            "expand_backbone_adapters": args.expand_backbone_adapters,
             "lora_rank": args.lora_rank if args.backbone_lora else None,
             "lora_alpha": args.lora_alpha if args.backbone_lora else None,
             "fp8_lora": args.fp8_lora if args.backbone_lora else None,
