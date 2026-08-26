@@ -114,6 +114,29 @@ def test_joint_adapter_expansion_is_function_preserving_and_smoke_gated() -> Non
     assert 'locon_targets="${locon_targets//;/,}"' in launcher
 
 
+def test_joint_head_warmup_branches_one_checkpoint_into_both_strategies() -> None:
+    script = Path("scripts/v0data/submit_joint_head_warmup_then_adapters.sh").read_text()
+    branch = Path(
+        "scripts/v0data/slurm_submit_joint_adapters_from_head_warmup.sbatch"
+    ).read_text()
+    launcher = Path("scripts/v0data/slurm_joint_multidataset_adapters.sbatch").read_text()
+
+    assert "BACKBONE_LORA=0" in script
+    assert "RUN_BASENAME=${run_basename}" in script
+    assert 'WARMUP_EPOCHS:-3' in script
+    assert 'dependency="afterok:${smoke}_0"' in script
+    assert 'dependency="afterok:${warmup}_0"' in script
+    assert 'source_checkpoint="${source_run}/best"' in branch
+    assert 'sbatch_bin="${SBATCH_BIN:-sbatch}"' in branch
+    assert "learning_rate=3e-4" in branch
+    assert "expand_backbone_adapters=1" in branch
+    assert branch.count("submit_continuation") == 2
+    assert 'submit_continuation 0 "$source_run"' in branch
+    assert 'submit_continuation 1 "$source_run"' in branch
+    assert 'if [[ "${BACKBONE_LORA:-1}" == "1" ]]' in launcher
+    assert 'RUN_BASENAME:-joint_all_nonencode_${strategy//+/_}' in launcher
+
+
 def test_all_study_native_evaluation_uses_and_validates_provisional_runs() -> None:
     submitter = Path(
         "scripts/v0data/submit_joint_multidataset_evaluations.sh"

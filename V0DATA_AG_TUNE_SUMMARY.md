@@ -8,23 +8,37 @@ The primary metric is signed double-centered Pearson correlation, denoted $R$. F
 
 ## Data strategy
 
-- ATAC targets were reprocessed from fragments where necessary to produce normalized pseudobulk coverage with consistent track semantics.
+- Liu HDMA and all three Johansen/Allen species required ATAC reconstruction from raw fragments. The reconstruction retains all selected fragments, computes mean paired-fragment coverage in 100 bp bins, and normalizes by the complete pseudobulk library size as signal per million reads (SPMR). HDA/Mannens, Zemke 2023, and Zemke 2024 use published ATAC BigWigs and did not require fragment processing for the current model.
 - HDA, Liu, and Johansen RNA use raw-count counts-per-million (CPM) pseudobulks assigned to exon-defined gene windows. Zemke RNA uses the published coordinate-resolved reads-per-kilobase-per-million (RPKM) tracks because equivalent raw gene-count inputs are not available.
-- Each source retains its native genome assembly, species, target mask, and assay definitions. Separate source-specific ATAC and RNA heads prevent incompatible channel definitions and scales from being forced into one output projection.
+- Each source retains its native genome assembly, species, target mask, and assay definitions. Separate dataset-specific ATAC and RNA heads prevent incompatible study definitions and scales from being forced into one output projection, while aligned species within a study share those heads.
 - The shared AlphaGenome backbone is adapted with low-rank adaptation (LoRA) on linear operations and low-rank convolution adaptation (LoCon) on convolutional operations. Each dataset receives the same optimizer-update budget, and species within multi-species studies rotate evenly.
 - Models are selected by the mean validation $R$ across ATAC and RNA heads with early stopping. Metric-aligned training adds direct correlation objectives where screens showed a benefit, rather than increasing every RNA loss uniformly.
 
+| Dataset | ATAC target used | Fragment processing required |
+|---|---|---|
+| HDA/Mannens, human | Published Model-based Analysis of ChIP-Seq version 2 (MACS2) SPMR BigWigs | No |
+| Liu HDMA, human | Reconstructed all-fragment coverage SPMR | Yes |
+| Johansen/Allen, human, macaque, marmoset | Reconstructed all-fragment coverage SPMR | Yes, all three species |
+| Zemke 2023, four species | Published RPKM BigWigs | No |
+| Zemke 2024, human | Published pseudobulk BigWigs | No |
+
+## Species and head routing
+
+Heads are dataset-specific, not fully species-specific. HDA, Liu, and Zemke 2024 each have their own human ATAC and RNA heads. Johansen/Allen has one ATAC head and one RNA head shared across its three primates, whose aligned channels denote the same 47 cell groups. Zemke 2023 likewise has one ATAC head and one RNA head shared across its four species, whose channels denote the same 20 cell types.
+
+Every native source uses its own reference genome and DNA sequence. Batches also carry AlphaGenome's pretrained organism index, but that index distinguishes only human and mouse. Human, macaque, and marmoset therefore use the human index; mouse uses the mouse index. The multi-organism Zemke head selects a human parameter row for all three primates and a mouse row for mouse. Macaque and marmoset have no separate learned species token or head row, so they are distinguished by sequence and assembly rather than explicit species conditioning.
+
 ## Strategy findings
 
-Results below average ten native dataset/species sources and give each source equal weight.
+Results below average ten native dataset/species sources and give each source equal weight. ATAC and RNA are reported separately; averaging them obscures the modality gap.
 
-| Strategy | Validation R | Test R | ATAC validation/test | RNA validation/test |
+| Strategy | ATAC validation R | ATAC test R | RNA validation R | RNA test R |
 |---|---:|---:|---:|---:|
-| LoRA | 0.5054 | 0.5246 | 0.6177 / 0.6498 | 0.3932 / 0.3993 |
-| LoRA + LoCon | 0.5310 | 0.5422 | 0.6451 / 0.6685 | 0.4169 / 0.4158 |
-| LoRA + LoCon, uniform RNA weight 2 | 0.5272 | 0.5422 | 0.6398 / 0.6670 | 0.4147 / 0.4174 |
-| LoRA + LoCon, metric-aligned | 0.5573 | 0.5608 | 0.6539 / 0.6718 | 0.4608 / 0.4498 |
-| LoRA + LoCon, tempered consolidation | **0.5576** | **0.5619** | 0.6531 / **0.6733** | **0.4621** / 0.4506 |
+| LoRA | 0.6177 | 0.6498 | 0.3932 | 0.3993 |
+| LoRA + LoCon | 0.6451 | 0.6685 | 0.4169 | 0.4158 |
+| LoRA + LoCon, uniform RNA weight 2 | 0.6398 | 0.6670 | 0.4147 | 0.4174 |
+| LoRA + LoCon, metric-aligned | **0.6539** | 0.6718 | 0.4608 | 0.4498 |
+| LoRA + LoCon, tempered consolidation | 0.6531 | **0.6733** | **0.4621** | **0.4506** |
 
 LoCon gives a useful improvement over LoRA alone. Uniformly doubling RNA loss weight does not help. Metric-aligned objectives provide the largest gain, especially for RNA, without reducing aggregate ATAC performance. Lower-rate consolidation changes the result only marginally, so the metric-aligned and tempered checkpoints should be treated as effectively tied rather than as evidence for a further material gain.
 
@@ -51,4 +65,6 @@ ATAC is consistently easier than RNA. HDA ATAC reaches the target range near $R=
 
 Target audits argue against raw measurement noise being the sole RNA limitation. Estimated full-depth RNA reliability is about 1.00 for HDA, 0.95 for Liu, and 0.98 to 0.99 for Johansen donor pseudobulks. Low-rank audits also show that modest target ranks can exceed $R=0.8$ for the major gene-count matrices. In contrast, the coordinate-resolved Zemke RNA tracks agree only moderately with direct gene-count representations before log transformation. The remaining gap is therefore more consistent with target-representation mismatch, held-out chromosome shifts, shared-backbone interference, and optimization or adapter/head capacity than with insufficient read depth alone.
 
-No broadly successful RNA configuration has reached $R\approx0.8$. The current follow-up freezes the shared LoRA and LoCon adapters and refits only source-specific heads at several learning rates. Early results do not exceed the tempered source checkpoint, suggesting that head-only optimization is unlikely to remove the remaining ceiling by itself.
+No broadly successful RNA configuration has reached $R\approx0.8$. Post hoc refitting of only the dataset heads at learning rates from $10^{-4}$ to $10^{-3}$ has not exceeded the tempered source checkpoint through five completed epochs, suggesting that head-only optimization is unlikely to remove the remaining ceiling by itself.
+
+The next matched screen instead warms the newly initialized dataset heads before adapter training. It first trains the heads for three epochs against the frozen pretrained backbone, selects that head checkpoint, and then adds either LoRA or LoRA plus LoCon with zero initial residuals. Both adapter arms start from exactly the same warmed heads, reset the optimizer, and continue joint head-and-adapter training. This tests whether preventing random heads from driving early backbone-adapter updates improves optimization without changing the model's initial function at the handoff.

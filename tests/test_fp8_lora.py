@@ -213,6 +213,44 @@ def test_expand_adapter_parameter_tree_rejects_rank_reduction():
         )
 
 
+def test_expand_adapter_parameter_tree_adds_zero_residuals_to_adapter_free_source():
+    source = {
+        "linear": {"w": jnp.arange(6, dtype=jnp.float32).reshape(3, 2)},
+        "conv": {"w": jnp.arange(24, dtype=jnp.float32).reshape(3, 2, 4)},
+    }
+    target = {
+        "linear": {
+            "w": jnp.zeros((3, 2)),
+            "lora_a": jnp.ones((3, 4)),
+            "lora_b": jnp.zeros((4, 2)),
+        },
+        "conv": {
+            "w": jnp.zeros((3, 2, 4)),
+            "locon_down_w": jnp.ones((3, 2, 2)),
+            "locon_up_w": jnp.zeros((1, 2, 4)),
+        },
+    }
+
+    expanded, stats = expand_adapter_parameter_tree(
+        source,
+        target,
+        source_lora_config=None,
+        target_lora_config=BackboneLoRAConfig(rank=4, alpha=4.0),
+        source_locon_config=None,
+        target_locon_config=BackboneLoConConfig(rank=2, alpha=1.0),
+    )
+
+    assert jnp.array_equal(expanded["linear"]["w"], source["linear"]["w"])
+    assert jnp.array_equal(expanded["conv"]["w"], source["conv"]["w"])
+    assert jnp.all(expanded["linear"]["lora_b"] == 0)
+    assert jnp.all(expanded["conv"]["locon_up_w"] == 0)
+    assert stats == {
+        "copied_leaves": 2,
+        "expanded_leaves": 0,
+        "initialized_adapter_leaves": 4,
+    }
+
+
 def test_locon_does_not_change_shared_lora_or_reserved_head_initialization():
     from alphagenome_research.model import convolutions
 

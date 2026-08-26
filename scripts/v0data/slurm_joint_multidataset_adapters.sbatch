@@ -28,7 +28,7 @@ locon_targets="${LOCON_TARGETS:-default}"
 locon_targets="${locon_targets//;/,}"
 lora_targets="${LORA_TARGETS:-default}"
 lora_targets="${lora_targets//;/,}"
-run_name="joint_all_nonencode_${strategy//+/_}${RUN_SUFFIX:-}"
+run_name="${RUN_BASENAME:-joint_all_nonencode_${strategy//+/_}}${RUN_SUFFIX:-}"
 if [[ "${SMOKE:-0}" == "1" && "$run_name" != *_smoke ]]; then
   run_name="${run_name}_smoke"
 fi
@@ -41,6 +41,10 @@ extra_args=(
   --balance-gene-windows
   --drop-last
 )
+backbone_args=()
+if [[ "${BACKBONE_LORA:-1}" == "1" ]]; then
+  backbone_args+=(--backbone-lora)
+fi
 if [[ "${SMOKE:-0}" == "1" ]]; then
   extra_args=(
     --num-epochs "${NUM_EPOCHS:-1}"
@@ -79,7 +83,6 @@ fi
   --num-devices 2 \
   --learning-rate "${LEARNING_RATE:-1e-3}" \
   --weight-decay "${WEIGHT_DECAY:-1e-4}" \
-  --backbone-lora \
   --adapter-strategy "$strategy" \
   --lora-rank "${LORA_RANK:-16}" \
   --lora-alpha "${LORA_ALPHA:-16}" \
@@ -100,4 +103,5 @@ fi
   --best-metric valid/mean/differential_pearson_r \
   --best-metric-mode max \
   --eval-splits valid,test \
+  "${backbone_args[@]}" \
   "${extra_args[@]}"
