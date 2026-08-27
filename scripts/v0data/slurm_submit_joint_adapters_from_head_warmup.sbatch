@@ -38,7 +38,7 @@ lora_rank=16
 lora_alpha=16
 locon_rank=4
 locon_alpha=1
-locon_targets=default
+locon_targets="${LOCON_TARGETS:-downres_block_2;downres_block_3;downres_block_4;downres_block_5}"
 
 snapshot_checkpoint "$source_checkpoint" "$source_epoch" "$snapshot"
 test -f "$dataset_config"

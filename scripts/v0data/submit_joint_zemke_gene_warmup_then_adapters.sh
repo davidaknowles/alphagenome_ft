@@ -10,6 +10,7 @@ base_dir="outputs/v0data/joint-all-nonencode-zemke-gene"
 config_dir="outputs/v0data/joint-objective-variants/metric-tempered-zemke-gene"
 warmup_max_epochs="${WARMUP_MAX_EPOCHS:-20}"
 warmup_patience="${WARMUP_PATIENCE:-5}"
+locon_targets="${LOCON_TARGETS:-downres_block_2;downres_block_3;downres_block_4;downres_block_5}"
 if [[ ! "$warmup_max_epochs" =~ ^[1-9][0-9]*$ ]] ||
    [[ ! "$warmup_patience" =~ ^[1-9][0-9]*$ ]] ||
    (( warmup_patience > warmup_max_epochs )); then
@@ -46,7 +47,7 @@ warmup=$(
 )
 branch=$(
   "$sbatch_bin" --parsable --dependency="afterok:${warmup}_0" \
-    --export="ALL,SOURCE_RUN=checkpoints/v0data/${warmup_run},DATASET_CONFIG=${dataset_config},BRANCH_TAG=zemke_gene,TARGET_WORKERS=${TARGET_WORKERS:-12},WINDOW_WORKERS=${WINDOW_WORKERS:-4}" \
+    --export="ALL,SOURCE_RUN=checkpoints/v0data/${warmup_run},DATASET_CONFIG=${dataset_config},BRANCH_TAG=zemke_gene,LOCON_TARGETS=${locon_targets},TARGET_WORKERS=${TARGET_WORKERS:-12},WINDOW_WORKERS=${WINDOW_WORKERS:-4}" \
     scripts/v0data/slurm_submit_joint_adapters_from_head_warmup.sbatch
 )
 

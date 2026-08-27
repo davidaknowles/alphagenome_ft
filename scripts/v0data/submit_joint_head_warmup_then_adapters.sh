@@ -12,6 +12,7 @@ run_tag="${RUN_TAG:-}"
 warmup_max_epochs="${WARMUP_MAX_EPOCHS:-20}"
 warmup_patience="${WARMUP_PATIENCE:-5}"
 balance_gene_windows="${BALANCE_GENE_WINDOWS:-0}"
+locon_targets="${LOCON_TARGETS:-downres_block_2;downres_block_3;downres_block_4;downres_block_5}"
 if [[ ! "$run_tag" =~ ^[a-z0-9_]*$ ]]; then
   printf 'Invalid RUN_TAG, %s; use lowercase letters, numbers, and underscores.\n' \
     "$run_tag" >&2
@@ -62,7 +63,7 @@ warmup=$(
 )
 branch=$(
   "$sbatch_bin" --parsable --dependency="afterok:${warmup}_0" \
-    --export="ALL,SOURCE_RUN=checkpoints/v0data/${warmup_run},DATASET_CONFIG=${dataset_config},BRANCH_TAG=${branch_tag},BALANCE_GENE_WINDOWS=${balance_gene_windows},TARGET_WORKERS=${TARGET_WORKERS:-12},WINDOW_WORKERS=${WINDOW_WORKERS:-4}" \
+    --export="ALL,SOURCE_RUN=checkpoints/v0data/${warmup_run},DATASET_CONFIG=${dataset_config},BRANCH_TAG=${branch_tag},BALANCE_GENE_WINDOWS=${balance_gene_windows},LOCON_TARGETS=${locon_targets},TARGET_WORKERS=${TARGET_WORKERS:-12},WINDOW_WORKERS=${WINDOW_WORKERS:-4}" \
     scripts/v0data/slurm_submit_joint_adapters_from_head_warmup.sbatch
 )
 

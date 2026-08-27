@@ -157,6 +157,11 @@ def test_joint_head_warmup_branches_one_checkpoint_into_both_strategies() -> Non
     assert 'sbatch_bin="${SBATCH_BIN:-sbatch}"' in branch
     assert "learning_rate=3e-4" in branch
     assert "expand_backbone_adapters=1" in branch
+    assert (
+        'locon_targets="${LOCON_TARGETS:-downres_block_2;downres_block_3;'
+        'downres_block_4;downres_block_5}"' in branch
+    )
+    assert "LOCON_TARGETS=${locon_targets}" in script
     assert branch.count("submit_continuation") == 2
     assert 'submit_continuation 0 "$source_run"' in branch
     assert 'submit_continuation 1 "$source_run"' in branch
@@ -539,3 +544,15 @@ def test_joint_all_gene_warmup_uses_direct_gene_rna_for_both_zemke_datasets() ->
     assert 'RUN_TAG="$run_tag"' in script
     for split in ("TRAIN", "VALID", "TEST"):
         assert f'SMOKE_LIMIT_{split}="${{SMOKE_LIMIT_{split}:-40}}"' in script
+
+
+def test_zemke_gene_warmup_branches_with_expanded_locon_coverage() -> None:
+    script = Path(
+        "scripts/v0data/submit_joint_zemke_gene_warmup_then_adapters.sh"
+    ).read_text()
+
+    assert (
+        'locon_targets="${LOCON_TARGETS:-downres_block_2;downres_block_3;'
+        'downres_block_4;downres_block_5}"' in script
+    )
+    assert "LOCON_TARGETS=${locon_targets}" in script
