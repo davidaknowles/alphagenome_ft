@@ -6,8 +6,10 @@ import pytest
 from alphagenome.models import dna_client, dna_output
 
 from alphagenome_ft.finetune.config import (
+    HeadSpec,
     TrackInfo,
     _build_track_metadata,
+    head_layout_signature,
     load_targets_config,
     prepare_head_specs,
     validate_head_specs,
@@ -29,6 +31,17 @@ def test_track_metadata_preserves_strands(tmp_path: Path):
 
     assert metadata.rna_seq["strand"].tolist() == ["+", "-"]
     assert metadata.strand_reindexing[dna_output.OutputType.RNA_SEQ].tolist() == [1, 0]
+
+
+def test_head_layout_signature_can_ignore_source_specific_ids(tmp_path: Path):
+    tracks = (TrackInfo(name="cell", path=tmp_path / "track.bw"),)
+    human = HeadSpec(head_id="rna_human", source="predefined", kind="rna_seq", tracks=tracks)
+    macaque = dataclasses.replace(human, head_id="rna_macaque")
+
+    assert head_layout_signature((human,)) != head_layout_signature((macaque,))
+    assert head_layout_signature(
+        (human,), include_head_ids=False
+    ) == head_layout_signature((macaque,), include_head_ids=False)
 
 
 def test_load_targets_config_resolves_target_transform_path(tmp_path: Path):

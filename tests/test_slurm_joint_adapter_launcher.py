@@ -170,6 +170,9 @@ def test_joint_head_warmup_exposes_isolated_pretrained_initialization() -> None:
     assert "BRANCH_TAG=${branch_tag}" in script
     assert 'smoke_args+=(--dependency="${INITIAL_DEPENDENCY}")' in script
     assert "semantic_neural_accessibility_bootstrap" in script
+    assert 'DATASET_CONFIG:-$default_dataset_config' in script
+    assert 'run_tag="${RUN_TAG:-}"' in script
+    assert 'run_suffix="_head_warmup_tempered${tag_suffix}${initializer_suffix}"' in script
 
 
 def test_all_study_native_evaluation_uses_and_validates_provisional_runs() -> None:

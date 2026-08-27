@@ -3,6 +3,7 @@
 from alphagenome_ft.finetune.config import (
     TrackInfo,
     HeadSpec,
+    head_layout_signature,
     load_targets_config,
     prepare_head_specs,
     validate_head_specs,
@@ -81,6 +82,7 @@ __all__ = [
     # config
     "TrackInfo",
     "HeadSpec",
+    "head_layout_signature",
     "load_targets_config",
     "prepare_head_specs",
     "validate_head_specs",

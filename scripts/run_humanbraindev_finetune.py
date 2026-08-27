@@ -39,6 +39,7 @@ from alphagenome_ft.finetune import (
     WindowedTargetCache,
     build_fasta_index,
     exclude_overlapping_intervals,
+    head_layout_signature,
     load_excluded_regions_from_bed,
     load_intervals_from_dataframe,
     load_targets_config,
@@ -665,8 +666,9 @@ def main() -> None:
             raw_sources = raw_dataset.get("sources")
             if not raw_sources:
                 raise ValueError(f"Dataset {dataset_name!r} contains no native sources.")
+            source_specific_heads = bool(raw_dataset.get("source_specific_heads", False))
             normalized_sources = []
-            dataset_specs = None
+            expected_signature = None
             for raw_source in raw_sources:
                 source = dict(raw_source)
                 for key in ("fasta", "targets_config", "exclude_intervals_bed"):
@@ -679,21 +681,36 @@ def main() -> None:
                 source_specs = prepare_head_specs(
                     load_targets_config(source["targets_config"]), organism=None
                 )
-                if dataset_specs is None:
-                    dataset_specs = source_specs
+                signature = head_layout_signature(
+                    source_specs, include_head_ids=not source_specific_heads
+                )
+                first_source = expected_signature is None
+                if first_source:
+                    expected_signature = signature
+                elif signature != expected_signature:
+                    qualifier = "source-specific" if source_specific_heads else "shared"
+                    raise ValueError(
+                        f"Source {dataset_name}:{source['name']} target heads do not match "
+                        f"its dataset's {qualifier} layout."
+                    )
+                if source_specific_heads or first_source:
                     duplicate_heads = seen_head_ids & {
-                        spec.head_id for spec in dataset_specs
+                        spec.head_id for spec in source_specs
                     }
                     if duplicate_heads:
                         raise ValueError(
-                            "Head IDs must be unique across datasets, duplicates: "
+                            "Head IDs must be unique across the joint configuration, duplicates: "
                             f"{sorted(duplicate_heads)}"
                         )
-                    seen_head_ids.update(spec.head_id for spec in dataset_specs)
-                    joint_head_specs.extend(dataset_specs)
+                    seen_head_ids.update(spec.head_id for spec in source_specs)
+                    joint_head_specs.extend(source_specs)
                 normalized_sources.append(source)
             dataset_entries.append(
-                {"name": dataset_name, "sources": normalized_sources}
+                {
+                    "name": dataset_name,
+                    "sources": normalized_sources,
+                    "source_specific_heads": source_specific_heads,
+                }
             )
         fasta_path = dataset_entries[0]["sources"][0]["fasta"]
         targets_config_path = dataset_entries[0]["sources"][0]["targets_config"]
@@ -813,6 +830,7 @@ def main() -> None:
         route_to_location = {}
         for dataset in dataset_entries:
             dataset_name = dataset["name"]
+            source_specific_heads = dataset["source_specific_heads"]
             source_modules = {}
             expected_signature = None
             for entry in dataset["sources"]:
@@ -840,21 +858,9 @@ def main() -> None:
                         for spec in source_specs
                     ]
                 validate_head_specs(source_specs)
-                signature = [
-                    (
-                        spec.head_id,
-                        spec.kind,
-                        len(spec.tracks),
-                        tuple(track.name for track in spec.tracks),
-                        spec.loss_weight,
-                        spec.gene_loss_weight,
-                        spec.coverage_loss_weight,
-                        spec.double_centered_correlation_loss_weight,
-                        spec.row_centered_correlation_loss_weight,
-                        spec.output_rank,
-                    )
-                    for spec in source_specs
-                ]
+                signature = head_layout_signature(
+                    source_specs, include_head_ids=not source_specific_heads
+                )
                 if expected_signature is None:
                     expected_signature = signature
                 elif signature != expected_signature:
@@ -961,21 +967,7 @@ def main() -> None:
     elif species_entries is not None:
         species_modules = {}
         organism_indices = {}
-        expected_signature = [
-            (
-                spec.head_id,
-                spec.kind,
-                len(spec.tracks),
-                tuple(track.name for track in spec.tracks),
-                spec.loss_weight,
-                spec.gene_loss_weight,
-                spec.coverage_loss_weight,
-                spec.double_centered_correlation_loss_weight,
-                spec.row_centered_correlation_loss_weight,
-                spec.output_rank,
-            )
-            for spec in head_specs
-        ]
+        expected_signature = head_layout_signature(head_specs)
         for entry in species_entries:
             species_name = str(entry["name"])
             species_organism = str(entry.get("organism", args.organism))
@@ -998,21 +990,7 @@ def main() -> None:
                     for spec in species_specs
                 ]
             validate_head_specs(species_specs)
-            signature = [
-                (
-                    spec.head_id,
-                    spec.kind,
-                    len(spec.tracks),
-                    tuple(track.name for track in spec.tracks),
-                    spec.loss_weight,
-                    spec.gene_loss_weight,
-                    spec.coverage_loss_weight,
-                    spec.double_centered_correlation_loss_weight,
-                    spec.row_centered_correlation_loss_weight,
-                    spec.output_rank,
-                )
-                for spec in species_specs
-            ]
+            signature = head_layout_signature(species_specs)
             if signature != expected_signature:
                 raise ValueError(
                     f"Species {species_name} target heads do not match the shared head layout."

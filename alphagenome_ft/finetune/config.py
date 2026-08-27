@@ -87,6 +87,28 @@ class HeadSpec:
     gene_window_assignment: str = "full_span"
 
 
+def head_layout_signature(
+    specs: Sequence[HeadSpec], *, include_head_ids: bool = True
+) -> tuple[tuple[Any, ...], ...]:
+    """Return the model and objective layout shared by native-source manifests."""
+    return tuple(
+        (
+            *((spec.head_id,) if include_head_ids else ()),
+            spec.kind,
+            len(spec.tracks),
+            tuple(track.name for track in spec.tracks),
+            spec.loss_weight,
+            spec.gene_loss_weight,
+            spec.coverage_loss_weight,
+            spec.double_centered_correlation_loss_weight,
+            spec.row_centered_correlation_loss_weight,
+            spec.output_rank,
+            spec.gene_window_assignment,
+        )
+        for spec in specs
+    )
+
+
 def _resolve_target_path(path_value: str, base_dir: Path | None) -> str:
     target_path = Path(path_value).expanduser()
     if base_dir is not None and not target_path.is_absolute():

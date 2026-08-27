@@ -5,20 +5,31 @@ cd "$(dirname "$0")/../.."
 mkdir -p logs/v0data checkpoints/v0data
 
 sbatch_bin="${SBATCH_BIN:-sbatch}"
-dataset_config="$(realpath outputs/v0data/joint-objective-variants/metric-tempered/datasets.json)"
+default_dataset_config="outputs/v0data/joint-objective-variants/metric-tempered/datasets.json"
+dataset_config="$(realpath "${DATASET_CONFIG:-$default_dataset_config}")"
 initializer="${PRETRAINED_HEAD_INITIALIZATION:-none}"
+run_tag="${RUN_TAG:-}"
+if [[ ! "$run_tag" =~ ^[a-z0-9_]*$ ]]; then
+  printf 'Invalid RUN_TAG, %s; use lowercase letters, numbers, and underscores.\n' \
+    "$run_tag" >&2
+  exit 2
+fi
 case "$initializer" in
-  none) initializer_suffix=""; branch_tag="" ;;
+  none) initializer_suffix="" ;;
   bootstrap|neural_bootstrap|neural_accessibility_bootstrap|semantic_neural_accessibility_bootstrap)
     initializer_suffix="_${initializer}"
-    branch_tag="$initializer"
     ;;
   *)
     printf 'Unsupported pretrained head initialization, %s\n' "$initializer" >&2
     exit 2
     ;;
 esac
-run_suffix="_head_warmup_tempered${initializer_suffix}"
+tag_suffix="${run_tag:+_${run_tag}}"
+branch_tag="$run_tag"
+if [[ "$initializer" != "none" ]]; then
+  branch_tag="${branch_tag:+${branch_tag}_}${initializer}"
+fi
+run_suffix="_head_warmup_tempered${tag_suffix}${initializer_suffix}"
 run_basename="joint_all_nonencode"
 warmup_run="${run_basename}${run_suffix}"
 exports="ALL,RUN_BASENAME=${run_basename},RUN_SUFFIX=${run_suffix},BACKBONE_LORA=0,PRETRAINED_HEAD_INITIALIZATION=${initializer},LEARNING_RATE=${WARMUP_LEARNING_RATE:-1e-3},NUM_EPOCHS=${WARMUP_EPOCHS:-3},EARLY_STOPPING_PATIENCE=${WARMUP_EPOCHS:-3},DATASET_CONFIG=${dataset_config},TARGET_WORKERS=${TARGET_WORKERS:-12},WINDOW_WORKERS=${WINDOW_WORKERS:-4}"
