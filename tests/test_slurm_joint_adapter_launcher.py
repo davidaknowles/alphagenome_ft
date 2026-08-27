@@ -62,6 +62,8 @@ def test_zemke_direct_gene_smoke_covers_early_mouse_genes() -> None:
     for split in ("TRAIN", "VALID", "TEST"):
         assert f'--limit-{split.lower()} "${{SMOKE_LIMIT_{split}:-8}}"' in launcher
         assert f"SMOKE_LIMIT_{split}=${{SMOKE_LIMIT_{split}:-40}}" in submitter
+    assert 'warmup_max_epochs="${WARMUP_MAX_EPOCHS:-20}"' in submitter
+    assert 'warmup_patience="${WARMUP_PATIENCE:-5}"' in submitter
 
 
 def test_parallel_joint_continuations_are_smoke_gated_and_matched() -> None:
@@ -145,7 +147,10 @@ def test_joint_head_warmup_branches_one_checkpoint_into_both_strategies() -> Non
 
     assert "BACKBONE_LORA=0" in script
     assert "RUN_BASENAME=${run_basename}" in script
-    assert 'WARMUP_EPOCHS:-3' in script
+    assert 'warmup_max_epochs="${WARMUP_MAX_EPOCHS:-20}"' in script
+    assert 'warmup_patience="${WARMUP_PATIENCE:-5}"' in script
+    assert "NUM_EPOCHS=${warmup_max_epochs}" in script
+    assert "EARLY_STOPPING_PATIENCE=${warmup_patience}" in script
     assert 'dependency="afterok:${smoke}_0"' in script
     assert 'dependency="afterok:${warmup}_0"' in script
     assert 'source_checkpoint="${source_run}/best"' in branch
