@@ -159,6 +159,18 @@ def test_joint_head_warmup_branches_one_checkpoint_into_both_strategies() -> Non
     assert 'RUN_BASENAME:-joint_all_nonencode_${strategy//+/_}' in launcher
 
 
+def test_joint_head_warmup_exposes_isolated_pretrained_initialization() -> None:
+    script = Path("scripts/v0data/submit_joint_head_warmup_then_adapters.sh").read_text()
+    launcher = Path("scripts/v0data/slurm_joint_multidataset_adapters.sbatch").read_text()
+
+    assert '--pretrained-head-initialization "${PRETRAINED_HEAD_INITIALIZATION:-none}"' in launcher
+    assert 'initializer="${PRETRAINED_HEAD_INITIALIZATION:-none}"' in script
+    assert 'initializer_suffix="_${initializer}"' in script
+    assert "PRETRAINED_HEAD_INITIALIZATION=${initializer}" in script
+    assert "BRANCH_TAG=${branch_tag}" in script
+    assert 'smoke_args+=(--dependency="${INITIAL_DEPENDENCY}")' in script
+
+
 def test_all_study_native_evaluation_uses_and_validates_provisional_runs() -> None:
     submitter = Path(
         "scripts/v0data/submit_joint_multidataset_evaluations.sh"

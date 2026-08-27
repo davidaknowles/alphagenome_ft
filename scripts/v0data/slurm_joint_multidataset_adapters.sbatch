@@ -84,6 +84,7 @@ fi
   --learning-rate "${LEARNING_RATE:-1e-3}" \
   --weight-decay "${WEIGHT_DECAY:-1e-4}" \
   --adapter-strategy "$strategy" \
+  --pretrained-head-initialization "${PRETRAINED_HEAD_INITIALIZATION:-none}" \
   --lora-rank "${LORA_RANK:-16}" \
   --lora-alpha "${LORA_ALPHA:-16}" \
   --locon-rank "${LOCON_RANK:-4}" \
