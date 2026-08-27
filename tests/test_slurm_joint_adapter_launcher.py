@@ -500,3 +500,18 @@ def test_zemke2024_direct_gene_screen_requires_supported_group_agreement() -> No
     assert "zemke2024-gene-supervision/targets.json" in script
     assert "BALANCE_GENE_WINDOWS=1" in script
     assert 'dependency="afterok:${smoke}_*"' in script
+
+
+def test_joint_all_gene_warmup_uses_direct_gene_rna_for_both_zemke_datasets() -> None:
+    script = Path(
+        "scripts/v0data/submit_joint_all_gene_warmup_then_adapters.sh"
+    ).read_text()
+
+    assert "prepare_gene_only_species.py" in script
+    assert "zemke2024_rna_reprocessing/prepare_gene_only_target.py" in script
+    assert '--zemke2024-targets "$zemke2024_target"' in script
+    assert "--zemke-rna-weight 1" in script
+    assert "--zemke2024-rna-weight 1" in script
+    assert "RUN_TAG=all_gene" in script
+    for split in ("TRAIN", "VALID", "TEST"):
+        assert f'SMOKE_LIMIT_{split}="${{SMOKE_LIMIT_{split}:-40}}"' in script
