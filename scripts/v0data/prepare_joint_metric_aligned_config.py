@@ -27,6 +27,7 @@ def prepare_config(
     zemke_rna_weight: float | None = None,
     zemke2024_rna_weight: float | None = None,
     sampling_strategy: str | None = None,
+    head_update_strategy: str | None = None,
 ) -> dict[str, Any]:
     if not 0 < zemke_weight <= 10:
         raise ValueError(f"zemke_weight must be in (0, 10], got {zemke_weight}.")
@@ -63,6 +64,13 @@ def prepare_config(
             "batch count as the epoch budget; round-robin native-source updates within "
             "each dataset"
         )
+    if head_update_strategy is not None:
+        if head_update_strategy not in {"joint_heads", "separate_heads"}:
+            raise ValueError(
+                "head_update_strategy must be 'joint_heads' or 'separate_heads', "
+                f"got {head_update_strategy!r}."
+            )
+        result["head_update_strategy"] = head_update_strategy
     source_root = source_path.resolve().parent
     observed: dict[str, set[str]] = {}
     for dataset in result.get("datasets", ()):
@@ -111,6 +119,11 @@ def parse_args() -> argparse.Namespace:
         choices=("equal_datasets", "equal_sources"),
         default=None,
     )
+    parser.add_argument(
+        "--head-update-strategy",
+        choices=("joint_heads", "separate_heads"),
+        default=None,
+    )
     return parser.parse_args()
 
 
@@ -126,6 +139,7 @@ def main() -> None:
         zemke_rna_weight=args.zemke_rna_weight,
         zemke2024_rna_weight=args.zemke2024_rna_weight,
         sampling_strategy=args.sampling_strategy,
+        head_update_strategy=args.head_update_strategy,
     )
     output_dir.mkdir(parents=True, exist_ok=True)
     destination = output_dir / "datasets.json"

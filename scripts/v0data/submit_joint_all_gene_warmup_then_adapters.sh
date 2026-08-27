@@ -9,12 +9,22 @@ zemke2024_target="outputs/v0data/zemke2024-gene-only/targets.json"
 base_dir="outputs/v0data/joint-all-nonencode-all-gene"
 config_dir="outputs/v0data/joint-objective-variants/metric-tempered-all-gene"
 source_specific_heads="${SOURCE_SPECIFIC_HEADS:-0}"
+separate_head_updates="${SEPARATE_HEAD_UPDATES:-0}"
 if [[ "$source_specific_heads" != "0" && "$source_specific_heads" != "1" ]]; then
   printf 'SOURCE_SPECIFIC_HEADS must be 0 or 1, got %s.\n' "$source_specific_heads" >&2
   exit 2
 fi
+if [[ "$separate_head_updates" != "0" && "$separate_head_updates" != "1" ]]; then
+  printf 'SEPARATE_HEAD_UPDATES must be 0 or 1, got %s.\n' "$separate_head_updates" >&2
+  exit 2
+fi
+variant_suffix=""
+if [[ "$separate_head_updates" == "1" ]]; then
+  variant_suffix="-separate-heads"
+  config_dir="${config_dir}${variant_suffix}"
+fi
 if [[ "$source_specific_heads" == "1" ]]; then
-  config_dir="outputs/v0data/joint-objective-variants/metric-tempered-all-gene-source-balanced"
+  config_dir="outputs/v0data/joint-objective-variants/metric-tempered-all-gene-source-balanced${variant_suffix}"
 fi
 
 "$python_bin" scripts/v0data/zemke2023_rna_reprocessing/prepare_gene_only_species.py \
@@ -41,18 +51,24 @@ metric_args=(
 if [[ "$source_specific_heads" == "1" ]]; then
   metric_args+=(--sampling-strategy equal_sources)
 fi
+if [[ "$separate_head_updates" == "1" ]]; then
+  metric_args+=(--head-update-strategy separate_heads)
+fi
 "$python_bin" scripts/v0data/prepare_joint_metric_aligned_config.py \
   "${metric_args[@]}"
 
 dataset_config="${config_dir}/datasets.json"
 run_tag="all_gene"
 if [[ "$source_specific_heads" == "1" ]]; then
-  source_specific_dir="outputs/v0data/joint-objective-variants/metric-tempered-all-gene-source-specific"
+  source_specific_dir="outputs/v0data/joint-objective-variants/metric-tempered-all-gene-source-specific${variant_suffix}"
   "$python_bin" scripts/v0data/prepare_source_specific_joint_heads.py \
     --input "$dataset_config" \
     --output-dir "$source_specific_dir"
   dataset_config="${source_specific_dir}/datasets.json"
   run_tag="all_gene_source_specific"
+fi
+if [[ "$separate_head_updates" == "1" ]]; then
+  run_tag="${run_tag}_separate_heads"
 fi
 
 DATASET_CONFIG="$dataset_config" \

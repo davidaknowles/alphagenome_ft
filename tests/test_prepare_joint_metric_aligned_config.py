@@ -172,3 +172,28 @@ def test_prepare_config_can_balance_native_sources(tmp_path: Path) -> None:
         "equal optimizer updates per native source using the largest "
         "single-source batch count as the epoch budget"
     )
+
+
+def test_prepare_config_can_separate_head_updates(tmp_path: Path) -> None:
+    datasets = []
+    for dataset, policy in CORRELATION_WEIGHTS.items():
+        target_path = tmp_path / "source" / dataset / "targets.json"
+        target_path.parent.mkdir(parents=True)
+        target_path.write_text(
+            json.dumps({"heads": [{"id": head_id} for head_id in policy]})
+        )
+        datasets.append(
+            {
+                "name": dataset,
+                "sources": [{"name": "human", "targets_config": str(target_path)}],
+            }
+        )
+
+    result = prepare_config(
+        {"datasets": datasets},
+        source_path=tmp_path / "source" / "datasets.json",
+        output_dir=tmp_path / "output",
+        head_update_strategy="separate_heads",
+    )
+
+    assert result["head_update_strategy"] == "separate_heads"

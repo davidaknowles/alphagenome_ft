@@ -530,9 +530,12 @@ def test_joint_all_gene_warmup_uses_direct_gene_rna_for_both_zemke_datasets() ->
     assert "--zemke-rna-weight 1" in script
     assert "--zemke2024-rna-weight 1" in script
     assert 'source_specific_heads="${SOURCE_SPECIFIC_HEADS:-0}"' in script
+    assert 'separate_head_updates="${SEPARATE_HEAD_UPDATES:-0}"' in script
     assert "metric_args+=(--sampling-strategy equal_sources)" in script
+    assert "metric_args+=(--head-update-strategy separate_heads)" in script
     assert "prepare_source_specific_joint_heads.py" in script
     assert 'run_tag="all_gene_source_specific"' in script
+    assert 'run_tag="${run_tag}_separate_heads"' in script
     assert 'RUN_TAG="$run_tag"' in script
     for split in ("TRAIN", "VALID", "TEST"):
         assert f'SMOKE_LIMIT_{split}="${{SMOKE_LIMIT_{split}:-40}}"' in script

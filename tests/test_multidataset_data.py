@@ -130,6 +130,47 @@ def test_multidataset_training_can_balance_native_sources():
     ] * 3
 
 
+def test_multidataset_training_can_separate_head_updates_with_full_coverage():
+    hda = _Module("hda", ("hda_atac", "hda_rna"), 2)
+    zemke = _Module("zemke", ("zemke_atac", "zemke_rna"), 3)
+    module = MultiDatasetDataModule(
+        {
+            "hda": {"hda_human": hda},
+            "zemke": {"zemke_human": zemke},
+        },
+        sampling_strategy="equal_sources",
+        head_update_strategy="separate_heads",
+    )
+
+    batches = list(module.iter_batches("train", seed=7))
+
+    assert module.num_batches_per_epoch("train") == 12
+    assert len(batches) == 12
+    for source, heads in {
+        "hda_human": ("hda_atac", "hda_rna"),
+        "zemke_human": ("zemke_atac", "zemke_rna"),
+    }.items():
+        source_batches = [batch for batch in batches if batch["_source_name"] == source]
+        assert [batch["_active_head_names"] for batch in source_batches] == [
+            (heads[index % 2],) for index in range(6)
+        ]
+
+
+def test_separate_head_updates_do_not_change_evaluation_batches():
+    module = MultiDatasetDataModule(
+        {"hda": {"hda_human": _Module("hda", ("hda_atac", "hda_rna"), 2)}},
+        head_update_strategy="separate_heads",
+    )
+
+    batches = list(module.iter_batches("valid", shuffle=False))
+
+    assert module.num_batches_per_epoch("valid") == 2
+    assert len(batches) == 2
+    assert all(
+        batch["_active_head_names"] == ("hda_atac", "hda_rna") for batch in batches
+    )
+
+
 def test_equal_source_order_visits_each_dataset_before_additional_sources():
     module = MultiDatasetDataModule(
         {
@@ -164,6 +205,14 @@ def test_multidataset_rejects_unknown_sampling_strategy():
         MultiDatasetDataModule(
             {"hda": {"hda_human": _Module("hda", ("hda_atac",), 2)}},
             sampling_strategy="largest_dataset",
+        )
+
+
+def test_multidataset_rejects_unknown_head_update_strategy():
+    with np.testing.assert_raises_regex(ValueError, "head_update_strategy"):
+        MultiDatasetDataModule(
+            {"hda": {"hda_human": _Module("hda", ("hda_atac",), 2)}},
+            head_update_strategy="project_conflicts",
         )
 
 

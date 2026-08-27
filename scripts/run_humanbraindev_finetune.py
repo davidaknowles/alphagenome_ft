@@ -616,6 +616,7 @@ def main() -> None:
     species_entries = None
     dataset_entries = None
     joint_head_specs = None
+    dataset_head_update_strategy = "joint_heads"
     if args.evaluate_species is not None and not args.evaluate_only:
         raise ValueError("--evaluate-species requires --evaluate-only.")
     if args.evaluate_species is not None and args.species_config is None:
@@ -648,6 +649,14 @@ def main() -> None:
             raise ValueError(
                 "Dataset config sampling_strategy must be 'equal_datasets' or "
                 f"'equal_sources', got {dataset_sampling_strategy!r}."
+            )
+        dataset_head_update_strategy = dataset_payload.get(
+            "head_update_strategy", "joint_heads"
+        )
+        if dataset_head_update_strategy not in {"joint_heads", "separate_heads"}:
+            raise ValueError(
+                "Dataset config head_update_strategy must be 'joint_heads' or "
+                f"'separate_heads', got {dataset_head_update_strategy!r}."
             )
         raw_datasets = dataset_payload.get("datasets")
         if not raw_datasets or len(raw_datasets) < 2:
@@ -955,6 +964,7 @@ def main() -> None:
                 for route in sources
             },
             sampling_strategy=dataset_sampling_strategy,
+            head_update_strategy=dataset_head_update_strategy,
         )
         if args.evaluate_dataset is not None or args.evaluate_source is not None:
             print(

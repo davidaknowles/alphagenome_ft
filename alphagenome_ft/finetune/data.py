@@ -1911,6 +1911,7 @@ class MultiDatasetDataModule:
         *,
         organism_indices: Mapping[str, int] | None = None,
         sampling_strategy: str = "equal_datasets",
+        head_update_strategy: str = "joint_heads",
     ) -> None:
         if not datasets:
             raise ValueError("At least one dataset is required.")
@@ -1934,6 +1935,12 @@ class MultiDatasetDataModule:
                 f"got {sampling_strategy!r}."
             )
         self._sampling_strategy = sampling_strategy
+        if head_update_strategy not in {"joint_heads", "separate_heads"}:
+            raise ValueError(
+                "head_update_strategy must be 'joint_heads' or 'separate_heads', "
+                f"got {head_update_strategy!r}."
+            )
+        self._head_update_strategy = head_update_strategy
         unknown_sources = set(self._organism_indices) - set(self._modules)
         if unknown_sources:
             raise ValueError(
@@ -1968,9 +1975,11 @@ class MultiDatasetDataModule:
                 for interval in module._intervals.get(split, ())
             ]
 
-    @staticmethod
-    def _module_batch_count(module: BigWigDataModule, split: str) -> int:
-        return module.num_batches_per_epoch(split)
+    def _module_batch_count(self, module: BigWigDataModule, split: str) -> int:
+        count = module.num_batches_per_epoch(split)
+        if split == "train" and self._head_update_strategy == "separate_heads":
+            count *= len(module._head_specs)
+        return count
 
     def _dataset_batch_count(self, dataset: str, split: str) -> int:
         counts = [
@@ -2035,12 +2044,17 @@ class MultiDatasetDataModule:
                             organism_index,
                             dtype=np.int32,
                         )
-                    batch["_active_head_names"] = tuple(
-                        spec.head_id for spec in module._head_specs
+                    head_groups = (
+                        tuple((spec.head_id,) for spec in module._head_specs)
+                        if split == "train" and self._head_update_strategy == "separate_heads"
+                        else (tuple(spec.head_id for spec in module._head_specs),)
                     )
-                    batch["_dataset_name"] = dataset
-                    batch["_source_name"] = source
-                    yield batch
+                    for active_heads in head_groups:
+                        tagged = dict(batch)
+                        tagged["_active_head_names"] = active_heads
+                        tagged["_dataset_name"] = dataset
+                        tagged["_source_name"] = source
+                        yield tagged
                 if split != "train" or not produced:
                     return
                 cycle += 1
