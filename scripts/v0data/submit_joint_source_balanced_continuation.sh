@@ -22,9 +22,11 @@ learning_rate="${LEARNING_RATE:-1e-4}"
 num_epochs="${NUM_EPOCHS:-100}"
 target_workers="${TARGET_WORKERS:-12}"
 window_workers="${WINDOW_WORKERS:-4}"
+run_suffix="${RUN_SUFFIX:-_source_balanced_epoch32_reset}"
+initial_dependency="${INITIAL_DEPENDENCY:-}"
 
 snapshot_checkpoint "$source_checkpoint" "$source_epoch" "$snapshot"
 test "$(jq -er '.sampling_strategy' "$dataset_config")" = equal_sources
 
 submit_continuation 1 "$source_run" "$source_epoch" "$snapshot" "$learning_rate" \
-  _source_balanced_epoch32_reset "$dataset_config"
+  "$run_suffix" "$dataset_config"

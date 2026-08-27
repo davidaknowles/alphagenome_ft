@@ -125,6 +125,17 @@ def test_joint_adapter_expansion_is_function_preserving_and_smoke_gated() -> Non
     assert 'locon_targets="${locon_targets//;/,}"' in launcher
 
 
+def test_source_balanced_retry_can_wait_for_an_experiment_slot() -> None:
+    script = Path(
+        "scripts/v0data/submit_joint_source_balanced_continuation.sh"
+    ).read_text()
+    library = Path("scripts/v0data/joint_continuation_lib.sh").read_text()
+
+    assert 'run_suffix="${RUN_SUFFIX:-_source_balanced_epoch32_reset}"' in script
+    assert 'initial_dependency="${INITIAL_DEPENDENCY:-}"' in script
+    assert 'smoke_args+=(--dependency="$initial_dependency")' in library
+
+
 def test_joint_head_warmup_branches_one_checkpoint_into_both_strategies() -> None:
     script = Path("scripts/v0data/submit_joint_head_warmup_then_adapters.sh").read_text()
     branch = Path(
