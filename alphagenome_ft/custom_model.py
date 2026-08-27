@@ -40,6 +40,7 @@ import json
 import os
 from pathlib import Path
 import random
+import re
 from typing import Any
 import zlib
 
@@ -334,6 +335,152 @@ def _bootstrap_track_indices(
     return tuple(assignments)
 
 
+_SEMANTIC_CONCEPTS: tuple[tuple[str, int, tuple[str, ...], tuple[str, ...]], ...] = (
+    ("cerebellum", 30, ("cerebell", "purk"), ("cb",)),
+    ("hindbrain", 30, ("hindbrain",), ("hb",)),
+    ("midbrain", 30, ("midbrain",), ("mb",)),
+    ("hippocampus", 30, ("hippocamp", "ammon"), ("ca1", "ca2", "ca3", "dg")),
+    ("spinal_cord", 30, ("spinal cord",), ("drg",)),
+    (
+        "basal_ganglia",
+        30,
+        ("basal ganglia", "caudate", "putamen", "accumbens", "substantia nigra"),
+        ("str", "msn", "gpe", "gpi", "sn", "sth"),
+    ),
+    (
+        "cortex",
+        25,
+        ("cortex", "cortical", "telencephal"),
+        ("tel", "pvalb", "sst", "vip", "sncg", "lamp5", "gaba"),
+    ),
+    ("astrocyte", 25, ("astrocy",), ("asc", "astro")),
+    ("glutamatergic", 25, ("glutamatergic",), ("glut",)),
+    ("motor_neuron", 25, ("motor neuron",), ("motor",)),
+    ("dopaminergic", 25, ("dopamin", "substantia nigra"), ("da", "dopa")),
+    ("neural_progenitor", 20, ("neural progenitor", "neuronal stem"), ("nbl", "ipc", "prog")),
+    ("oligodendrocyte", 20, ("oligodend",), ("odc", "opc", "cop")),
+    ("microglia", 20, ("microgl",), ("mgc", "mic", "pvm")),
+    ("endothelial", 20, ("endothel",), ("endo",)),
+    ("pericyte", 20, ("pericyte",), ("per",)),
+    ("vascular", 15, ("vascular", "vasculature", "smooth muscle"), ("vlmc", "vsmc")),
+)
+
+_SEMANTIC_STOP_TOKENS = frozenset(
+    {
+        "all",
+        "brain",
+        "cell",
+        "cells",
+        "cl",
+        "dnase",
+        "gtex",
+        "neur",
+        "neural",
+        "neuron",
+        "rna",
+        "seq",
+        "total",
+        "uberon",
+    }
+)
+_SEMANTIC_ALIASES = frozenset(
+    alias for _, _, _, aliases in _SEMANTIC_CONCEPTS for alias in aliases
+)
+
+
+def _semantic_features(value: str) -> tuple[frozenset[str], dict[str, int]]:
+    lowered = value.lower().replace("_", " ").replace("-", " ")
+    tokens = frozenset(
+        token
+        for token in re.findall(r"[a-z][a-z0-9]*", lowered)
+        if (
+            len(token) >= 3
+            or token in _SEMANTIC_ALIASES
+            or re.fullmatch(r"l[2-6]b?", token)
+        )
+        and token not in _SEMANTIC_STOP_TOKENS
+    )
+    concepts = {}
+    for concept, weight, substrings, aliases in _SEMANTIC_CONCEPTS:
+        if any(term in lowered for term in substrings) or any(alias in tokens for alias in aliases):
+            concepts[concept] = weight
+    if any(token.startswith("l") and token[1:2].isdigit() for token in tokens):
+        concepts["cortex"] = 25
+    return tokens, concepts
+
+
+def _semantic_bootstrap_track_indices(
+    source_frame,
+    target_frame,
+    *,
+    source_valid: Sequence[bool],
+    source_valid_by_target: Sequence[Sequence[bool]],
+    seed: int,
+) -> tuple[int, ...]:
+    """Prefer metadata-related pretrained channels, with seeded fallback."""
+    source_strands = tuple(source_frame["strand"].astype(str))
+    target_strands = tuple(target_frame["strand"].astype(str))
+    fallback = _bootstrap_track_indices(
+        source_strands,
+        target_strands,
+        source_valid=source_valid,
+        source_valid_by_target=source_valid_by_target,
+        seed=seed,
+    )
+    source_columns = tuple(
+        column
+        for column in ("biosample_name", "gtex_tissue", "name")
+        if column in source_frame
+    )
+    if not source_columns or "name" not in target_frame:
+        return fallback
+    source_text = tuple(
+        " ".join(map(str, values))
+        for values in source_frame.loc[:, source_columns].fillna("").itertuples(
+            index=False, name=None
+        )
+    )
+    source_features = tuple(_semantic_features(value) for value in source_text)
+    assignments = []
+    for target_index, (target_name, target_strand, valid_mask) in enumerate(
+        zip(
+            target_frame["name"].fillna("").astype(str),
+            target_strands,
+            source_valid_by_target,
+            strict=True,
+        )
+    ):
+        candidates = [index for index, keep in enumerate(valid_mask) if keep]
+        stranded = [index for index in candidates if source_strands[index] == target_strand]
+        if stranded:
+            candidates = stranded
+        target_tokens, target_concepts = _semantic_features(target_name)
+
+        def score(source_index: int) -> int:
+            source_tokens, source_concepts = source_features[source_index]
+            concept_score = sum(
+                min(weight, source_concepts[concept])
+                for concept, weight in target_concepts.items()
+                if concept in source_concepts
+            )
+            return concept_score + 2 * len(target_tokens & source_tokens)
+
+        scores = {source_index: score(source_index) for source_index in candidates}
+        best_score = max(scores.values(), default=0)
+        if best_score <= 0:
+            assignments.append(fallback[target_index])
+            continue
+        best = [source_index for source_index in candidates if scores[source_index] == best_score]
+        target_key = re.sub(r"[^a-z0-9]+", "", target_name.lower())
+        best.sort(
+            key=lambda source_index: zlib.crc32(
+                f"{seed}:{target_key}:{source_text[source_index]}".encode("utf-8")
+            )
+        )
+        assignments.append(best[0])
+    return tuple(assignments)
+
+
 def _output_metadata_frame(metadata: Any, output_type: dna_output.OutputType):
     """Return one output-type frame from wrapped or direct target metadata."""
     if metadata is None:
@@ -509,6 +656,7 @@ def _initialize_heads_from_pretrained_bootstrap(
     pretrained_metadata: Mapping[dna_model.Organism, Any],
     neural_sources: bool = False,
     dnase_for_atac: bool = False,
+    semantic_sources: bool = False,
 ) -> dict[str, Any]:
     """Bootstrap new genomic heads from same-assay pretrained output channels."""
     organism_order = tuple(pretrained_metadata)
@@ -606,12 +754,22 @@ def _initialize_heads_from_pretrained_bootstrap(
                     seed = zlib.crc32(
                         f"{head_name}:{source_organism.name}".encode("utf-8")
                     )
-                    indices = _bootstrap_track_indices(
-                        source_strands,
-                        target_strands,
-                        source_valid=source_valid,
-                        source_valid_by_target=source_valid_by_target,
-                        seed=seed,
+                    indices = (
+                        _semantic_bootstrap_track_indices(
+                            source_frame,
+                            target_frame,
+                            source_valid=source_valid,
+                            source_valid_by_target=source_valid_by_target,
+                            seed=seed,
+                        )
+                        if semantic_sources and target_frame is not None
+                        else _bootstrap_track_indices(
+                            source_strands,
+                            target_strands,
+                            source_valid=source_valid,
+                            source_valid_by_target=source_valid_by_target,
+                            seed=seed,
+                        )
                     )
                     organism_values.append(
                         jnp.take(source_value[source_organism_index], jnp.asarray(indices), axis=-1)
@@ -622,7 +780,9 @@ def _initialize_heads_from_pretrained_bootstrap(
             initialized.append(head_name)
     if initialized:
         source_description = (
-            "neural pretrained with DNase for ATAC"
+            "semantic neural pretrained with DNase for ATAC"
+            if semantic_sources and dnase_for_atac
+            else "neural pretrained with DNase for ATAC"
             if dnase_for_atac
             else "neural pretrained"
             if neural_sources
@@ -2743,8 +2903,9 @@ def create_model_with_heads(
             strand pool to neural source metadata when at least two eligible
             channels remain. ``"neural_accessibility_bootstrap"`` additionally
             initializes ATAC channels from neural DNase channels, which use the
-            same genome-track head architecture. ``"none"`` keeps Haiku
-            initialization.
+            same genome-track head architecture. The semantic variant prefers
+            source biosamples related to each target label and falls back to the
+            seeded neural-accessibility assignment. ``"none"`` keeps Haiku initialization.
 
     Returns:
         CustomAlphaGenomeModel with requested heads and pretrained backbone.
@@ -2790,6 +2951,7 @@ def create_model_with_heads(
         "bootstrap",
         "neural_bootstrap",
         "neural_accessibility_bootstrap",
+        "semantic_neural_accessibility_bootstrap",
     }:
         raise ValueError(
             "pretrained_head_initialization must be 'none', 'bootstrap', or "
@@ -3016,6 +3178,7 @@ def create_model_with_heads(
         "bootstrap",
         "neural_bootstrap",
         "neural_accessibility_bootstrap",
+        "semantic_neural_accessibility_bootstrap",
     }:
         merged_params = _initialize_heads_from_pretrained_bootstrap(
             merged_params,
@@ -3023,9 +3186,21 @@ def create_model_with_heads(
             head_configs=registered_head_configs,
             pretrained_metadata=metadata,
             neural_sources=pretrained_head_initialization
-            in {"neural_bootstrap", "neural_accessibility_bootstrap"},
+            in {
+                "neural_bootstrap",
+                "neural_accessibility_bootstrap",
+                "semantic_neural_accessibility_bootstrap",
+            },
             dnase_for_atac=(
-                pretrained_head_initialization == "neural_accessibility_bootstrap"
+                pretrained_head_initialization
+                in {
+                    "neural_accessibility_bootstrap",
+                    "semantic_neural_accessibility_bootstrap",
+                }
+            ),
+            semantic_sources=(
+                pretrained_head_initialization
+                == "semantic_neural_accessibility_bootstrap"
             ),
         )
 

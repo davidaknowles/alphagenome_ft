@@ -269,6 +269,82 @@ def test_neural_accessibility_bootstrap_copies_dnase_into_atac(monkeypatch) -> N
     assert actual == {0.0, 1.0}
 
 
+def test_semantic_bootstrap_prefers_cerebellum_for_purkinje() -> None:
+    source = pd.DataFrame(
+        {
+            "name": ("DNase-seq", "DNase-seq", "DNase-seq"),
+            "biosample_name": ("brain microvascular endothelial cell", "cerebellum", "liver"),
+            "strand": (".", ".", "."),
+        }
+    )
+    target = pd.DataFrame({"name": ("Neur_Purk_2",), "strand": (".",)})
+
+    actual = custom_model._semantic_bootstrap_track_indices(
+        source,
+        target,
+        source_valid=(True, True, True),
+        source_valid_by_target=((True, True, False),),
+        seed=3,
+    )
+
+    assert actual == (1,)
+
+
+def test_semantic_bootstrap_preserves_biosample_across_strands() -> None:
+    source = pd.DataFrame(
+        {
+            "name": (
+                "cerebellum RNA",
+                "frontal cortex RNA",
+                "cerebellum RNA",
+                "frontal cortex RNA",
+            ),
+            "biosample_name": ("cerebellum", "frontal cortex", "cerebellum", "frontal cortex"),
+            "strand": ("+", "+", "-", "-"),
+        }
+    )
+    target = pd.DataFrame(
+        {"name": ("L5_IT", "L5_IT"), "strand": ("+", "-")}
+    )
+
+    actual = custom_model._semantic_bootstrap_track_indices(
+        source,
+        target,
+        source_valid=(True,) * 4,
+        source_valid_by_target=((True,) * 4,) * 2,
+        seed=11,
+    )
+
+    assert {actual[0], actual[1]} == {1, 3}
+
+
+def test_semantic_bootstrap_uses_seeded_fallback_without_match() -> None:
+    source = pd.DataFrame(
+        {
+            "biosample_name": ("liver", "heart"),
+            "strand": (".", "."),
+        }
+    )
+    target = pd.DataFrame({"name": ("unknown_group",), "strand": (".",)})
+    expected = custom_model._bootstrap_track_indices(
+        (".", "."),
+        (".",),
+        source_valid=(True, True),
+        source_valid_by_target=((True, True),),
+        seed=17,
+    )
+
+    actual = custom_model._semantic_bootstrap_track_indices(
+        source,
+        target,
+        source_valid=(True, True),
+        source_valid_by_target=((True, True),),
+        seed=17,
+    )
+
+    assert actual == expected
+
+
 def test_pretrained_bootstrap_unwraps_target_output_metadata(monkeypatch) -> None:
     output_type = dna_output.OutputType.RNA_SEQ
     organism = dna_model.Organism.HOMO_SAPIENS

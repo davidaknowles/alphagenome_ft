@@ -9,7 +9,7 @@ dataset_config="$(realpath outputs/v0data/joint-objective-variants/metric-temper
 initializer="${PRETRAINED_HEAD_INITIALIZATION:-none}"
 case "$initializer" in
   none) initializer_suffix=""; branch_tag="" ;;
-  bootstrap|neural_bootstrap|neural_accessibility_bootstrap)
+  bootstrap|neural_bootstrap|neural_accessibility_bootstrap|semantic_neural_accessibility_bootstrap)
     initializer_suffix="_${initializer}"
     branch_tag="$initializer"
     ;;
