@@ -26,7 +26,7 @@ config_dir="outputs/v0data/joint-objective-variants/metric-tempered-zemke-gene"
 dataset_config="$(realpath "${config_dir}/datasets.json")"
 run_suffix="_head_warmup_tempered_zemke_gene"
 warmup_run="joint_all_nonencode${run_suffix}"
-exports="ALL,RUN_BASENAME=joint_all_nonencode,RUN_SUFFIX=${run_suffix},BACKBONE_LORA=0,LEARNING_RATE=${WARMUP_LEARNING_RATE:-1e-3},NUM_EPOCHS=${WARMUP_EPOCHS:-3},EARLY_STOPPING_PATIENCE=${WARMUP_EPOCHS:-3},DATASET_CONFIG=${dataset_config},TARGET_WORKERS=${TARGET_WORKERS:-12},WINDOW_WORKERS=${WINDOW_WORKERS:-4}"
+exports="ALL,RUN_BASENAME=joint_all_nonencode,RUN_SUFFIX=${run_suffix},BACKBONE_LORA=0,LEARNING_RATE=${WARMUP_LEARNING_RATE:-1e-3},NUM_EPOCHS=${WARMUP_EPOCHS:-3},EARLY_STOPPING_PATIENCE=${WARMUP_EPOCHS:-3},DATASET_CONFIG=${dataset_config},TARGET_WORKERS=${TARGET_WORKERS:-12},WINDOW_WORKERS=${WINDOW_WORKERS:-4},SMOKE_LIMIT_TRAIN=${SMOKE_LIMIT_TRAIN:-40},SMOKE_LIMIT_VALID=${SMOKE_LIMIT_VALID:-40},SMOKE_LIMIT_TEST=${SMOKE_LIMIT_TEST:-40}"
 
 smoke=$(
   "$sbatch_bin" --parsable --array=0 --time=00:30:00 \

@@ -53,6 +53,17 @@ def test_all_study_resumed_smoke_honors_epoch_horizon() -> None:
     assert '--num-epochs "${NUM_EPOCHS:-1}"' in launcher
 
 
+def test_zemke_direct_gene_smoke_covers_early_mouse_genes() -> None:
+    launcher = Path("scripts/v0data/slurm_joint_multidataset_adapters.sbatch").read_text()
+    submitter = Path(
+        "scripts/v0data/submit_joint_zemke_gene_warmup_then_adapters.sh"
+    ).read_text()
+
+    for split in ("TRAIN", "VALID", "TEST"):
+        assert f'--limit-{split.lower()} "${{SMOKE_LIMIT_{split}:-8}}"' in launcher
+        assert f"SMOKE_LIMIT_{split}=${{SMOKE_LIMIT_{split}:-40}}" in submitter
+
+
 def test_parallel_joint_continuations_are_smoke_gated_and_matched() -> None:
     script = Path("scripts/v0data/submit_joint_parallel_continuations.sh").read_text()
     library = Path("scripts/v0data/joint_continuation_lib.sh").read_text()
