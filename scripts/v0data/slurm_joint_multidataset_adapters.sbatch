@@ -38,7 +38,6 @@ extra_args=(
   --num-epochs "${NUM_EPOCHS:-100}"
   --early-stopping-patience "${EARLY_STOPPING_PATIENCE:-5}"
   --defer-test-evaluation
-  --balance-gene-windows
   --drop-last
 )
 backbone_args=()
@@ -54,6 +53,9 @@ if [[ "${SMOKE:-0}" == "1" ]]; then
     --limit-test "${SMOKE_LIMIT_TEST:-8}"
     --drop-last
   )
+fi
+if [[ "${BALANCE_GENE_WINDOWS:-0}" == "1" ]]; then
+  extra_args+=(--balance-gene-windows)
 fi
 if [[ -n "${WANDB_PROJECT:-}" ]]; then
   extra_args+=(--wandb-project "$WANDB_PROJECT" --wandb-run-name "$run_name")

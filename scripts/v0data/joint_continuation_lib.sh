@@ -88,7 +88,7 @@ for value in sys.argv[1:3]:
 PY
 
   local exports
-  exports="ALL,RUN_SUFFIX=${run_suffix},RESUME_FROM=${snapshot},RESET_OPTIMIZER=1,LEARNING_RATE=${learning_rate},NUM_EPOCHS=${num_epochs},DATASET_CONFIG=${dataset_config},TARGET_WORKERS=${target_workers},WINDOW_WORKERS=${window_workers},FREEZE_BACKBONE_ADAPTERS=${freeze_backbone_adapters:-0},EXPAND_BACKBONE_ADAPTERS=${expand_backbone_adapters:-0},LORA_RANK=${lora_rank:-16},LORA_ALPHA=${lora_alpha:-16},LOCON_RANK=${locon_rank:-4},LOCON_ALPHA=${locon_alpha:-1},LOCON_TARGETS=${locon_targets:-default}"
+  exports="ALL,RUN_SUFFIX=${run_suffix},RESUME_FROM=${snapshot},RESET_OPTIMIZER=1,LEARNING_RATE=${learning_rate},NUM_EPOCHS=${num_epochs},BALANCE_GENE_WINDOWS=${balance_gene_windows:-0},DATASET_CONFIG=${dataset_config},TARGET_WORKERS=${target_workers},WINDOW_WORKERS=${window_workers},FREEZE_BACKBONE_ADAPTERS=${freeze_backbone_adapters:-0},EXPAND_BACKBONE_ADAPTERS=${expand_backbone_adapters:-0},LORA_RANK=${lora_rank:-16},LORA_ALPHA=${lora_alpha:-16},LOCON_RANK=${locon_rank:-4},LOCON_ALPHA=${locon_alpha:-1},LOCON_TARGETS=${locon_targets:-default}"
   local smoke full
   local smoke_args=(--parsable --array="$task" --time=00:30:00)
   if [[ -n "${initial_dependency:-}" ]]; then

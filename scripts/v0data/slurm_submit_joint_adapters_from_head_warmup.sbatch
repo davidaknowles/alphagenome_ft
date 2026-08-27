@@ -28,6 +28,11 @@ learning_rate=3e-4
 num_epochs="${NUM_EPOCHS:-100}"
 target_workers="${TARGET_WORKERS:-12}"
 window_workers="${WINDOW_WORKERS:-4}"
+balance_gene_windows="${BALANCE_GENE_WINDOWS:-0}"
+if [[ "$balance_gene_windows" != "0" && "$balance_gene_windows" != "1" ]]; then
+  printf 'BALANCE_GENE_WINDOWS must be 0 or 1, got %s.\n' "$balance_gene_windows" >&2
+  exit 2
+fi
 expand_backbone_adapters=1
 lora_rank=16
 lora_alpha=16

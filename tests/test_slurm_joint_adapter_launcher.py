@@ -238,6 +238,23 @@ def test_gene_supervision_launchers_expose_balanced_window_ordering() -> None:
         assert "EXTRA_ARGS+=(--balance-gene-windows)" in script
 
 
+def test_multidataset_gene_balancing_is_opt_in_and_propagates_after_warmup() -> None:
+    launcher = Path("scripts/v0data/slurm_joint_multidataset_adapters.sbatch").read_text()
+    submitter = Path("scripts/v0data/submit_joint_head_warmup_then_adapters.sh").read_text()
+    branch = Path(
+        "scripts/v0data/slurm_submit_joint_adapters_from_head_warmup.sbatch"
+    ).read_text()
+    continuation = Path("scripts/v0data/joint_continuation_lib.sh").read_text()
+
+    assert '"${BALANCE_GENE_WINDOWS:-0}" == "1"' in launcher
+    assert "extra_args+=(--balance-gene-windows)" in launcher
+    assert launcher.count("--balance-gene-windows") == 1
+    assert 'balance_gene_windows="${BALANCE_GENE_WINDOWS:-0}"' in submitter
+    assert "BALANCE_GENE_WINDOWS=${balance_gene_windows}" in submitter
+    assert 'balance_gene_windows="${BALANCE_GENE_WINDOWS:-0}"' in branch
+    assert "BALANCE_GENE_WINDOWS=${balance_gene_windows:-0}" in continuation
+
+
 def test_hda_gene_window_repeat_screen_has_ordering_matched_control() -> None:
     launcher = Path("scripts/v0data/slurm_joint_adapter_comparison.sbatch").read_text()
     script = Path("scripts/v0data/submit_hda_gene_window_repeat_screen.sh").read_text()
