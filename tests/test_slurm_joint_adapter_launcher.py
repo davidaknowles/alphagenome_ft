@@ -47,6 +47,13 @@ def test_all_study_launcher_preallocates_gpu_memory_and_aborts_failed_collective
     assert 'XLA_PYTHON_CLIENT_ABORT_COLLECTIVES_ON_FAILURE="${XLA_PYTHON_CLIENT_ABORT_COLLECTIVES_ON_FAILURE:-1}"' in launcher
 
 
+def test_all_study_launcher_allows_an_explicit_checkpoint_selection_metric() -> None:
+    launcher = Path("scripts/v0data/slurm_joint_multidataset_adapters.sbatch").read_text()
+
+    assert '--best-metric "${BEST_METRIC:-valid/mean/differential_pearson_r}"' in launcher
+    assert '--best-metric-mode "${BEST_METRIC_MODE:-max}"' in launcher
+
+
 def test_all_study_resumed_smoke_honors_epoch_horizon() -> None:
     launcher = Path("scripts/v0data/slurm_joint_multidataset_adapters.sbatch").read_text()
 

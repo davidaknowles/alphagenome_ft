@@ -39,6 +39,23 @@ def test_flatten_valid_metrics_builds_joint_selection_mean():
     np.testing.assert_allclose(flattened["mean/differential_pearson_r"], 0.7)
 
 
+def test_flatten_valid_metrics_reports_modality_balanced_selection_keys():
+    flattened = _flatten_valid_metrics(
+        {
+            "source_a_atac": {"loss": 3.0, "differential_pearson_r": 0.9},
+            "source_b_atac": {"loss": 2.0, "differential_pearson_r": 0.7},
+            "source_a_rna": {"loss": 1.0, "differential_pearson_r": 0.3},
+            "source_b_rna": {"loss": 1.0, "differential_pearson_r": 0.5},
+            "untyped": {"loss": 1.0, "differential_pearson_r": 0.6},
+        }
+    )
+
+    np.testing.assert_allclose(flattened["mean/differential_pearson_r"], 0.6)
+    np.testing.assert_allclose(flattened["mean_atac/differential_pearson_r"], 0.8)
+    np.testing.assert_allclose(flattened["mean_rna/differential_pearson_r"], 0.4)
+    np.testing.assert_allclose(flattened["min_modality_mean/differential_pearson_r"], 0.4)
+
+
 def test_weighted_head_loss_sum_rebalances_objective():
     total = _weighted_head_loss_sum(
         {"atac": jnp.asarray(3.0), "rna": jnp.asarray(2.0)},

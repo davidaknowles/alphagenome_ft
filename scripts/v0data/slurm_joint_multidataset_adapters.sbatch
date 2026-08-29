@@ -103,8 +103,8 @@ fi
   --locon-compute-dtype "${LOCON_COMPUTE_DTYPE:-bfloat16}" \
   --target-workers "${TARGET_WORKERS:-24}" \
   --window-workers "${WINDOW_WORKERS:-8}" \
-  --best-metric valid/mean/differential_pearson_r \
-  --best-metric-mode max \
+  --best-metric "${BEST_METRIC:-valid/mean/differential_pearson_r}" \
+  --best-metric-mode "${BEST_METRIC_MODE:-max}" \
   --eval-splits valid,test \
   "${backbone_args[@]}" \
   "${extra_args[@]}"

@@ -818,11 +818,27 @@ def _format_host_timing_summary(title: str, stats: Mapping[str, float], count: i
     return f"  {title}: " + "; ".join(parts)
 
 
+def _head_modality(head_name: str) -> str | None:
+    """Return an unambiguous assay modality encoded in a normalized head name."""
+    tokens = set(head_name.lower().replace("-", "_").split("_"))
+    modalities = tokens.intersection({"atac", "rna"})
+    if len(modalities) != 1:
+        return None
+    return modalities.pop()
+
+
 def _flatten_valid_metrics(
     metrics_by_head: Mapping[str, Mapping[str, float]],
 ) -> dict[str, float]:
-    """Flatten per-head validation metrics using the checkpoint-selection keys."""
+    """Flatten per-head validation metrics using checkpoint-selection keys.
+
+    Head identifiers containing an unambiguous ``atac`` or ``rna`` token also
+    receive modality means. The global mean remains the default selector.
+    """
     flattened: dict[str, float] = {}
+    head_modalities = {
+        head_name: _head_modality(head_name) for head_name in metrics_by_head
+    }
     for head, values in metrics_by_head.items():
         flattened[head] = values["loss"]
         for metric_name, metric_value in values.items():
@@ -835,6 +851,23 @@ def _flatten_valid_metrics(
             finite_values = [value for value in values if math.isfinite(value)]
             if finite_values:
                 flattened[f"mean/{metric_name}"] = float(sum(finite_values) / len(finite_values))
+                modality_means: dict[str, float] = {}
+                for modality in ("atac", "rna"):
+                    modality_values = [
+                        head_values[metric_name]
+                        for head_name, head_values in metrics_by_head.items()
+                        if head_modalities[head_name] == modality
+                        and math.isfinite(head_values[metric_name])
+                    ]
+                    if modality_values:
+                        modality_means[modality] = float(
+                            sum(modality_values) / len(modality_values)
+                        )
+                        flattened[f"mean_{modality}/{metric_name}"] = modality_means[modality]
+                if len(modality_means) == 2:
+                    flattened[f"min_modality_mean/{metric_name}"] = min(
+                        modality_means.values()
+                    )
     return flattened
 
 
