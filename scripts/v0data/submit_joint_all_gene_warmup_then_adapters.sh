@@ -70,9 +70,15 @@ fi
 if [[ "$separate_head_updates" == "1" ]]; then
   run_tag="${run_tag}_separate_heads"
 fi
+target_cache_dir=""
+if [[ "$source_specific_heads" == "1" ]]; then
+  target_cache_dir="${TARGET_CACHE_DIR:-outputs/v0data/target-caches/joint-source-specific-all-gene-valid-test-f16}"
+fi
 
 DATASET_CONFIG="$dataset_config" \
 RUN_TAG="$run_tag" \
+TARGET_CACHE_DIR="$target_cache_dir" \
+TARGET_CACHE_SPLITS="${TARGET_CACHE_SPLITS:-valid;test}" \
 SMOKE_LIMIT_TRAIN="${SMOKE_LIMIT_TRAIN:-40}" \
 SMOKE_LIMIT_VALID="${SMOKE_LIMIT_VALID:-40}" \
 SMOKE_LIMIT_TEST="${SMOKE_LIMIT_TEST:-40}" \

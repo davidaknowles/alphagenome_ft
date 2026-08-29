@@ -205,6 +205,8 @@ def test_joint_head_warmup_branches_one_checkpoint_into_both_strategies() -> Non
         'downres_block_4;downres_block_5}"' in branch
     )
     assert "LOCON_TARGETS=${locon_targets}" in script
+    assert 'cache_exports=",TARGET_CACHE_DIR=${TARGET_CACHE_DIR}' in script
+    assert "${cache_exports}" in script
     assert branch.count("submit_continuation") == 2
     assert 'submit_continuation 0 "$source_run"' in branch
     assert 'submit_continuation 1 "$source_run"' in branch
@@ -585,6 +587,9 @@ def test_joint_all_gene_warmup_uses_direct_gene_rna_for_both_zemke_datasets() ->
     assert 'run_tag="all_gene_source_specific"' in script
     assert 'run_tag="${run_tag}_separate_heads"' in script
     assert 'RUN_TAG="$run_tag"' in script
+    assert 'target_cache_dir="${TARGET_CACHE_DIR:-outputs/v0data/target-caches/joint-source-specific-all-gene-valid-test-f16}"' in script
+    assert 'TARGET_CACHE_DIR="$target_cache_dir"' in script
+    assert 'TARGET_CACHE_SPLITS="${TARGET_CACHE_SPLITS:-valid;test}"' in script
     for split in ("TRAIN", "VALID", "TEST"):
         assert f'SMOKE_LIMIT_{split}="${{SMOKE_LIMIT_{split}:-40}}"' in script
 

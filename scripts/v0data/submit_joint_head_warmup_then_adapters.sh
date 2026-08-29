@@ -47,7 +47,11 @@ fi
 run_suffix="_head_warmup_tempered${tag_suffix}${initializer_suffix}"
 run_basename="joint_all_nonencode"
 warmup_run="${run_basename}${run_suffix}"
-exports="ALL,RUN_BASENAME=${run_basename},RUN_SUFFIX=${run_suffix},BACKBONE_LORA=0,PRETRAINED_HEAD_INITIALIZATION=${initializer},LEARNING_RATE=${WARMUP_LEARNING_RATE:-1e-3},NUM_EPOCHS=${warmup_max_epochs},EARLY_STOPPING_PATIENCE=${warmup_patience},BALANCE_GENE_WINDOWS=${balance_gene_windows},DATASET_CONFIG=${dataset_config},TARGET_WORKERS=${TARGET_WORKERS:-12},WINDOW_WORKERS=${WINDOW_WORKERS:-4}"
+cache_exports=""
+if [[ -n "${TARGET_CACHE_DIR:-}" ]]; then
+  cache_exports=",TARGET_CACHE_DIR=${TARGET_CACHE_DIR},TARGET_CACHE_SPLITS=${TARGET_CACHE_SPLITS:-valid;test},TARGET_CACHE_DTYPE=${TARGET_CACHE_DTYPE:-float16}"
+fi
+exports="ALL,RUN_BASENAME=${run_basename},RUN_SUFFIX=${run_suffix},BACKBONE_LORA=0,PRETRAINED_HEAD_INITIALIZATION=${initializer},LEARNING_RATE=${WARMUP_LEARNING_RATE:-1e-3},NUM_EPOCHS=${warmup_max_epochs},EARLY_STOPPING_PATIENCE=${warmup_patience},BALANCE_GENE_WINDOWS=${balance_gene_windows},DATASET_CONFIG=${dataset_config},TARGET_WORKERS=${TARGET_WORKERS:-12},WINDOW_WORKERS=${WINDOW_WORKERS:-4}${cache_exports}"
 
 smoke_args=(--parsable --array=0 --time=00:30:00)
 if [[ -n "${INITIAL_DEPENDENCY:-}" ]]; then
@@ -64,7 +68,7 @@ warmup=$(
 )
 branch=$(
   "$sbatch_bin" --parsable --dependency="afterok:${warmup}_0" \
-    --export="ALL,SOURCE_RUN=checkpoints/v0data/${warmup_run},DATASET_CONFIG=${dataset_config},BRANCH_TAG=${branch_tag},BALANCE_GENE_WINDOWS=${balance_gene_windows},LOCON_TARGETS=${locon_targets},TARGET_WORKERS=${TARGET_WORKERS:-12},WINDOW_WORKERS=${WINDOW_WORKERS:-4}" \
+    --export="ALL,SOURCE_RUN=checkpoints/v0data/${warmup_run},DATASET_CONFIG=${dataset_config},BRANCH_TAG=${branch_tag},BALANCE_GENE_WINDOWS=${balance_gene_windows},LOCON_TARGETS=${locon_targets},TARGET_WORKERS=${TARGET_WORKERS:-12},WINDOW_WORKERS=${WINDOW_WORKERS:-4}${cache_exports}" \
     scripts/v0data/slurm_submit_joint_adapters_from_head_warmup.sbatch
 )
 
