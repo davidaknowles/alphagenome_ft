@@ -21,7 +21,7 @@ Torch was run on RTX PRO 6000 Blackwell nodes using `~/venv/torchfix` with PyTor
 
 ## Metric
 
-Primary accuracy metric is `differential_pearson_r`: subtract cell-type mean, then locus/bin mean, then compute Pearson correlation over the residualized predictions and targets. The loss values are included for provenance but are not the primary comparison, and are not directly comparable across the JAX and Torch implementations because the output scaling/loss conventions differ.
+Primary accuracy metric is `double_centered_r` (historically emitted as `differential_pearson_r`): subtract cell-type mean, then locus/bin mean, then compute Pearson correlation over the residualized predictions and targets. The loss values are included for provenance but are not the primary comparison, and are not directly comparable across the JAX and Torch implementations because the output scaling/loss conventions differ.
 
 ## Strategy Descriptions
 

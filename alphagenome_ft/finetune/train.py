@@ -683,16 +683,18 @@ def _finalize_r2_stats(stats: Mapping[str, np.ndarray | float]) -> dict[str, flo
         + pred_sum * target_sum / max(differential_entry_count, 1.0)
     )
     if pred_ss <= 0 or target_ss <= 0:
-        differential_pearson_r = float("nan")
+        double_centered_r = float("nan")
     else:
-        differential_pearson_r = float(pred_target_cov / np.sqrt(pred_ss * target_ss))
-    double_centered_r2 = differential_pearson_r * differential_pearson_r
+        double_centered_r = float(pred_target_cov / np.sqrt(pred_ss * target_ss))
+    double_centered_r2 = double_centered_r * double_centered_r
 
     return {
         "r2_global": r2_global,
         "r2_over_loci": r2_over_loci,
         "r2_over_cell_types": r2_over_cell_types,
-        "differential_pearson_r": differential_pearson_r,
+        "double_centered_r": double_centered_r,
+        # Retained for historical metric files and checkpoint selection flags.
+        "differential_pearson_r": double_centered_r,
         "double_centered_r2": double_centered_r2,
     }
 
@@ -1624,7 +1626,7 @@ def train(
                     f"r2_global={head_result['r2_global']:.4f}, "
                     f"r2_over_loci={head_result['r2_over_loci']:.4f}, "
                     f"r2_over_cell_types={head_result['r2_over_cell_types']:.4f}, "
-                    f"differential_pearson_r={head_result['differential_pearson_r']:.4f}, "
+                    f"double_centered_r={head_result['double_centered_r']:.4f}, "
                     f"double_centered_r2={head_result['double_centered_r2']:.4f}"
                 )
             print(f"  {split.capitalize()} metrics:", "; ".join(printable))
