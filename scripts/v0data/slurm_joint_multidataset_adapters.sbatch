@@ -54,6 +54,12 @@ if [[ "${SMOKE:-0}" == "1" ]]; then
     --drop-last
   )
 fi
+if [[ -n "${TARGET_CACHE_DIR:-}" && "${SMOKE:-0}" != "1" ]]; then
+  extra_args+=(
+    --target-cache-dir "$TARGET_CACHE_DIR"
+    --target-cache-dtype "${TARGET_CACHE_DTYPE:-float16}"
+  )
+fi
 if [[ "${BALANCE_GENE_WINDOWS:-0}" == "1" ]]; then
   extra_args+=(--balance-gene-windows)
 fi

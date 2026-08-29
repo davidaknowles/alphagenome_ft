@@ -70,6 +70,14 @@ def test_joint_target_cache_is_resolved_before_source_modules_are_built() -> Non
     assert target_cache_position < species_modules_position
 
 
+def test_joint_launcher_uses_target_cache_only_for_full_runs() -> None:
+    launcher = Path("scripts/v0data/slurm_joint_multidataset_adapters.sbatch").read_text()
+
+    assert 'if [[ -n "${TARGET_CACHE_DIR:-}" && "${SMOKE:-0}" != "1" ]]; then' in launcher
+    assert '--target-cache-dir "$TARGET_CACHE_DIR"' in launcher
+    assert '--target-cache-dtype "${TARGET_CACHE_DTYPE:-float16}"' in launcher
+
+
 def test_all_study_launcher_allows_an_explicit_checkpoint_selection_metric() -> None:
     launcher = Path("scripts/v0data/slurm_joint_multidataset_adapters.sbatch").read_text()
 
