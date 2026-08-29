@@ -613,6 +613,11 @@ def main() -> None:
     bigwig_dir = args.bigwig_dir.expanduser().resolve()
     fasta_path = args.fasta_path.expanduser().resolve()
     checkpoint_dir = args.checkpoint_dir.expanduser().resolve()
+    target_cache_dir = (
+        args.target_cache_dir.expanduser().resolve()
+        if args.target_cache_dir is not None
+        else None
+    )
     species_entries = None
     dataset_entries = None
     joint_head_specs = None
@@ -1145,9 +1150,6 @@ def main() -> None:
         for split, split_intervals in intervals.items():
             print(f"{split}: {len(split_intervals)} interval(s)")
 
-    target_cache_dir = (
-        args.target_cache_dir.expanduser().resolve() if args.target_cache_dir is not None else None
-    )
     if args.build_target_cache:
         if target_cache_dir is None:
             raise ValueError("--target-cache-dir is required with --build-target-cache.")

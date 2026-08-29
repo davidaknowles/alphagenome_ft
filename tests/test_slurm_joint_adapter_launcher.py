@@ -59,6 +59,17 @@ def test_joint_target_cache_builder_uses_real_joint_configuration() -> None:
     assert 'export LD_LIBRARY_PATH="/nfs/sw/easybuild/software/Python/3.12.3-GCCcore-13.3.0/lib:${LD_LIBRARY_PATH:-}"' in builder
 
 
+def test_joint_target_cache_is_resolved_before_source_modules_are_built() -> None:
+    entrypoint = Path("scripts/run_humanbraindev_finetune.py").read_text()
+
+    target_cache_position = entrypoint.index("target_cache_dir = (")
+    dataset_modules_position = entrypoint.index("if dataset_entries is not None:")
+    species_modules_position = entrypoint.index("elif species_entries is not None:")
+
+    assert target_cache_position < dataset_modules_position
+    assert target_cache_position < species_modules_position
+
+
 def test_all_study_launcher_allows_an_explicit_checkpoint_selection_metric() -> None:
     launcher = Path("scripts/v0data/slurm_joint_multidataset_adapters.sbatch").read_text()
 
