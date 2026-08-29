@@ -11,6 +11,7 @@ initializer="${PRETRAINED_HEAD_INITIALIZATION:-none}"
 run_tag="${RUN_TAG:-}"
 warmup_max_epochs="${WARMUP_MAX_EPOCHS:-20}"
 warmup_patience="${WARMUP_PATIENCE:-5}"
+warmup_time_limit="${WARMUP_TIME_LIMIT:-6-00:00:00}"
 balance_gene_windows="${BALANCE_GENE_WINDOWS:-0}"
 locon_targets="${LOCON_TARGETS:-downres_block_2;downres_block_3;downres_block_4;downres_block_5}"
 if [[ ! "$run_tag" =~ ^[a-z0-9_]*$ ]]; then
@@ -58,7 +59,7 @@ smoke=$(
     --export="${exports},SMOKE=1" scripts/v0data/slurm_joint_multidataset_adapters.sbatch
 )
 warmup=$(
-  "$sbatch_bin" --parsable --array=0 --dependency="afterok:${smoke}_0" \
+  "$sbatch_bin" --parsable --array=0 --time="$warmup_time_limit" --dependency="afterok:${smoke}_0" \
     --export="$exports" scripts/v0data/slurm_joint_multidataset_adapters.sbatch
 )
 branch=$(

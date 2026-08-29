@@ -156,8 +156,10 @@ def test_joint_head_warmup_branches_one_checkpoint_into_both_strategies() -> Non
     assert "RUN_BASENAME=${run_basename}" in script
     assert 'warmup_max_epochs="${WARMUP_MAX_EPOCHS:-20}"' in script
     assert 'warmup_patience="${WARMUP_PATIENCE:-5}"' in script
+    assert 'warmup_time_limit="${WARMUP_TIME_LIMIT:-6-00:00:00}"' in script
     assert "NUM_EPOCHS=${warmup_max_epochs}" in script
     assert "EARLY_STOPPING_PATIENCE=${warmup_patience}" in script
+    assert '--time="$warmup_time_limit"' in script
     assert 'dependency="afterok:${smoke}_0"' in script
     assert 'dependency="afterok:${warmup}_0"' in script
     assert 'source_checkpoint="${source_run}/best"' in branch
