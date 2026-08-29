@@ -15,6 +15,8 @@ export LD_LIBRARY_PATH="/nfs/sw/easybuild/software/Python/3.12.3-GCCcore-13.3.0/
 dataset_config="${DATASET_CONFIG:?DATASET_CONFIG is required}"
 target_cache_dir="${TARGET_CACHE_DIR:?TARGET_CACHE_DIR is required}"
 cache_workers="${TARGET_CACHE_WORKERS:-24}"
+cache_splits="${TARGET_CACHE_SPLITS:-train,valid,test}"
+cache_splits="${cache_splits//;/,}"
 extra_args=()
 for split in train valid test; do
   variable="LIMIT_${split^^}"
@@ -32,6 +34,7 @@ fi
   --checkpoint-dir "${CHECKPOINT_DIR:-/scratch/daknowles/v0data-cache-build}" \
   --target-cache-dir "$target_cache_dir" \
   --target-cache-dtype "${TARGET_CACHE_DTYPE:-float16}" \
+  --target-cache-splits "$cache_splits" \
   --target-cache-workers "$cache_workers" \
   --window-size "${WINDOW_SIZE:-131072}" \
   --stride "${STRIDE:-131072}" \

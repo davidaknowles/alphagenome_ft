@@ -411,6 +411,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--window-workers", type=int, default=None)
     parser.add_argument("--target-cache-dir", type=Path, default=None)
     parser.add_argument("--target-cache-dtype", choices=("float16", "float32"), default="float16")
+    parser.add_argument(
+        "--target-cache-splits",
+        default="train,valid,test",
+        help="Comma-separated split names to cache; uncached splits stream BigWig targets.",
+    )
     parser.add_argument("--build-target-cache", action="store_true")
     parser.add_argument("--build-target-cache-only", action="store_true")
     parser.add_argument("--overwrite-target-cache", action="store_true")
@@ -598,6 +603,11 @@ def _apply_precision_preset(args: argparse.Namespace) -> None:
 def main() -> None:
     args = parse_args()
     _apply_precision_preset(args)
+    args.target_cache_splits = tuple(
+        split.strip() for split in args.target_cache_splits.split(",") if split.strip()
+    )
+    if not args.target_cache_splits:
+        raise ValueError("--target-cache-splits must name at least one split.")
     if args.backend == "jax" and args.precision in {"nvfp8_linear", "nf4_linear"}:
         raise ValueError(
             f"JAX precision preset {args.precision!r} is not implemented as a real "
@@ -930,6 +940,7 @@ def main() -> None:
                         dtype=args.target_cache_dtype,
                         workers=args.target_cache_workers or _available_cpu_count(),
                         overwrite=args.overwrite_target_cache,
+                        cache_splits=args.target_cache_splits,
                     )
                 source_modules[route_name] = BigWigDataModule(
                     intervals=source_intervals,
@@ -946,6 +957,7 @@ def main() -> None:
                     ),
                     target_cache_dir=source_target_cache_dir,
                     target_cache_dtype=args.target_cache_dtype,
+                    target_cache_splits=args.target_cache_splits,
                     balance_gene_windows=args.balance_gene_windows,
                     gene_window_repeats=args.gene_window_repeats,
                 )
@@ -1070,6 +1082,7 @@ def main() -> None:
                     dtype=args.target_cache_dtype,
                     workers=args.target_cache_workers or _available_cpu_count(),
                     overwrite=args.overwrite_target_cache,
+                    cache_splits=args.target_cache_splits,
                 )
             species_modules[species_name] = BigWigDataModule(
                 intervals=species_intervals,
@@ -1086,6 +1099,7 @@ def main() -> None:
                 ),
                 target_cache_dir=species_target_cache_dir,
                 target_cache_dtype=args.target_cache_dtype,
+                target_cache_splits=args.target_cache_splits,
                 balance_gene_windows=args.balance_gene_windows,
                 gene_window_repeats=args.gene_window_repeats,
             )
@@ -1164,6 +1178,7 @@ def main() -> None:
                 dtype=args.target_cache_dtype,
                 workers=args.target_cache_workers or _available_cpu_count(),
                 overwrite=args.overwrite_target_cache,
+                cache_splits=args.target_cache_splits,
             )
             if args.build_target_cache_only:
                 print(f"Target cache build complete: {target_cache_dir}")

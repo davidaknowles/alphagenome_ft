@@ -10,11 +10,7 @@ span.
 ```
 cache_dir/
   manifest.json
-  train/
-    <head_id>.npy
-  valid/
-    <head_id>.npy
-  test/
+  <cached_split>/
     <head_id>.npy
 ```
 
@@ -43,9 +39,9 @@ storage reduces disk I/O while preserving the existing model input dtype.
 - ordered intervals for each split
 - ordered source BigWig paths, file sizes, and mtimes for each head
 
-The loader validates the manifest against the requested intervals and target
-tracks before training starts. A cache built for one split definition, window
-size, target set, or BigWig version is intentionally rejected for another.
+The loader validates the manifest against the requested cached splits, intervals,
+and target tracks before training starts. A cache built for one split definition,
+window size, target set, or BigWig version is intentionally rejected for another.
 
 ## Build And Use
 
@@ -55,6 +51,7 @@ Build a cache and then train from it:
 python scripts/run_humanbraindev_finetune.py \
   --target-cache-dir /gpfs/commons/home/daknowles/knowles_lab/data/multiome/humanbraindev/alphagenome_target_cache/humanbraindev_atac_w131072_float16 \
   --build-target-cache \
+  --target-cache-splits valid,test \
   --target-cache-dtype float16 \
   --target-cache-workers 8 \
   ...
@@ -68,9 +65,10 @@ python scripts/run_humanbraindev_finetune.py \
   ...
 ```
 
-The cache is split/window-major so shuffled training only reads complete target
-windows from the memmap. This removes BigWig decompression and interval lookup
-from the training loop.
+The cache is split/window-major so cached batches read complete target windows
+from the memmap. `--target-cache-splits valid,test` is useful for large
+multi-source training: it caches repeated evaluation targets while training
+continues to stream the much larger training split from BigWigs.
 
 Cache builds also write a `README.md` inside the cache directory with the
 format summary, split counts, source BigWig provenance, and a link to the

@@ -76,6 +76,9 @@ def test_joint_launcher_uses_target_cache_only_for_full_runs() -> None:
     assert 'if [[ -n "${TARGET_CACHE_DIR:-}" && "${SMOKE:-0}" != "1" ]]; then' in launcher
     assert '--target-cache-dir "$TARGET_CACHE_DIR"' in launcher
     assert '--target-cache-dtype "${TARGET_CACHE_DTYPE:-float16}"' in launcher
+    assert 'target_cache_splits="${TARGET_CACHE_SPLITS:-train,valid,test}"' in launcher
+    assert 'target_cache_splits="${target_cache_splits//;/,}"' in launcher
+    assert '--target-cache-splits "$target_cache_splits"' in launcher
 
 
 def test_all_study_launcher_allows_an_explicit_checkpoint_selection_metric() -> None:

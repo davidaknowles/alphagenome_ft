@@ -2,10 +2,74 @@ from concurrent.futures import ThreadPoolExecutor
 from types import SimpleNamespace
 
 import numpy as np
+import pyBigWig
 
 from alphagenome_ft.finetune.config import HeadSpec, TrackInfo
-from alphagenome_ft.finetune.data import BigWigDataModule
+from alphagenome_ft.finetune.data import (
+    BigWigDataModule,
+    WindowedTargetCache,
+    build_interval,
+)
 import alphagenome_ft.finetune.data as data_module
+
+
+def test_target_cache_can_select_evaluation_splits_only():
+    intervals = {"train": [object()], "valid": [object()], "test": [object()]}
+
+    selected = WindowedTargetCache._select_interval_mapping(intervals, ("valid", "test"))
+
+    assert tuple(selected) == ("valid", "test")
+    assert selected["valid"] == intervals["valid"]
+    assert selected["test"] == intervals["test"]
+
+
+def test_target_cache_rejects_invalid_split_selection():
+    intervals = {"train": [object()], "valid": [object()], "test": [object()]}
+
+    with np.testing.assert_raises_regex(ValueError, "unknown split"):
+        WindowedTargetCache._select_interval_mapping(intervals, ("valid", "holdout"))
+    with np.testing.assert_raises_regex(ValueError, "duplicate split"):
+        WindowedTargetCache._select_interval_mapping(intervals, ("valid", "valid"))
+
+
+def test_target_cache_loads_only_selected_splits(tmp_path):
+    track_path = tmp_path / "track.bw"
+    with pyBigWig.open(str(track_path), "w") as track:
+        track.addHeader([("chr1", 12)])
+        track.addEntries(["chr1"], [0], ends=[12], values=[2.0])
+    spec = HeadSpec(
+        head_id="atac",
+        source="predefined",
+        kind="atac",
+        tracks=[TrackInfo("atac", track_path)],
+    )
+    intervals = {
+        "train": [build_interval(chromosome="chr1", start=0, end=4)],
+        "valid": [build_interval(chromosome="chr1", start=4, end=8)],
+        "test": [build_interval(chromosome="chr1", start=8, end=12)],
+    }
+
+    WindowedTargetCache.build(
+        tmp_path / "cache",
+        intervals=intervals,
+        head_specs=[spec],
+        workers=1,
+        cache_splits=("valid", "test"),
+    )
+    cache = WindowedTargetCache(
+        tmp_path / "cache",
+        intervals=intervals,
+        head_specs=[spec],
+        cache_splits=("valid", "test"),
+    )
+
+    assert not cache.has_split("train")
+    assert cache.has_split("valid")
+    assert cache.has_split("test")
+    assert not (tmp_path / "cache" / "train").exists()
+    np.testing.assert_array_equal(
+        cache.arrays_for_split("valid")["atac"], np.full((1, 4, 1), 2.0, dtype=np.float16)
+    )
 
 
 class _FakeExtractor:

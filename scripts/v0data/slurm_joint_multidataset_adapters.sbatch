@@ -55,9 +55,12 @@ if [[ "${SMOKE:-0}" == "1" ]]; then
   )
 fi
 if [[ -n "${TARGET_CACHE_DIR:-}" && "${SMOKE:-0}" != "1" ]]; then
+  target_cache_splits="${TARGET_CACHE_SPLITS:-train,valid,test}"
+  target_cache_splits="${target_cache_splits//;/,}"
   extra_args+=(
     --target-cache-dir "$TARGET_CACHE_DIR"
     --target-cache-dtype "${TARGET_CACHE_DTYPE:-float16}"
+    --target-cache-splits "$target_cache_splits"
   )
 fi
 if [[ "${BALANCE_GENE_WINDOWS:-0}" == "1" ]]; then
