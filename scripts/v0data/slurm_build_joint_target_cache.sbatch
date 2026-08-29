@@ -10,6 +10,7 @@
 set -euo pipefail
 
 cd /gpfs/commons/home/daknowles/projects/alphagenome_fp4
+export LD_LIBRARY_PATH="/nfs/sw/easybuild/software/Python/3.12.3-GCCcore-13.3.0/lib:${LD_LIBRARY_PATH:-}"
 
 dataset_config="${DATASET_CONFIG:?DATASET_CONFIG is required}"
 target_cache_dir="${TARGET_CACHE_DIR:?TARGET_CACHE_DIR is required}"

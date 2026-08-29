@@ -56,6 +56,7 @@ def test_joint_target_cache_builder_uses_real_joint_configuration() -> None:
     assert "--target-cache-dir \"$target_cache_dir\"" in builder
     assert "--build-target-cache-only" in builder
     assert 'variable="LIMIT_${split^^}"' in builder
+    assert 'export LD_LIBRARY_PATH="/nfs/sw/easybuild/software/Python/3.12.3-GCCcore-13.3.0/lib:${LD_LIBRARY_PATH:-}"' in builder
 
 
 def test_all_study_launcher_allows_an_explicit_checkpoint_selection_metric() -> None:
