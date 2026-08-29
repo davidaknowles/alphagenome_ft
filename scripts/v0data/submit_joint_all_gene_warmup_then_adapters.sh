@@ -72,7 +72,7 @@ if [[ "$separate_head_updates" == "1" ]]; then
 fi
 target_cache_dir=""
 if [[ "$source_specific_heads" == "1" ]]; then
-  cache_variant=""
+  cache_variant="-joint-heads"
   if [[ "$separate_head_updates" == "1" ]]; then
     cache_variant="-separate-heads"
   fi
