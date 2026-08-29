@@ -587,7 +587,8 @@ def test_joint_all_gene_warmup_uses_direct_gene_rna_for_both_zemke_datasets() ->
     assert 'run_tag="all_gene_source_specific"' in script
     assert 'run_tag="${run_tag}_separate_heads"' in script
     assert 'RUN_TAG="$run_tag"' in script
-    assert 'target_cache_dir="${TARGET_CACHE_DIR:-outputs/v0data/target-caches/joint-source-specific-all-gene-valid-test-f16}"' in script
+    assert 'cache_variant="-separate-heads"' in script
+    assert 'target_cache_dir="${TARGET_CACHE_DIR:-outputs/v0data/target-caches/joint-source-specific${cache_variant}-all-gene-valid-test-f16}"' in script
     assert 'TARGET_CACHE_DIR="$target_cache_dir"' in script
     assert 'TARGET_CACHE_SPLITS="${TARGET_CACHE_SPLITS:-valid;test}"' in script
     for split in ("TRAIN", "VALID", "TEST"):

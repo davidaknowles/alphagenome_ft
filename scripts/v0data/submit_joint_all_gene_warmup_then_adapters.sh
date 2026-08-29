@@ -72,7 +72,11 @@ if [[ "$separate_head_updates" == "1" ]]; then
 fi
 target_cache_dir=""
 if [[ "$source_specific_heads" == "1" ]]; then
-  target_cache_dir="${TARGET_CACHE_DIR:-outputs/v0data/target-caches/joint-source-specific-all-gene-valid-test-f16}"
+  cache_variant=""
+  if [[ "$separate_head_updates" == "1" ]]; then
+    cache_variant="-separate-heads"
+  fi
+  target_cache_dir="${TARGET_CACHE_DIR:-outputs/v0data/target-caches/joint-source-specific${cache_variant}-all-gene-valid-test-f16}"
 fi
 
 DATASET_CONFIG="$dataset_config" \
