@@ -904,6 +904,28 @@ def main() -> None:
                         for split in original_counts
                     }
                     print(f"{route_name}: excluded overlapping windows {removed}")
+                source_target_cache_dir = (
+                    target_cache_dir / "datasets" / dataset_name / source_name
+                    if target_cache_dir is not None
+                    else None
+                )
+                source_coverage_specs = tuple(
+                    spec
+                    for spec in source_specs
+                    if spec.gene_supervision_path is None or spec.coverage_loss_weight > 0
+                )
+                if args.build_target_cache and source_coverage_specs:
+                    filtered_intervals = BigWigDataModule._filter_intervals_by_bigwig_chromosomes(
+                        source_intervals, source_coverage_specs
+                    )
+                    WindowedTargetCache.build(
+                        source_target_cache_dir,
+                        intervals=filtered_intervals,
+                        head_specs=source_coverage_specs,
+                        dtype=args.target_cache_dtype,
+                        workers=args.target_cache_workers or _available_cpu_count(),
+                        overwrite=args.overwrite_target_cache,
+                    )
                 source_modules[route_name] = BigWigDataModule(
                     intervals=source_intervals,
                     fasta_path=source_fasta,
@@ -917,7 +939,7 @@ def main() -> None:
                         if args.window_workers is not None
                         else min(args.batch_size, _available_cpu_count())
                     ),
-                    target_cache_dir=None,
+                    target_cache_dir=source_target_cache_dir,
                     target_cache_dtype=args.target_cache_dtype,
                     balance_gene_windows=args.balance_gene_windows,
                     gene_window_repeats=args.gene_window_repeats,
@@ -1022,6 +1044,28 @@ def main() -> None:
                     species_intervals,
                     load_excluded_regions_from_bed(entry["exclude_intervals_bed"]),
                 )
+            species_target_cache_dir = (
+                target_cache_dir / "species" / species_name
+                if target_cache_dir is not None
+                else None
+            )
+            species_coverage_specs = tuple(
+                spec
+                for spec in species_specs
+                if spec.gene_supervision_path is None or spec.coverage_loss_weight > 0
+            )
+            if args.build_target_cache and species_coverage_specs:
+                filtered_intervals = BigWigDataModule._filter_intervals_by_bigwig_chromosomes(
+                    species_intervals, species_coverage_specs
+                )
+                WindowedTargetCache.build(
+                    species_target_cache_dir,
+                    intervals=filtered_intervals,
+                    head_specs=species_coverage_specs,
+                    dtype=args.target_cache_dtype,
+                    workers=args.target_cache_workers or _available_cpu_count(),
+                    overwrite=args.overwrite_target_cache,
+                )
             species_modules[species_name] = BigWigDataModule(
                 intervals=species_intervals,
                 fasta_path=species_fasta,
@@ -1035,7 +1079,7 @@ def main() -> None:
                     if args.window_workers is not None
                     else min(args.batch_size, _available_cpu_count())
                 ),
-                target_cache_dir=None,
+                target_cache_dir=species_target_cache_dir,
                 target_cache_dtype=args.target_cache_dtype,
                 balance_gene_windows=args.balance_gene_windows,
                 gene_window_repeats=args.gene_window_repeats,
@@ -1104,29 +1148,24 @@ def main() -> None:
     target_cache_dir = (
         args.target_cache_dir.expanduser().resolve() if args.target_cache_dir is not None else None
     )
-    if (
-        species_entries is not None or dataset_entries is not None
-    ) and target_cache_dir is not None:
-        raise ValueError(
-            "Target caches are not yet supported with --species-config or --dataset-config."
-        )
     if args.build_target_cache:
         if target_cache_dir is None:
             raise ValueError("--target-cache-dir is required with --build-target-cache.")
-        filtered_intervals = BigWigDataModule._filter_intervals_by_bigwig_chromosomes(
-            intervals, head_specs
-        )
-        WindowedTargetCache.build(
-            target_cache_dir,
-            intervals=filtered_intervals,
-            head_specs=head_specs,
-            dtype=args.target_cache_dtype,
-            workers=args.target_cache_workers or _available_cpu_count(),
-            overwrite=args.overwrite_target_cache,
-        )
-        if args.build_target_cache_only:
-            print(f"Target cache build complete: {target_cache_dir}")
-            return
+        if species_entries is None and dataset_entries is None:
+            filtered_intervals = BigWigDataModule._filter_intervals_by_bigwig_chromosomes(
+                intervals, head_specs
+            )
+            WindowedTargetCache.build(
+                target_cache_dir,
+                intervals=filtered_intervals,
+                head_specs=head_specs,
+                dtype=args.target_cache_dtype,
+                workers=args.target_cache_workers or _available_cpu_count(),
+                overwrite=args.overwrite_target_cache,
+            )
+            if args.build_target_cache_only:
+                print(f"Target cache build complete: {target_cache_dir}")
+                return
     elif args.build_target_cache_only:
         raise ValueError("--build-target-cache-only requires --build-target-cache.")
 
@@ -1265,6 +1304,10 @@ def main() -> None:
             balance_gene_windows=args.balance_gene_windows,
             gene_window_repeats=args.gene_window_repeats,
         )
+
+    if args.build_target_cache_only:
+        print(f"Target cache build complete: {target_cache_dir}")
+        return
 
     if args.validate_data_config_only:
         print(

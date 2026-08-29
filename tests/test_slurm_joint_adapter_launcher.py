@@ -47,6 +47,17 @@ def test_all_study_launcher_preallocates_gpu_memory_and_aborts_failed_collective
     assert 'XLA_PYTHON_CLIENT_ABORT_COLLECTIVES_ON_FAILURE="${XLA_PYTHON_CLIENT_ABORT_COLLECTIVES_ON_FAILURE:-1}"' in launcher
 
 
+def test_joint_target_cache_builder_uses_real_joint_configuration() -> None:
+    builder = Path("scripts/v0data/slurm_build_joint_target_cache.sbatch").read_text()
+
+    assert 'dataset_config="${DATASET_CONFIG:?DATASET_CONFIG is required}"' in builder
+    assert 'target_cache_dir="${TARGET_CACHE_DIR:?TARGET_CACHE_DIR is required}"' in builder
+    assert "--dataset-config \"$dataset_config\"" in builder
+    assert "--target-cache-dir \"$target_cache_dir\"" in builder
+    assert "--build-target-cache-only" in builder
+    assert 'variable="LIMIT_${split^^}"' in builder
+
+
 def test_all_study_launcher_allows_an_explicit_checkpoint_selection_metric() -> None:
     launcher = Path("scripts/v0data/slurm_joint_multidataset_adapters.sbatch").read_text()
 
