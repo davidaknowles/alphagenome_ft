@@ -10,6 +10,7 @@
 set -euo pipefail
 
 cd /gpfs/commons/home/daknowles/projects/alphagenome_fp4
+export LD_LIBRARY_PATH="/nfs/sw/easybuild/software/Python/3.12.3-GCCcore-13.3.0/lib:${LD_LIBRARY_PATH:-}"
 source scripts/v0data/joint_continuation_lib.sh
 
 sbatch_bin="${SBATCH_BIN:-sbatch}"
