@@ -192,6 +192,9 @@ def test_joint_head_warmup_branches_one_checkpoint_into_both_strategies() -> Non
     assert 'warmup_patience="${WARMUP_PATIENCE:-5}"' in script
     assert 'warmup_time_limit="${WARMUP_TIME_LIMIT:-6-00:00:00}"' in script
     assert 'gpu_gres="${GPU_GRES:-gpu:l40s:2}"' in script
+    assert 'smoke_limit_train="${SMOKE_LIMIT_TRAIN:-8}"' in script
+    assert 'smoke_limit_valid="${SMOKE_LIMIT_VALID:-8}"' in script
+    assert 'smoke_limit_test="${SMOKE_LIMIT_TEST:-8}"' in script
     assert "NUM_EPOCHS=${warmup_max_epochs}" in script
     assert "EARLY_STOPPING_PATIENCE=${warmup_patience}" in script
     assert '--time="$warmup_time_limit"' in script
@@ -211,6 +214,9 @@ def test_joint_head_warmup_branches_one_checkpoint_into_both_strategies() -> Non
     )
     assert "LOCON_TARGETS=${locon_targets}" in script
     assert "GPU_GRES=${gpu_gres}" in script
+    assert "SMOKE_LIMIT_TRAIN=${smoke_limit_train}" in script
+    assert "SMOKE_LIMIT_VALID=${smoke_limit_valid}" in script
+    assert "SMOKE_LIMIT_TEST=${smoke_limit_test}" in script
     assert 'cache_exports=",TARGET_CACHE_DIR=${TARGET_CACHE_DIR}' in script
     assert "${cache_exports}" in script
     assert branch.count("submit_continuation") == 2
@@ -312,6 +318,9 @@ def test_multidataset_gene_balancing_is_opt_in_and_propagates_after_warmup() -> 
     assert "BALANCE_GENE_WINDOWS=${balance_gene_windows:-0}" in continuation
     assert 'local gpu_gres="${GPU_GRES:-gpu:l40s:2}"' in continuation
     assert '--gres="$gpu_gres"' in continuation
+    assert "SMOKE_LIMIT_TRAIN=${SMOKE_LIMIT_TRAIN:-8}" in continuation
+    assert "SMOKE_LIMIT_VALID=${SMOKE_LIMIT_VALID:-8}" in continuation
+    assert "SMOKE_LIMIT_TEST=${SMOKE_LIMIT_TEST:-8}" in continuation
 
 
 def test_hda_gene_window_repeat_screen_has_ordering_matched_control() -> None:
