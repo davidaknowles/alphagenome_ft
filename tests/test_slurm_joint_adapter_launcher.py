@@ -191,9 +191,11 @@ def test_joint_head_warmup_branches_one_checkpoint_into_both_strategies() -> Non
     assert 'warmup_max_epochs="${WARMUP_MAX_EPOCHS:-20}"' in script
     assert 'warmup_patience="${WARMUP_PATIENCE:-5}"' in script
     assert 'warmup_time_limit="${WARMUP_TIME_LIMIT:-6-00:00:00}"' in script
+    assert 'gpu_gres="${GPU_GRES:-gpu:l40s:2}"' in script
     assert "NUM_EPOCHS=${warmup_max_epochs}" in script
     assert "EARLY_STOPPING_PATIENCE=${warmup_patience}" in script
     assert '--time="$warmup_time_limit"' in script
+    assert '--gres="$gpu_gres"' in script
     assert 'dependency="afterok:${smoke}_0"' in script
     assert 'dependency="afterok:${warmup}_0"' in script
     assert 'source_checkpoint="${source_run}/best"' in branch
@@ -208,9 +210,11 @@ def test_joint_head_warmup_branches_one_checkpoint_into_both_strategies() -> Non
         'downres_block_4;downres_block_5}"' in branch
     )
     assert "LOCON_TARGETS=${locon_targets}" in script
+    assert "GPU_GRES=${gpu_gres}" in script
     assert 'cache_exports=",TARGET_CACHE_DIR=${TARGET_CACHE_DIR}' in script
     assert "${cache_exports}" in script
     assert branch.count("submit_continuation") == 2
+    assert 'GPU_GRES="${GPU_GRES:-gpu:l40s:2}"' in branch
     assert 'submit_continuation 0 "$source_run"' in branch
     assert 'submit_continuation 1 "$source_run"' in branch
     assert 'if [[ "${BACKBONE_LORA:-1}" == "1" ]]' in launcher
@@ -306,6 +310,8 @@ def test_multidataset_gene_balancing_is_opt_in_and_propagates_after_warmup() -> 
     assert "BALANCE_GENE_WINDOWS=${balance_gene_windows}" in submitter
     assert 'balance_gene_windows="${BALANCE_GENE_WINDOWS:-0}"' in branch
     assert "BALANCE_GENE_WINDOWS=${balance_gene_windows:-0}" in continuation
+    assert 'local gpu_gres="${GPU_GRES:-gpu:l40s:2}"' in continuation
+    assert '--gres="$gpu_gres"' in continuation
 
 
 def test_hda_gene_window_repeat_screen_has_ordering_matched_control() -> None:

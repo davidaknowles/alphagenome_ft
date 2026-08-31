@@ -47,6 +47,7 @@ lora_alpha=16
 locon_rank=4
 locon_alpha=1
 locon_targets="${LOCON_TARGETS:-downres_block_2;downres_block_3;downres_block_4;downres_block_5}"
+GPU_GRES="${GPU_GRES:-gpu:l40s:2}"
 
 snapshot_checkpoint "$source_checkpoint" "$source_epoch" "$snapshot"
 test -f "$dataset_config"

@@ -14,6 +14,7 @@ warmup_patience="${WARMUP_PATIENCE:-5}"
 warmup_time_limit="${WARMUP_TIME_LIMIT:-6-00:00:00}"
 balance_gene_windows="${BALANCE_GENE_WINDOWS:-0}"
 locon_targets="${LOCON_TARGETS:-downres_block_2;downres_block_3;downres_block_4;downres_block_5}"
+gpu_gres="${GPU_GRES:-gpu:l40s:2}"
 if [[ ! "$run_tag" =~ ^[a-z0-9_]*$ ]]; then
   printf 'Invalid RUN_TAG, %s; use lowercase letters, numbers, and underscores.\n' \
     "$run_tag" >&2
@@ -53,7 +54,7 @@ if [[ -n "${TARGET_CACHE_DIR:-}" ]]; then
 fi
 exports="ALL,RUN_BASENAME=${run_basename},RUN_SUFFIX=${run_suffix},BACKBONE_LORA=0,PRETRAINED_HEAD_INITIALIZATION=${initializer},LEARNING_RATE=${WARMUP_LEARNING_RATE:-1e-3},NUM_EPOCHS=${warmup_max_epochs},EARLY_STOPPING_PATIENCE=${warmup_patience},BALANCE_GENE_WINDOWS=${balance_gene_windows},DATASET_CONFIG=${dataset_config},TARGET_WORKERS=${TARGET_WORKERS:-12},WINDOW_WORKERS=${WINDOW_WORKERS:-4}${cache_exports}"
 
-smoke_args=(--parsable --array=0 --time=00:30:00)
+smoke_args=(--parsable --array=0 --time=00:30:00 --gres="$gpu_gres")
 if [[ -n "${INITIAL_DEPENDENCY:-}" ]]; then
   smoke_args+=(--dependency="${INITIAL_DEPENDENCY}")
 fi
@@ -63,12 +64,12 @@ smoke=$(
     --export="${exports},SMOKE=1" scripts/v0data/slurm_joint_multidataset_adapters.sbatch
 )
 warmup=$(
-  "$sbatch_bin" --parsable --array=0 --time="$warmup_time_limit" --dependency="afterok:${smoke}_0" \
+  "$sbatch_bin" --parsable --array=0 --gres="$gpu_gres" --time="$warmup_time_limit" --dependency="afterok:${smoke}_0" \
     --export="$exports" scripts/v0data/slurm_joint_multidataset_adapters.sbatch
 )
 branch=$(
   "$sbatch_bin" --parsable --dependency="afterok:${warmup}_0" \
-    --export="ALL,SOURCE_RUN=checkpoints/v0data/${warmup_run},DATASET_CONFIG=${dataset_config},BRANCH_TAG=${branch_tag},BALANCE_GENE_WINDOWS=${balance_gene_windows},LOCON_TARGETS=${locon_targets},TARGET_WORKERS=${TARGET_WORKERS:-12},WINDOW_WORKERS=${WINDOW_WORKERS:-4}${cache_exports}" \
+    --export="ALL,SOURCE_RUN=checkpoints/v0data/${warmup_run},DATASET_CONFIG=${dataset_config},BRANCH_TAG=${branch_tag},BALANCE_GENE_WINDOWS=${balance_gene_windows},LOCON_TARGETS=${locon_targets},GPU_GRES=${gpu_gres},TARGET_WORKERS=${TARGET_WORKERS:-12},WINDOW_WORKERS=${WINDOW_WORKERS:-4}${cache_exports}" \
     scripts/v0data/slurm_submit_joint_adapters_from_head_warmup.sbatch
 )
 
