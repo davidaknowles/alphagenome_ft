@@ -198,6 +198,8 @@ def test_joint_head_warmup_branches_one_checkpoint_into_both_strategies() -> Non
     assert 'dependency="afterok:${warmup}_0"' in script
     assert 'source_checkpoint="${source_run}/best"' in branch
     assert 'sbatch_bin="${SBATCH_BIN:-sbatch}"' in branch
+    assert '"${HOME}/venv/jax/bin/python" - "${source_checkpoint}/metrics.json"' in branch
+    assert "jq -er" not in branch
     assert "learning_rate=3e-4" in branch
     assert "expand_backbone_adapters=1" in branch
     assert (

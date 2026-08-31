@@ -15,7 +15,14 @@ source scripts/v0data/joint_continuation_lib.sh
 sbatch_bin="${SBATCH_BIN:-sbatch}"
 source_run="${SOURCE_RUN:?SOURCE_RUN is required}"
 source_checkpoint="${source_run}/best"
-source_epoch="$(jq -er '.epoch' "${source_checkpoint}/metrics.json")"
+source_epoch="$("${HOME}/venv/jax/bin/python" - "${source_checkpoint}/metrics.json" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1]) as handle:
+    print(int(json.load(handle)["epoch"]))
+PY
+)"
 dataset_config="${DATASET_CONFIG:?DATASET_CONFIG is required}"
 branch_tag="${BRANCH_TAG:-}"
 if [[ -n "$branch_tag" && ! "$branch_tag" =~ ^[A-Za-z0-9_]+$ ]]; then
