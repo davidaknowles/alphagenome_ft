@@ -243,6 +243,18 @@ def test_joint_head_warmup_exposes_isolated_pretrained_initialization() -> None:
     assert 'run_suffix="_head_warmup_tempered${tag_suffix}${initializer_suffix}"' in script
 
 
+def test_all_gene_launcher_can_validate_reused_target_artifacts() -> None:
+    script = Path(
+        "scripts/v0data/submit_joint_all_gene_warmup_then_adapters.sh"
+    ).read_text()
+
+    assert 'reuse_prepared_targets="${REUSE_PREPARED_TARGETS:-0}"' in script
+    assert 'REUSE_PREPARED_TARGETS must be 0 or 1' in script
+    assert 'if [[ "$reuse_prepared_targets" == "1" ]]' in script
+    assert 'test -f "${zemke2023_dir}/species.json"' in script
+    assert 'test -f "$zemke2024_target"' in script
+
+
 def test_all_study_native_evaluation_uses_and_validates_provisional_runs() -> None:
     submitter = Path(
         "scripts/v0data/submit_joint_multidataset_evaluations.sh"
