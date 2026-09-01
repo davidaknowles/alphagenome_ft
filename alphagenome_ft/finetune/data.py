@@ -1317,7 +1317,8 @@ branch, or run `scripts/run_humanbraindev_finetune.py` with
                 limit = min(target_len, arr.shape[0])
                 padded[:limit] = arr[:limit]
                 arr = padded
-            cast = arr.astype(dtype, copy=False)
+            with np.errstate(over="ignore"):
+                cast = arr.astype(dtype, copy=False)
             if not np.isfinite(cast).all():
                 track = tracks[track_idx]
                 raise ValueError(
