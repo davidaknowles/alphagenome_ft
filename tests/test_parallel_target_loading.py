@@ -101,6 +101,24 @@ def test_target_cache_rejects_values_that_overflow_requested_dtype(tmp_path):
     )
 
 
+def test_target_cache_rejects_infinite_bigwig_values(tmp_path):
+    track = TrackInfo("atac", tmp_path / "atac.bw")
+    interval = build_interval(chromosome="chr1", start=0, end=4)
+
+    class InfiniteHandle:
+        def values(self, _chromosome, _start, _end, numpy=True):
+            assert numpy
+            return np.asarray([0.0, np.inf, 0.0, 0.0], dtype=np.float32)
+
+    with np.testing.assert_raises_regex(ValueError, "contains an infinite value"):
+        WindowedTargetCache._read_window(
+            [InfiniteHandle()],
+            interval,
+            np.dtype("float32"),
+            [track],
+        )
+
+
 class _FakeExtractor:
     def __init__(self, _path):
         pass

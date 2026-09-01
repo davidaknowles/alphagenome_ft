@@ -1305,13 +1305,13 @@ branch, or run `scripts/run_humanbraindev_finetune.py` with
         for track_idx, handle in enumerate(handles):
             values = handle.values(interval.chromosome, interval.start, interval.end, numpy=True)
             arr = np.asarray(values, dtype=np.float32)
-            np.nan_to_num(arr, copy=False, nan=0.0)
-            if not np.isfinite(arr).all():
+            if np.isinf(arr).any():
                 track = tracks[track_idx]
                 raise ValueError(
-                    "Target BigWig contains an infinite value after filling missing bins: "
+                    "Target BigWig contains an infinite value: "
                     f"track={track.path}, interval={interval.chromosome}:{interval.start}-{interval.end}."
                 )
+            np.nan_to_num(arr, copy=False, nan=0.0)
             if arr.shape[0] != target_len:
                 padded = np.zeros((target_len,), dtype=np.float32)
                 limit = min(target_len, arr.shape[0])
