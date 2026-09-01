@@ -283,9 +283,14 @@ def test_single_checkpoint_native_evaluation_is_explicit_and_ten_tasks() -> None
     assert 'evaluation_tag="${EVALUATION_TAG:?' in submitter
     assert "--array=0-9%4" in submitter
     assert 'dependency="afterok:${source_job}"' in submitter
+    assert 'gpu_gres="${GPU_GRES:-gpu:l40s:2}"' in submitter
+    assert '--gres="$gpu_gres"' in submitter
+    assert 'LOCON_TARGETS=${locon_targets}' in submitter
     assert '"${EVALUATION_STRATEGY:-}"' in worker
     assert 'source_checkpoint="${SOURCE_CHECKPOINT:?' in worker
     assert 'evaluation_tag="${EVALUATION_TAG:?' in worker
+    assert 'locon_targets="${LOCON_TARGETS:-default}"' in worker
+    assert '--locon-targets "$locon_targets"' in worker
 
 
 def test_joint_launcher_exposes_evaluate_only_with_checkpoint() -> None:

@@ -10,6 +10,8 @@ evaluation_tag="${EVALUATION_TAG:?Set EVALUATION_TAG to a unique result name}"
 source_job="${SOURCE_JOB:-}"
 dataset_config="${DATASET_CONFIG:-outputs/v0data/joint-all-nonencode/datasets.json}"
 sbatch_bin="${SBATCH_BIN:-sbatch}"
+gpu_gres="${GPU_GRES:-gpu:l40s:2}"
+locon_targets="${LOCON_TARGETS:-default}"
 
 if [[ "$strategy" != lora && "$strategy" != lora_locon ]]; then
   printf 'Invalid strategy: %s\n' "$strategy" >&2
@@ -25,7 +27,8 @@ test -f "$source_checkpoint/metrics.json"
 sbatch_args=(
   --parsable
   --array=0-9%4
-  --export="ALL,EVALUATION_STRATEGY=${strategy},SOURCE_CHECKPOINT=${source_checkpoint},EVALUATION_TAG=${evaluation_tag},DATASET_CONFIG=${dataset_config}"
+  --gres="$gpu_gres"
+  --export="ALL,EVALUATION_STRATEGY=${strategy},SOURCE_CHECKPOINT=${source_checkpoint},EVALUATION_TAG=${evaluation_tag},DATASET_CONFIG=${dataset_config},LOCON_TARGETS=${locon_targets}"
 )
 if [[ -n "$source_job" ]]; then
   sbatch_args+=(--dependency="afterok:${source_job}")

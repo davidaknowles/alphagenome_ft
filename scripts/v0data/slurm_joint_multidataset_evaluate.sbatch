@@ -58,6 +58,8 @@ route="${routes[$route_index]}"
 route_path="${route/:/_}"
 evaluation_dir="${evaluation_base}/${route_path}"
 dataset_config="${DATASET_CONFIG:-outputs/v0data/joint-all-nonencode/datasets.json}"
+locon_targets="${LOCON_TARGETS:-default}"
+locon_targets="${locon_targets//;/,}"
 if [[ ! -f "$dataset_config" ]]; then
   printf 'Missing joint dataset configuration: %s\n' "$dataset_config" >&2
   exit 1
@@ -88,6 +90,7 @@ fi
   --lora-alpha "${LORA_ALPHA:-16}" \
   --locon-rank "${LOCON_RANK:-4}" \
   --locon-alpha "${LOCON_ALPHA:-1}" \
+  --locon-targets "$locon_targets" \
   --base-param-dtype "${BASE_PARAM_DTYPE:-float32}" \
   --lora-param-dtype "${LORA_PARAM_DTYPE:-float32}" \
   --locon-param-dtype "${LOCON_PARAM_DTYPE:-float32}" \
