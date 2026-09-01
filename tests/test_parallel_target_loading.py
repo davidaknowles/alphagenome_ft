@@ -119,6 +119,26 @@ def test_target_cache_rejects_infinite_bigwig_values(tmp_path):
         )
 
 
+def test_target_cache_rejects_matching_manifest_with_missing_array(tmp_path):
+    track_path = tmp_path / "track.bw"
+    with pyBigWig.open(str(track_path), "w") as track:
+        track.addHeader([("chr1", 4)])
+        track.addEntries(["chr1"], [0], ends=[4], values=[2.0])
+    spec = HeadSpec(
+        head_id="atac",
+        source="predefined",
+        kind="atac",
+        tracks=[TrackInfo("atac", track_path)],
+    )
+    intervals = {"valid": [build_interval(chromosome="chr1", start=0, end=4)]}
+    cache_dir = tmp_path / "cache"
+    WindowedTargetCache.build(cache_dir, intervals=intervals, head_specs=[spec])
+    (cache_dir / "valid" / "atac.npy").rename(cache_dir / "valid" / "atac.partial.npy")
+
+    with np.testing.assert_raises_regex(ValueError, "arrays are incomplete or invalid"):
+        WindowedTargetCache.build(cache_dir, intervals=intervals, head_specs=[spec])
+
+
 class _FakeExtractor:
     def __init__(self, _path):
         pass

@@ -1068,6 +1068,19 @@ class WindowedTargetCache:
         if manifest_path.exists() and not overwrite:
             existing = _json_load(manifest_path)
             if existing == manifest:
+                invalid_arrays = cls._invalid_cache_arrays(
+                    cache_dir,
+                    cached_intervals,
+                    head_specs,
+                    dtype_np,
+                )
+                if invalid_arrays:
+                    listed = ", ".join(str(path) for path in invalid_arrays[:3])
+                    more = "" if len(invalid_arrays) <= 3 else f" and {len(invalid_arrays) - 3} more"
+                    raise ValueError(
+                        "Target cache manifest matches but cache arrays are incomplete or invalid: "
+                        f"{listed}{more}. Use --overwrite-target-cache to rebuild."
+                    )
                 cls._write_readme(cache_dir, manifest)
                 print(f"Target cache already exists and matches inputs: {cache_dir}")
                 return
@@ -1144,6 +1157,29 @@ class WindowedTargetCache:
             split: list(intervals[split])
             for split in cls._select_splits(intervals, cache_splits)
         }
+
+    @staticmethod
+    def _invalid_cache_arrays(
+        cache_dir: Path,
+        intervals: Mapping[str, Sequence[genome.Interval]],
+        head_specs: Sequence[HeadSpec],
+        dtype: np.dtype,
+    ) -> list[Path]:
+        invalid: list[Path] = []
+        for split, split_intervals in intervals.items():
+            if not split_intervals:
+                continue
+            target_len = int(split_intervals[0].end - split_intervals[0].start)
+            for spec in head_specs:
+                path = cache_dir / split / f"{spec.head_id}.npy"
+                if not path.exists():
+                    invalid.append(path)
+                    continue
+                array = np.load(path, mmap_mode="r")
+                expected_shape = (len(split_intervals), target_len, len(spec.tracks))
+                if array.shape != expected_shape or array.dtype != dtype:
+                    invalid.append(path)
+        return invalid
 
     @classmethod
     def _make_manifest(
