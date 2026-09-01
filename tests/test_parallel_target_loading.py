@@ -72,6 +72,35 @@ def test_target_cache_loads_only_selected_splits(tmp_path):
     )
 
 
+def test_target_cache_rejects_values_that_overflow_requested_dtype(tmp_path):
+    track_path = tmp_path / "large.bw"
+    with pyBigWig.open(str(track_path), "w") as track:
+        track.addHeader([("chr1", 4)])
+        track.addEntries(["chr1"], [0], ends=[4], values=[70_000.0])
+    spec = HeadSpec(
+        head_id="atac",
+        source="predefined",
+        kind="atac",
+        tracks=[TrackInfo("atac", track_path)],
+    )
+    intervals = {"valid": [build_interval(chromosome="chr1", start=0, end=4)]}
+
+    with np.testing.assert_raises_regex(ValueError, "Use float32 target caching"):
+        WindowedTargetCache.build(
+            tmp_path / "cache-f16",
+            intervals=intervals,
+            head_specs=[spec],
+            dtype="float16",
+        )
+
+    WindowedTargetCache.build(
+        tmp_path / "cache-f32",
+        intervals=intervals,
+        head_specs=[spec],
+        dtype="float32",
+    )
+
+
 class _FakeExtractor:
     def __init__(self, _path):
         pass

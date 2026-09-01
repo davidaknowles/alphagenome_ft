@@ -1232,7 +1232,12 @@ branch, or run `scripts/run_humanbraindev_finetune.py` with
             handles = [pyBigWig.open(str(track.path)) for track in spec.tracks]
             try:
                 for idx, interval in enumerate(intervals):
-                    array[idx] = WindowedTargetCache._read_window(handles, interval, array.dtype)
+                    array[idx] = WindowedTargetCache._read_window(
+                        handles,
+                        interval,
+                        array.dtype,
+                        spec.tracks,
+                    )
                     if (idx + 1) % 100 == 0 or idx + 1 == len(intervals):
                         print(f"  cached {idx + 1}/{len(intervals)} windows", flush=True)
                 return
@@ -1264,7 +1269,12 @@ branch, or run `scripts/run_humanbraindev_finetune.py` with
 
         def build_one(index_interval: tuple[int, genome.Interval]):
             idx, interval = index_interval
-            values = WindowedTargetCache._read_window(get_handles(), interval, array.dtype)
+            values = WindowedTargetCache._read_window(
+                get_handles(),
+                interval,
+                array.dtype,
+                spec.tracks,
+            )
             return idx, values
 
         try:
@@ -1288,6 +1298,7 @@ branch, or run `scripts/run_humanbraindev_finetune.py` with
         handles: Sequence[pyBigWig.pyBigWig],
         interval: genome.Interval,
         dtype: np.dtype,
+        tracks: Sequence[TrackInfo],
     ) -> np.ndarray:
         target_len = int(interval.end - interval.start)
         window = np.empty((target_len, len(handles)), dtype=dtype)
@@ -1295,12 +1306,27 @@ branch, or run `scripts/run_humanbraindev_finetune.py` with
             values = handle.values(interval.chromosome, interval.start, interval.end, numpy=True)
             arr = np.asarray(values, dtype=np.float32)
             np.nan_to_num(arr, copy=False, nan=0.0)
+            if not np.isfinite(arr).all():
+                track = tracks[track_idx]
+                raise ValueError(
+                    "Target BigWig contains an infinite value after filling missing bins: "
+                    f"track={track.path}, interval={interval.chromosome}:{interval.start}-{interval.end}."
+                )
             if arr.shape[0] != target_len:
                 padded = np.zeros((target_len,), dtype=np.float32)
                 limit = min(target_len, arr.shape[0])
                 padded[:limit] = arr[:limit]
                 arr = padded
-            window[:, track_idx] = arr.astype(dtype, copy=False)
+            cast = arr.astype(dtype, copy=False)
+            if not np.isfinite(cast).all():
+                track = tracks[track_idx]
+                raise ValueError(
+                    "Target cache dtype cannot represent a finite BigWig value: "
+                    f"dtype={dtype.name}, track={track.path}, "
+                    f"interval={interval.chromosome}:{interval.start}-{interval.end}, "
+                    f"max_abs={float(np.max(np.abs(arr))):g}. Use float32 target caching."
+                )
+            window[:, track_idx] = cast
         return window
 
     def _validate_manifest(self) -> None:
