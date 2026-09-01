@@ -18,6 +18,7 @@ gpu_gres="${GPU_GRES:-gpu:l40s:2}"
 smoke_limit_train="${SMOKE_LIMIT_TRAIN:-8}"
 smoke_limit_valid="${SMOKE_LIMIT_VALID:-8}"
 smoke_limit_test="${SMOKE_LIMIT_TEST:-8}"
+smoke_time_limit="${SMOKE_TIME_LIMIT:-00:30:00}"
 if [[ ! "$run_tag" =~ ^[a-z0-9_]*$ ]]; then
   printf 'Invalid RUN_TAG, %s; use lowercase letters, numbers, and underscores.\n' \
     "$run_tag" >&2
@@ -57,7 +58,7 @@ if [[ -n "${TARGET_CACHE_DIR:-}" ]]; then
 fi
 exports="ALL,RUN_BASENAME=${run_basename},RUN_SUFFIX=${run_suffix},BACKBONE_LORA=0,PRETRAINED_HEAD_INITIALIZATION=${initializer},LEARNING_RATE=${WARMUP_LEARNING_RATE:-1e-3},NUM_EPOCHS=${warmup_max_epochs},EARLY_STOPPING_PATIENCE=${warmup_patience},BALANCE_GENE_WINDOWS=${balance_gene_windows},DATASET_CONFIG=${dataset_config},TARGET_WORKERS=${TARGET_WORKERS:-12},WINDOW_WORKERS=${WINDOW_WORKERS:-4},SMOKE_LIMIT_TRAIN=${smoke_limit_train},SMOKE_LIMIT_VALID=${smoke_limit_valid},SMOKE_LIMIT_TEST=${smoke_limit_test}${cache_exports}"
 
-smoke_args=(--parsable --array=0 --time=00:30:00 --gres="$gpu_gres")
+smoke_args=(--parsable --array=0 --time="$smoke_time_limit" --gres="$gpu_gres")
 if [[ -n "${INITIAL_DEPENDENCY:-}" ]]; then
   smoke_args+=(--dependency="${INITIAL_DEPENDENCY}")
 fi

@@ -194,6 +194,7 @@ def test_joint_head_warmup_branches_one_checkpoint_into_both_strategies() -> Non
     assert 'gpu_gres="${GPU_GRES:-gpu:l40s:2}"' in script
     assert 'smoke_limit_train="${SMOKE_LIMIT_TRAIN:-8}"' in script
     assert 'smoke_limit_valid="${SMOKE_LIMIT_VALID:-8}"' in script
+    assert 'smoke_time_limit="${SMOKE_TIME_LIMIT:-00:30:00}"' in script
     assert 'smoke_limit_test="${SMOKE_LIMIT_TEST:-8}"' in script
     assert "NUM_EPOCHS=${warmup_max_epochs}" in script
     assert "EARLY_STOPPING_PATIENCE=${warmup_patience}" in script
@@ -216,6 +217,7 @@ def test_joint_head_warmup_branches_one_checkpoint_into_both_strategies() -> Non
     assert "GPU_GRES=${gpu_gres}" in script
     assert "SMOKE_LIMIT_TRAIN=${smoke_limit_train}" in script
     assert "SMOKE_LIMIT_VALID=${smoke_limit_valid}" in script
+    assert 'smoke_args=(--parsable --array=0 --time="$smoke_time_limit" --gres="$gpu_gres")' in script
     assert "SMOKE_LIMIT_TEST=${smoke_limit_test}" in script
     assert 'cache_exports=",TARGET_CACHE_DIR=${TARGET_CACHE_DIR}' in script
     assert "${cache_exports}" in script
