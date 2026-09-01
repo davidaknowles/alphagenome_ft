@@ -1581,7 +1581,8 @@ def train(
                     if not math.isfinite(loss_value):
                         raise FloatingPointError(
                             "Non-finite evaluation loss encountered "
-                            f"at split={split}, head={head_name}: loss={loss_value}."
+                            f"at split={split}, batch_index={evaluated_batch_count - 1}, "
+                            f"head={head_name}: loss={loss_value}."
                         )
                     losses[head_name].append(loss_value)
                     stats_by_head[head_name] = _add_stats(
