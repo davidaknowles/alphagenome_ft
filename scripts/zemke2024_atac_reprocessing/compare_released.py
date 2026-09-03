@@ -23,6 +23,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--shard", type=Path, required=True)
     parser.add_argument("--targets", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument(
+        "--field",
+        choices=("coverage_spmr", "insertion_spmr"),
+        default="coverage_spmr",
+    )
     return parser.parse_args()
 
 
@@ -71,7 +76,7 @@ def main() -> None:
         groups = shard["groups"].astype(str).tolist()
         chromosome = str(shard["chromosome"])
         bin_size = int(shard["bin_size"])
-        raw = np.asarray(shard["coverage_spmr"], dtype=np.float32)
+        raw = np.asarray(shard[args.field], dtype=np.float32)
     paths = released_paths(args.targets)
     absent = sorted(set(groups) - set(paths))
     if absent:
@@ -94,8 +99,9 @@ def main() -> None:
         "chromosome": chromosome,
         "bin_size": bin_size,
         "groups": groups,
-        "coverage_spmr_vs_released_pearson_r": pearson(raw_matrix, released_matrix),
-        "coverage_spmr_vs_released_double_centered_r": double_centered_pearson(
+        "field": args.field,
+        "raw_vs_released_pearson_r": pearson(raw_matrix, released_matrix),
+        "raw_vs_released_double_centered_r": double_centered_pearson(
             raw_matrix, released_matrix
         ),
         "per_group": per_group,
