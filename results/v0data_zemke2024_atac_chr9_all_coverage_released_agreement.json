@@ -1,0 +1,120 @@
+{
+  "shard": "/gpfs/commons/home/daknowles/projects/alphagenome_fp4/outputs/v0data/zemke2024-atac-reprocessing/chr9_all_donors.npz",
+  "chromosome": "chr9",
+  "bin_size": 100,
+  "groups": [
+    "Astro",
+    "CA1",
+    "CA2-CA3",
+    "Chandelier",
+    "DG",
+    "Endo",
+    "LAMP5",
+    "Macro",
+    "Microglia",
+    "NR2F2",
+    "OPC",
+    "Oligo",
+    "PVALB",
+    "SST",
+    "SUB",
+    "T-Cell",
+    "VIP",
+    "VLMC"
+  ],
+  "field": "coverage_spmr",
+  "raw_vs_released_pearson_r": 0.9846171360239483,
+  "raw_vs_released_double_centered_r": 0.9614198510449212,
+  "per_group": {
+    "Astro": {
+      "pearson_r": 0.9952912293820161,
+      "raw_mean": 0.11016166455265464,
+      "released_mean": 1.6390436765291108
+    },
+    "CA1": {
+      "pearson_r": 0.9887175659677169,
+      "raw_mean": 0.10347041259797626,
+      "released_mean": 1.603867826031383
+    },
+    "CA2-CA3": {
+      "pearson_r": 0.9761232455179446,
+      "raw_mean": 0.10754152006197482,
+      "released_mean": 1.6559533201222196
+    },
+    "Chandelier": {
+      "pearson_r": 0.9703421191988618,
+      "raw_mean": 0.11670105763195385,
+      "released_mean": 1.781563490872792
+    },
+    "DG": {
+      "pearson_r": 0.9919309229638844,
+      "raw_mean": 0.11011802696557671,
+      "released_mean": 1.6915205656400287
+    },
+    "Endo": {
+      "pearson_r": 0.9763429271091183,
+      "raw_mean": 0.10472004549985811,
+      "released_mean": 1.6496657173069178
+    },
+    "LAMP5": {
+      "pearson_r": 0.9857291203793371,
+      "raw_mean": 0.11517087102916297,
+      "released_mean": 1.7477923793397416
+    },
+    "Macro": {
+      "pearson_r": 0.978922818716114,
+      "raw_mean": 0.10785127851701097,
+      "released_mean": 1.572976992413047
+    },
+    "Microglia": {
+      "pearson_r": 0.9950251794095841,
+      "raw_mean": 0.11107387474935979,
+      "released_mean": 1.5592100461852179
+    },
+    "NR2F2": {
+      "pearson_r": 0.9846820593517213,
+      "raw_mean": 0.1123837730849071,
+      "released_mean": 1.7028840223672652
+    },
+    "OPC": {
+      "pearson_r": 0.9954861278032723,
+      "raw_mean": 0.1144631521231286,
+      "released_mean": 1.6619942116224424
+    },
+    "Oligo": {
+      "pearson_r": 0.9960486435964596,
+      "raw_mean": 0.12635517776448493,
+      "released_mean": 1.7715818477137495
+    },
+    "PVALB": {
+      "pearson_r": 0.9891875604101913,
+      "raw_mean": 0.11408669963415649,
+      "released_mean": 1.755215771916139
+    },
+    "SST": {
+      "pearson_r": 0.9913260393888457,
+      "raw_mean": 0.11859198250819736,
+      "released_mean": 1.8116757082502104
+    },
+    "SUB": {
+      "pearson_r": 0.9951715068246763,
+      "raw_mean": 0.10656277247088118,
+      "released_mean": 1.686545512452214
+    },
+    "T-Cell": {
+      "pearson_r": 0.972378459348387,
+      "raw_mean": 0.10088747308489433,
+      "released_mean": 1.53231934012303
+    },
+    "VIP": {
+      "pearson_r": 0.9907693875029024,
+      "raw_mean": 0.11603344125909697,
+      "released_mean": 1.7629885606778097
+    },
+    "VLMC": {
+      "pearson_r": 0.9795045662372833,
+      "raw_mean": 0.09264896349234567,
+      "released_mean": 1.554288951108216
+    }
+  }
+}

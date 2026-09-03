@@ -1,0 +1,32 @@
+{
+  "species": "human",
+  "chromosome": "chr9",
+  "chromosome_size": 138394717,
+  "bin_size": 100,
+  "signal": "coverage",
+  "fragment_files": 204,
+  "groups": 60,
+  "groups_estimable_in_both_halves": 59,
+  "half_depth_quantiles": {
+    "0.0": 467917.0,
+    "0.1": 5494520.100000001,
+    "0.5": 55933155.0,
+    "0.9": 951604321.1,
+    "1.0": 3346911316.0
+  },
+  "within_group_half_depth_ratio_quantiles": {
+    "0.0": 0.9871372225819744,
+    "0.1": 0.9997731926538561,
+    "0.5": 0.9999975084023239,
+    "0.9": 0.999999997398016,
+    "1.0": 1.0
+  },
+  "split_half_double_centered_r": 0.5137967593781454,
+  "full_target_reliability_estimate": 0.6788186805066337,
+  "model_correlation_ceiling_estimate": 0.8239045336121374,
+  "histogram_cells_missing_metadata": 0,
+  "chromosome_records_matched": 1695336471,
+  "chromosome_records_missing_metadata": 0,
+  "fragment_cell_id_mode": "direct",
+  "fragment_libraries": {}
+}

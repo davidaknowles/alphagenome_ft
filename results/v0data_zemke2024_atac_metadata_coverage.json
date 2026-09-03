@@ -1,0 +1,374 @@
+{
+  "fragment_donors": 40,
+  "metadata_donors": 40,
+  "missing_metadata_for_fragment_donors": [],
+  "histogram_cells": 23588538,
+  "metadata_cells": 295033,
+  "matched_cells": 295033,
+  "matched_cell_fraction": 0.012507472909088303,
+  "fragments": 8629711910,
+  "matched_fragments": 5453898380,
+  "matched_fragment_fraction": 0.6319907821812791,
+  "donors": {
+    "hc11": {
+      "histogram_cells": 504466,
+      "metadata_cells": 3143,
+      "matched_cells": 3143,
+      "matched_cell_fraction": 0.006230350509251367,
+      "fragments": 101107246,
+      "matched_fragments": 40597719,
+      "matched_fragment_fraction": 0.40153125128143635
+    },
+    "hc1134": {
+      "histogram_cells": 658473,
+      "metadata_cells": 3648,
+      "matched_cells": 3648,
+      "matched_cell_fraction": 0.00554009048206988,
+      "fragments": 125068678,
+      "matched_fragments": 85330459,
+      "matched_fragment_fraction": 0.682268817137413
+    },
+    "hc1153": {
+      "histogram_cells": 420230,
+      "metadata_cells": 2555,
+      "matched_cells": 2555,
+      "matched_cell_fraction": 0.006080003807438784,
+      "fragments": 89818807,
+      "matched_fragments": 64802900,
+      "matched_fragment_fraction": 0.7214847554143087
+    },
+    "hc12": {
+      "histogram_cells": 492882,
+      "metadata_cells": 6980,
+      "matched_cells": 6980,
+      "matched_cell_fraction": 0.014161604603130162,
+      "fragments": 143545288,
+      "matched_fragments": 93924140,
+      "matched_fragment_fraction": 0.6543171239448835
+    },
+    "hc1203": {
+      "histogram_cells": 631043,
+      "metadata_cells": 5482,
+      "matched_cells": 5482,
+      "matched_cell_fraction": 0.008687205150837582,
+      "fragments": 169629057,
+      "matched_fragments": 130631800,
+      "matched_fragment_fraction": 0.7701027306895893
+    },
+    "hc1216": {
+      "histogram_cells": 599705,
+      "metadata_cells": 8673,
+      "matched_cells": 8673,
+      "matched_cell_fraction": 0.014462110537681027,
+      "fragments": 132645621,
+      "matched_fragments": 99329433,
+      "matched_fragment_fraction": 0.7488331107440026
+    },
+    "hc1265": {
+      "histogram_cells": 592649,
+      "metadata_cells": 9115,
+      "matched_cells": 9115,
+      "matched_cell_fraction": 0.015380098506873377,
+      "fragments": 296244902,
+      "matched_fragments": 174731027,
+      "matched_fragment_fraction": 0.5898195237128503
+    },
+    "hc1271": {
+      "histogram_cells": 614085,
+      "metadata_cells": 8892,
+      "matched_cells": 8892,
+      "matched_cell_fraction": 0.01448008011920174,
+      "fragments": 304601771,
+      "matched_fragments": 201592795,
+      "matched_fragment_fraction": 0.6618241067285193
+    },
+    "hc13344": {
+      "histogram_cells": 561910,
+      "metadata_cells": 8596,
+      "matched_cells": 8596,
+      "matched_cell_fraction": 0.015297823494865725,
+      "fragments": 153528528,
+      "matched_fragments": 108275422,
+      "matched_fragment_fraction": 0.7052462718850532
+    },
+    "hc13394": {
+      "histogram_cells": 676252,
+      "metadata_cells": 10607,
+      "matched_cells": 10607,
+      "matched_cell_fraction": 0.01568498133831767,
+      "fragments": 317458157,
+      "matched_fragments": 206540730,
+      "matched_fragment_fraction": 0.6506077271783569
+    },
+    "hc13414": {
+      "histogram_cells": 660221,
+      "metadata_cells": 10772,
+      "matched_cells": 10772,
+      "matched_cell_fraction": 0.016315748817441432,
+      "fragments": 308355407,
+      "matched_fragments": 223789568,
+      "matched_fragment_fraction": 0.7257520475390918
+    },
+    "hc1745": {
+      "histogram_cells": 650590,
+      "metadata_cells": 6342,
+      "matched_cells": 6342,
+      "matched_cell_fraction": 0.00974807482439017,
+      "fragments": 240037130,
+      "matched_fragments": 160419710,
+      "matched_fragment_fraction": 0.668312064887628
+    },
+    "hc19": {
+      "histogram_cells": 565419,
+      "metadata_cells": 6934,
+      "matched_cells": 6934,
+      "matched_cell_fraction": 0.012263471867765321,
+      "fragments": 173616134,
+      "matched_fragments": 112583966,
+      "matched_fragment_fraction": 0.6484648828777629
+    },
+    "hc212191": {
+      "histogram_cells": 498690,
+      "metadata_cells": 6971,
+      "matched_cells": 6971,
+      "matched_cell_fraction": 0.013978623994866551,
+      "fragments": 146901140,
+      "matched_fragments": 94893614,
+      "matched_fragment_fraction": 0.6459692143982
+    },
+    "hc26": {
+      "histogram_cells": 543896,
+      "metadata_cells": 11102,
+      "matched_cells": 11102,
+      "matched_cell_fraction": 0.020411990527600864,
+      "fragments": 188417502,
+      "matched_fragments": 136740499,
+      "matched_fragment_fraction": 0.7257314079028603
+    },
+    "hc29": {
+      "histogram_cells": 487844,
+      "metadata_cells": 3528,
+      "matched_cells": 3528,
+      "matched_cell_fraction": 0.007231820008035355,
+      "fragments": 104766440,
+      "matched_fragments": 73957169,
+      "matched_fragment_fraction": 0.705924234898122
+    },
+    "hc35": {
+      "histogram_cells": 531711,
+      "metadata_cells": 8388,
+      "matched_cells": 8388,
+      "matched_cell_fraction": 0.015775487059699726,
+      "fragments": 177697410,
+      "matched_fragments": 138049151,
+      "matched_fragment_fraction": 0.7768776764951161
+    },
+    "hc40": {
+      "histogram_cells": 611852,
+      "metadata_cells": 8033,
+      "matched_cells": 8033,
+      "matched_cell_fraction": 0.013128991978452305,
+      "fragments": 221376438,
+      "matched_fragments": 127779563,
+      "matched_fragment_fraction": 0.5772048920581151
+    },
+    "hc46426": {
+      "histogram_cells": 681941,
+      "metadata_cells": 7473,
+      "matched_cells": 7473,
+      "matched_cell_fraction": 0.010958426022192536,
+      "fragments": 241324022,
+      "matched_fragments": 182213692,
+      "matched_fragment_fraction": 0.7550582428134734
+    },
+    "hc4781": {
+      "histogram_cells": 642972,
+      "metadata_cells": 6702,
+      "matched_cells": 6702,
+      "matched_cell_fraction": 0.010423471006513503,
+      "fragments": 189022543,
+      "matched_fragments": 132814640,
+      "matched_fragment_fraction": 0.7026391555847389
+    },
+    "hc5021": {
+      "histogram_cells": 558575,
+      "metadata_cells": 5198,
+      "matched_cells": 5198,
+      "matched_cell_fraction": 0.009305822852795059,
+      "fragments": 140276450,
+      "matched_fragments": 94604930,
+      "matched_fragment_fraction": 0.67441776577608
+    },
+    "hc5087": {
+      "histogram_cells": 637842,
+      "metadata_cells": 6964,
+      "matched_cells": 6964,
+      "matched_cell_fraction": 0.010918064348224168,
+      "fragments": 243563422,
+      "matched_fragments": 119446635,
+      "matched_fragment_fraction": 0.49041286256850175
+    },
+    "hc5551": {
+      "histogram_cells": 678354,
+      "metadata_cells": 11666,
+      "matched_cells": 11666,
+      "matched_cell_fraction": 0.017197510444399235,
+      "fragments": 342206011,
+      "matched_fragments": 227550118,
+      "matched_fragment_fraction": 0.6649506749897506
+    },
+    "hc5579": {
+      "histogram_cells": 582034,
+      "metadata_cells": 9673,
+      "matched_cells": 9673,
+      "matched_cell_fraction": 0.01661930402691252,
+      "fragments": 295633178,
+      "matched_fragments": 187212661,
+      "matched_fragment_fraction": 0.6332599820714304
+    },
+    "hc5610": {
+      "histogram_cells": 671419,
+      "metadata_cells": 4395,
+      "matched_cells": 4395,
+      "matched_cell_fraction": 0.006545837993860763,
+      "fragments": 178990463,
+      "matched_fragments": 97838862,
+      "matched_fragment_fraction": 0.5466149445068478
+    },
+    "hc5614": {
+      "histogram_cells": 555273,
+      "metadata_cells": 8149,
+      "matched_cells": 8149,
+      "matched_cell_fraction": 0.014675664042732134,
+      "fragments": 230129206,
+      "matched_fragments": 99945062,
+      "matched_fragment_fraction": 0.43429977331951514
+    },
+    "hc6021": {
+      "histogram_cells": 633594,
+      "metadata_cells": 10745,
+      "matched_cells": 10745,
+      "matched_cell_fraction": 0.016958809584686724,
+      "fragments": 273406138,
+      "matched_fragments": 172050335,
+      "matched_fragment_fraction": 0.6292848297356075
+    },
+    "hc6052": {
+      "histogram_cells": 427329,
+      "metadata_cells": 4012,
+      "matched_cells": 4012,
+      "matched_cell_fraction": 0.0093885507419342,
+      "fragments": 86846302,
+      "matched_fragments": 64160304,
+      "matched_fragment_fraction": 0.7387799194950178
+    },
+    "hc69984": {
+      "histogram_cells": 543472,
+      "metadata_cells": 4875,
+      "matched_cells": 4875,
+      "matched_cell_fraction": 0.008970103335590425,
+      "fragments": 84156764,
+      "matched_fragments": 56066508,
+      "matched_fragment_fraction": 0.6662151125487668
+    },
+    "hc73": {
+      "histogram_cells": 682095,
+      "metadata_cells": 7650,
+      "matched_cells": 7650,
+      "matched_cell_fraction": 0.011215446528709344,
+      "fragments": 498329574,
+      "matched_fragments": 274364862,
+      "matched_fragment_fraction": 0.5505690938583548
+    },
+    "hc73787": {
+      "histogram_cells": 635607,
+      "metadata_cells": 12683,
+      "matched_cells": 12683,
+      "matched_cell_fraction": 0.019954154060606633,
+      "fragments": 266961490,
+      "matched_fragments": 146680335,
+      "matched_fragment_fraction": 0.5494437980549179
+    },
+    "hc76": {
+      "histogram_cells": 520072,
+      "metadata_cells": 4592,
+      "matched_cells": 4592,
+      "matched_cell_fraction": 0.008829546678152255,
+      "fragments": 122011050,
+      "matched_fragments": 78676782,
+      "matched_fragment_fraction": 0.6448332507588452
+    },
+    "hc77": {
+      "histogram_cells": 481090,
+      "metadata_cells": 3779,
+      "matched_cells": 3779,
+      "matched_cell_fraction": 0.007855079091230332,
+      "fragments": 115905162,
+      "matched_fragments": 92068807,
+      "matched_fragment_fraction": 0.7943460447430288
+    },
+    "hc78": {
+      "histogram_cells": 574421,
+      "metadata_cells": 6842,
+      "matched_cells": 6842,
+      "matched_cell_fraction": 0.011911124419197765,
+      "fragments": 183506449,
+      "matched_fragments": 126069492,
+      "matched_fragment_fraction": 0.6870030600395957
+    },
+    "hc8": {
+      "histogram_cells": 680074,
+      "metadata_cells": 10266,
+      "matched_cells": 10266,
+      "matched_cell_fraction": 0.015095416087072877,
+      "fragments": 543585151,
+      "matched_fragments": 255851282,
+      "matched_fragment_fraction": 0.4706737877760756
+    },
+    "hc81": {
+      "histogram_cells": 643055,
+      "metadata_cells": 3668,
+      "matched_cells": 3668,
+      "matched_cell_fraction": 0.005704022206498667,
+      "fragments": 295211156,
+      "matched_fragments": 114073925,
+      "matched_fragment_fraction": 0.3864146821063903
+    },
+    "hc9": {
+      "histogram_cells": 543078,
+      "metadata_cells": 7387,
+      "matched_cells": 7387,
+      "matched_cell_fraction": 0.013602097672894133,
+      "fragments": 133866729,
+      "matched_fragments": 96257028,
+      "matched_fragment_fraction": 0.7190511691669108
+    },
+    "hc935": {
+      "histogram_cells": 618302,
+      "metadata_cells": 8237,
+      "matched_cells": 8237,
+      "matched_cell_fraction": 0.013321968876050862,
+      "fragments": 228131117,
+      "matched_fragments": 168685090,
+      "matched_fragment_fraction": 0.739421663376154
+    },
+    "hc937": {
+      "histogram_cells": 648255,
+      "metadata_cells": 10023,
+      "matched_cells": 10023,
+      "matched_cell_fraction": 0.015461508202790568,
+      "fragments": 233167698,
+      "matched_fragments": 160084151,
+      "matched_fragment_fraction": 0.6865622998945592
+    },
+    "hc98": {
+      "histogram_cells": 647766,
+      "metadata_cells": 10293,
+      "matched_cells": 10293,
+      "matched_cell_fraction": 0.015889997313844814,
+      "fragments": 308666179,
+      "matched_fragments": 233213214,
+      "matched_fragment_fraction": 0.7555515630366487
+    }
+  }
+}

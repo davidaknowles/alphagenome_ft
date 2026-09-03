@@ -1,0 +1,90 @@
+{
+  "shard": "/gpfs/commons/home/daknowles/projects/alphagenome_fp4/outputs/v0data/zemke2024-atac-reprocessing/chr9_hc11_smoke.npz",
+  "chromosome": "chr9",
+  "bin_size": 100,
+  "groups": [
+    "Astro",
+    "Chandelier",
+    "LAMP5",
+    "Macro",
+    "Microglia",
+    "NR2F2",
+    "OPC",
+    "Oligo",
+    "PVALB",
+    "SST",
+    "SUB",
+    "T-Cell",
+    "VIP"
+  ],
+  "field": "insertion_spmr",
+  "raw_vs_released_pearson_r": 0.16392869016319755,
+  "raw_vs_released_double_centered_r": 0.06848642493967737,
+  "per_group": {
+    "Astro": {
+      "pearson_r": 0.7842132295432008,
+      "raw_mean": 0.07432174309552493,
+      "released_mean": 1.6390436765291108
+    },
+    "Chandelier": {
+      "pearson_r": 0.0916793974316458,
+      "raw_mean": 0.09015736365875296,
+      "released_mean": 1.781563490872792
+    },
+    "LAMP5": {
+      "pearson_r": 0.1721682863251811,
+      "raw_mean": 0.07744318591717216,
+      "released_mean": 1.7477923793397416
+    },
+    "Macro": {
+      "pearson_r": 0.1738603869308442,
+      "raw_mean": 0.08105841374891842,
+      "released_mean": 1.572976992413047
+    },
+    "Microglia": {
+      "pearson_r": 0.5566837634658958,
+      "raw_mean": 0.0744977373955116,
+      "released_mean": 1.5592100461852179
+    },
+    "NR2F2": {
+      "pearson_r": 0.22899940043640324,
+      "raw_mean": 0.07442574858168972,
+      "released_mean": 1.7028840223672652
+    },
+    "OPC": {
+      "pearson_r": 0.6572655805067149,
+      "raw_mean": 0.0748056660404566,
+      "released_mean": 1.6619942116224424
+    },
+    "Oligo": {
+      "pearson_r": 0.6536946104910916,
+      "raw_mean": 0.0720705419832918,
+      "released_mean": 1.7715818477137495
+    },
+    "PVALB": {
+      "pearson_r": 0.14427914565294048,
+      "raw_mean": 0.0786537294508244,
+      "released_mean": 1.755215771916139
+    },
+    "SST": {
+      "pearson_r": 0.2317906472752017,
+      "raw_mean": 0.07926428218518085,
+      "released_mean": 1.8116757082502104
+    },
+    "SUB": {
+      "pearson_r": 0.0988083803606399,
+      "raw_mean": 0.08283519827771407,
+      "released_mean": 1.686545512452214
+    },
+    "T-Cell": {
+      "pearson_r": 0.08346634769382556,
+      "raw_mean": 0.061550259190817254,
+      "released_mean": 1.53231934012303
+    },
+    "VIP": {
+      "pearson_r": 0.47753487464993255,
+      "raw_mean": 0.07723256168291483,
+      "released_mean": 1.7629885606778097
+    }
+  }
+}
