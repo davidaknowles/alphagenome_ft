@@ -8,7 +8,7 @@ The primary evaluation statistic is signed double-centered Pearson correlation, 
 
 ## Data representation
 
-Each native source retains its reference assembly, DNA sequence, assay definition, target mask, and output scaling. HDA, Liu, and Johansen RNA are modeled as direct raw-count counts-per-million pseudobulks over exon-defined genes. Zemke RNA can be evaluated using its released coordinate tracks, but direct-gene targets are preferred for training where released count matrices support them because they provide a more comparable RNA endpoint.
+Each native source retains its reference assembly, DNA sequence, assay definition, target mask, and output scaling. The current joint endpoint models RNA for HDA, Liu, Johansen, Zemke 2023, and Zemke 2024 as direct raw-count counts-per-million pseudobulks over exon-defined genes. Released Zemke coordinate tracks remain an independent benchmark, but direct-gene targets provide the comparable cross-study training endpoint. Zemke 2024 masks four unreleased subtype channels and retains the 18 broad groups supported by its released cell assignments.
 
 Published ATAC targets are used when appropriate. Liu and every Johansen/Allen species require reconstruction from raw ATAC fragments, using full-depth paired-fragment coverage normalized as signal per million reads. The reconstruction preserves the available data rather than downsampling it.
 
@@ -20,7 +20,7 @@ Adaptation uses low-rank linear adapters (LoRA) together with low-rank convoluti
 
 ## Findings
 
-ATAC is consistently easier than RNA. HDA ATAC is near the target level of $R\approx0.8$, while RNA remains the limiting modality across the panel. LoCon improves on linear-only adaptation when its convolution coverage is broadened, but greater adapter rank and uniform RNA upweighting have not produced a comparable gain.
+ATAC is consistently easier than RNA. HDA ATAC is near the target level of $R\approx0.8$, while RNA remains the limiting modality across the panel. Broader LoCon coverage improved an earlier published-target control, but it did not generalize to the completed shared-head direct-Zemke comparison, where LoRA has higher validation $R$ and the test difference is negligible. Greater adapter rank and uniform RNA upweighting have not produced a comparable gain.
 
 Direct-gene RNA improves Zemke 2023 relative to the released coordinate-RPKM representation. This supports a target-representation mismatch, rather than read depth alone, as an important limitation for RNA. Source-specific output heads and semantic initialization are the current highest-value refinements under evaluation.
 
@@ -28,4 +28,4 @@ The canonical Zemke 2023 marmoset RNA test metric is dominated by a ribosomal-re
 
 ## Remaining work
 
-Complete the matched source-specific direct-gene LoRA and LoRA plus LoCon comparison, then assess performance by source and modality. The main scientific objective remains robust RNA performance across studies, especially Johansen marmoset and the Zemke endpoints. Detailed measurements, target audits, training progression, and operational history are maintained in `LABNOTEBOOK.md`.
+Complete the matched source-specific direct-gene LoRA and LoRA plus LoCon comparison, then assess performance by source and modality. The fragment-derived Johansen ATAC targets are also undergoing split-half reproducibility assessment, which will distinguish a target ceiling from a model-fitting limitation before further target changes are considered. The main scientific objective remains robust RNA performance across studies, especially Johansen marmoset and the Zemke endpoints. Detailed measurements, target audits, training progression, and operational history are maintained in `LABNOTEBOOK.md`.
