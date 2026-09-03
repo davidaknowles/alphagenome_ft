@@ -1,0 +1,428 @@
+{
+  "rows": [
+    {
+      "dataset": "hda",
+      "source": "human",
+      "strategy": "LoRA",
+      "source_epoch": 25,
+      "source_global_step": 327375,
+      "head": "hda_atac",
+      "valid_r": 0.8003788767190524,
+      "test_r": 0.8133259819062113
+    },
+    {
+      "dataset": "hda",
+      "source": "human",
+      "strategy": "LoRA",
+      "source_epoch": 25,
+      "source_global_step": 327375,
+      "head": "hda_rna",
+      "valid_r": 0.5431064085705785,
+      "test_r": 0.6222751803864265
+    },
+    {
+      "dataset": "liu_hdma",
+      "source": "human",
+      "strategy": "LoRA",
+      "source_epoch": 25,
+      "source_global_step": 327375,
+      "head": "liu_atac",
+      "valid_r": 0.7726698409246924,
+      "test_r": 0.7910506037491183
+    },
+    {
+      "dataset": "liu_hdma",
+      "source": "human",
+      "strategy": "LoRA",
+      "source_epoch": 25,
+      "source_global_step": 327375,
+      "head": "liu_rna",
+      "valid_r": 0.6568009428109277,
+      "test_r": 0.5086008622505563
+    },
+    {
+      "dataset": "johansen2025",
+      "source": "human",
+      "strategy": "LoRA",
+      "source_epoch": 25,
+      "source_global_step": 327375,
+      "head": "allen_atac",
+      "valid_r": 0.5641445505637108,
+      "test_r": 0.601060195365235
+    },
+    {
+      "dataset": "johansen2025",
+      "source": "human",
+      "strategy": "LoRA",
+      "source_epoch": 25,
+      "source_global_step": 327375,
+      "head": "allen_rna",
+      "valid_r": 0.5632163306868907,
+      "test_r": 0.5391408933146177
+    },
+    {
+      "dataset": "johansen2025",
+      "source": "macaque",
+      "strategy": "LoRA",
+      "source_epoch": 25,
+      "source_global_step": 327375,
+      "head": "allen_atac",
+      "valid_r": 0.576207463453641,
+      "test_r": 0.42982284565628986
+    },
+    {
+      "dataset": "johansen2025",
+      "source": "macaque",
+      "strategy": "LoRA",
+      "source_epoch": 25,
+      "source_global_step": 327375,
+      "head": "allen_rna",
+      "valid_r": 0.31378548187661753,
+      "test_r": 0.5015584958126098
+    },
+    {
+      "dataset": "johansen2025",
+      "source": "marmoset",
+      "strategy": "LoRA",
+      "source_epoch": 25,
+      "source_global_step": 327375,
+      "head": "allen_atac",
+      "valid_r": 0.4715283732059747,
+      "test_r": 0.5063293137930127
+    },
+    {
+      "dataset": "johansen2025",
+      "source": "marmoset",
+      "strategy": "LoRA",
+      "source_epoch": 25,
+      "source_global_step": 327375,
+      "head": "allen_rna",
+      "valid_r": 0.24251525796464535,
+      "test_r": 0.4093876025296027
+    },
+    {
+      "dataset": "zemke2023",
+      "source": "human",
+      "strategy": "LoRA",
+      "source_epoch": 25,
+      "source_global_step": 327375,
+      "head": "zemke2023_atac",
+      "valid_r": 0.6848392711634272,
+      "test_r": 0.7132033254133071
+    },
+    {
+      "dataset": "zemke2023",
+      "source": "human",
+      "strategy": "LoRA",
+      "source_epoch": 25,
+      "source_global_step": 327375,
+      "head": "zemke2023_rna",
+      "valid_r": 0.5459241226782564,
+      "test_r": 0.50027882964026
+    },
+    {
+      "dataset": "zemke2023",
+      "source": "macaque",
+      "strategy": "LoRA",
+      "source_epoch": 25,
+      "source_global_step": 327375,
+      "head": "zemke2023_atac",
+      "valid_r": 0.3158707976981593,
+      "test_r": 0.6215494005730172
+    },
+    {
+      "dataset": "zemke2023",
+      "source": "macaque",
+      "strategy": "LoRA",
+      "source_epoch": 25,
+      "source_global_step": 327375,
+      "head": "zemke2023_rna",
+      "valid_r": 0.43652322216245204,
+      "test_r": 0.55896984323667
+    },
+    {
+      "dataset": "zemke2023",
+      "source": "marmoset",
+      "strategy": "LoRA",
+      "source_epoch": 25,
+      "source_global_step": 327375,
+      "head": "zemke2023_atac",
+      "valid_r": 0.615594924992129,
+      "test_r": 0.5858239789196261
+    },
+    {
+      "dataset": "zemke2023",
+      "source": "marmoset",
+      "strategy": "LoRA",
+      "source_epoch": 25,
+      "source_global_step": 327375,
+      "head": "zemke2023_rna",
+      "valid_r": 0.43846878115762483,
+      "test_r": 0.5527080375834676
+    },
+    {
+      "dataset": "zemke2023",
+      "source": "mouse",
+      "strategy": "LoRA",
+      "source_epoch": 25,
+      "source_global_step": 327375,
+      "head": "zemke2023_atac",
+      "valid_r": 0.7150842524186201,
+      "test_r": 0.7131307823558924
+    },
+    {
+      "dataset": "zemke2023",
+      "source": "mouse",
+      "strategy": "LoRA",
+      "source_epoch": 25,
+      "source_global_step": 327375,
+      "head": "zemke2023_rna",
+      "valid_r": 0.5278322497324438,
+      "test_r": 0.5029928421374362
+    },
+    {
+      "dataset": "zemke2024",
+      "source": "human",
+      "strategy": "LoRA",
+      "source_epoch": 25,
+      "source_global_step": 327375,
+      "head": "zemke2024_all_atac",
+      "valid_r": 0.7435504824256784,
+      "test_r": 0.7564011954449086
+    },
+    {
+      "dataset": "zemke2024",
+      "source": "human",
+      "strategy": "LoRA",
+      "source_epoch": 25,
+      "source_global_step": 327375,
+      "head": "zemke2024_all_rna",
+      "valid_r": 0.5720767745583558,
+      "test_r": 0.30468797964675054
+    },
+    {
+      "dataset": "hda",
+      "source": "human",
+      "strategy": "LoRA+LoCon",
+      "source_epoch": 21,
+      "source_global_step": 274995,
+      "head": "hda_atac",
+      "valid_r": 0.7976919454506394,
+      "test_r": 0.8117676844294783
+    },
+    {
+      "dataset": "hda",
+      "source": "human",
+      "strategy": "LoRA+LoCon",
+      "source_epoch": 21,
+      "source_global_step": 274995,
+      "head": "hda_rna",
+      "valid_r": 0.5280126934858081,
+      "test_r": 0.6787286627580594
+    },
+    {
+      "dataset": "liu_hdma",
+      "source": "human",
+      "strategy": "LoRA+LoCon",
+      "source_epoch": 21,
+      "source_global_step": 274995,
+      "head": "liu_atac",
+      "valid_r": 0.7727936387424013,
+      "test_r": 0.7904013654719334
+    },
+    {
+      "dataset": "liu_hdma",
+      "source": "human",
+      "strategy": "LoRA+LoCon",
+      "source_epoch": 21,
+      "source_global_step": 274995,
+      "head": "liu_rna",
+      "valid_r": 0.59029640290485,
+      "test_r": 0.5166981851081696
+    },
+    {
+      "dataset": "johansen2025",
+      "source": "human",
+      "strategy": "LoRA+LoCon",
+      "source_epoch": 21,
+      "source_global_step": 274995,
+      "head": "allen_atac",
+      "valid_r": 0.559273851600828,
+      "test_r": 0.5966381489113677
+    },
+    {
+      "dataset": "johansen2025",
+      "source": "human",
+      "strategy": "LoRA+LoCon",
+      "source_epoch": 21,
+      "source_global_step": 274995,
+      "head": "allen_rna",
+      "valid_r": 0.5638862694672225,
+      "test_r": 0.5528441593845677
+    },
+    {
+      "dataset": "johansen2025",
+      "source": "macaque",
+      "strategy": "LoRA+LoCon",
+      "source_epoch": 21,
+      "source_global_step": 274995,
+      "head": "allen_atac",
+      "valid_r": 0.5722552387915414,
+      "test_r": 0.42207804713565555
+    },
+    {
+      "dataset": "johansen2025",
+      "source": "macaque",
+      "strategy": "LoRA+LoCon",
+      "source_epoch": 21,
+      "source_global_step": 274995,
+      "head": "allen_rna",
+      "valid_r": 0.33107049703227176,
+      "test_r": 0.49672750143210725
+    },
+    {
+      "dataset": "johansen2025",
+      "source": "marmoset",
+      "strategy": "LoRA+LoCon",
+      "source_epoch": 21,
+      "source_global_step": 274995,
+      "head": "allen_atac",
+      "valid_r": 0.46636266349603467,
+      "test_r": 0.49851623694834185
+    },
+    {
+      "dataset": "johansen2025",
+      "source": "marmoset",
+      "strategy": "LoRA+LoCon",
+      "source_epoch": 21,
+      "source_global_step": 274995,
+      "head": "allen_rna",
+      "valid_r": 0.22444296282845969,
+      "test_r": 0.40596230974523223
+    },
+    {
+      "dataset": "zemke2023",
+      "source": "human",
+      "strategy": "LoRA+LoCon",
+      "source_epoch": 21,
+      "source_global_step": 274995,
+      "head": "zemke2023_atac",
+      "valid_r": 0.6772541148323871,
+      "test_r": 0.7069747370858772
+    },
+    {
+      "dataset": "zemke2023",
+      "source": "human",
+      "strategy": "LoRA+LoCon",
+      "source_epoch": 21,
+      "source_global_step": 274995,
+      "head": "zemke2023_rna",
+      "valid_r": 0.49513530221908086,
+      "test_r": 0.5192017699979363
+    },
+    {
+      "dataset": "zemke2023",
+      "source": "macaque",
+      "strategy": "LoRA+LoCon",
+      "source_epoch": 21,
+      "source_global_step": 274995,
+      "head": "zemke2023_atac",
+      "valid_r": 0.25618413172027676,
+      "test_r": 0.6135827332434544
+    },
+    {
+      "dataset": "zemke2023",
+      "source": "macaque",
+      "strategy": "LoRA+LoCon",
+      "source_epoch": 21,
+      "source_global_step": 274995,
+      "head": "zemke2023_rna",
+      "valid_r": 0.43335169670602763,
+      "test_r": 0.5682637163879886
+    },
+    {
+      "dataset": "zemke2023",
+      "source": "marmoset",
+      "strategy": "LoRA+LoCon",
+      "source_epoch": 21,
+      "source_global_step": 274995,
+      "head": "zemke2023_atac",
+      "valid_r": 0.609493157167016,
+      "test_r": 0.5795173531050606
+    },
+    {
+      "dataset": "zemke2023",
+      "source": "marmoset",
+      "strategy": "LoRA+LoCon",
+      "source_epoch": 21,
+      "source_global_step": 274995,
+      "head": "zemke2023_rna",
+      "valid_r": 0.43890462363619953,
+      "test_r": 0.5672297385888674
+    },
+    {
+      "dataset": "zemke2023",
+      "source": "mouse",
+      "strategy": "LoRA+LoCon",
+      "source_epoch": 21,
+      "source_global_step": 274995,
+      "head": "zemke2023_atac",
+      "valid_r": 0.7064449450279261,
+      "test_r": 0.7051749325604322
+    },
+    {
+      "dataset": "zemke2023",
+      "source": "mouse",
+      "strategy": "LoRA+LoCon",
+      "source_epoch": 21,
+      "source_global_step": 274995,
+      "head": "zemke2023_rna",
+      "valid_r": 0.4788125223449484,
+      "test_r": 0.49138058925336675
+    },
+    {
+      "dataset": "zemke2024",
+      "source": "human",
+      "strategy": "LoRA+LoCon",
+      "source_epoch": 21,
+      "source_global_step": 274995,
+      "head": "zemke2024_all_atac",
+      "valid_r": 0.7399824916620197,
+      "test_r": 0.7502866805706304
+    },
+    {
+      "dataset": "zemke2024",
+      "source": "human",
+      "strategy": "LoRA+LoCon",
+      "source_epoch": 21,
+      "source_global_step": 274995,
+      "head": "zemke2024_all_rna",
+      "valid_r": 0.489103499892687,
+      "test_r": 0.2949348417969793
+    }
+  ],
+  "strategy_summaries": [
+    {
+      "strategy": "LoRA",
+      "native_sources": 10,
+      "heads": 20,
+      "mean_valid_r": 0.5550059202881938,
+      "mean_test_r": 0.5766149094857508,
+      "mean_atac_valid_r": 0.6259868833565085,
+      "mean_atac_test_r": 0.6531697623176619,
+      "mean_rna_valid_r": 0.48402495721987926,
+      "mean_rna_test_r": 0.5000600566538397
+    },
+    {
+      "strategy": "LoRA+LoCon",
+      "native_sources": 10,
+      "heads": 20,
+      "mean_valid_r": 0.5365376324504313,
+      "mean_test_r": 0.5783454696957753,
+      "mean_atac_valid_r": 0.6157736178491071,
+      "mean_atac_test_r": 0.6474937919462231,
+      "mean_rna_valid_r": 0.4573016470517556,
+      "mean_rna_test_r": 0.5091971474453274
+    }
+  ]
+}
