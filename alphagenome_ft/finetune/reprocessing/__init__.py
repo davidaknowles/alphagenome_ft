@@ -2,6 +2,7 @@
 
 from alphagenome_ft.finetune.reprocessing.atac import (
     BinnedAtacAccumulator,
+    depth_balanced_half_assignments,
     fragment_totals_by_group,
     match_fragment_library,
     read_fragment_histogram,
@@ -22,6 +23,7 @@ from alphagenome_ft.finetune.reprocessing.rna import (
 
 __all__ = [
     "BinnedAtacAccumulator",
+    "depth_balanced_half_assignments",
     "fragment_totals_by_group",
     "match_fragment_library",
     "read_fragment_histogram",

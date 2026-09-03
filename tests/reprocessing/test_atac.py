@@ -1,8 +1,10 @@
 import h5py
 import numpy as np
+from pathlib import Path
 
 from alphagenome_ft.finetune.reprocessing import (
     BinnedAtacAccumulator,
+    depth_balanced_half_assignments,
     fragment_totals_by_group,
     match_fragment_library,
     read_cell_groups,
@@ -79,4 +81,22 @@ def test_fragment_totals_by_group_reports_unmatched_cells():
     )
 
     np.testing.assert_array_equal(totals, [3, 5])
+    assert missing == 1
+
+
+def test_depth_balanced_half_assignments_keep_cells_whole_and_balance_depth():
+    first = Path("first.tsv.gz")
+    second = Path("second.tsv.gz")
+    groups, assignments, depths, missing = depth_balanced_half_assignments(
+        [first, second],
+        {first: {"a": 8, "b": 4, "missing": 2}, second: {"c": 6, "d": 3}},
+        {first: {"a": "A", "b": "A"}, second: {"c": "A", "d": "B"}},
+    )
+
+    assert groups == ["A", "B"]
+    assert assignments[first]["a"] in (0, 1)
+    assert assignments[first]["b"] in (0, 1)
+    assert assignments[second]["c"] in (0, 1)
+    assert assignments[second]["d"] in (2, 3)
+    np.testing.assert_array_equal(depths, [[8, 10], [3, 0]])
     assert missing == 1

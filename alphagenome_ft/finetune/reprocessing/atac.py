@@ -11,6 +11,7 @@ from typing import Collection, Mapping, Sequence
 import h5py
 import numpy as np
 
+from alphagenome_ft.finetune.reliability import balanced_group_item_split
 from alphagenome_ft.finetune.rna_tracks import _read_h5ad_column
 
 
@@ -247,6 +248,47 @@ def fragment_totals_by_group(
             continue
         totals[group_indices[group]] += int(count)
     return totals, missing
+
+
+def depth_balanced_half_assignments(
+    fragment_paths: Sequence[Path],
+    histograms: Mapping[Path, Mapping[str, int]],
+    groups_by_path: Mapping[Path, Mapping[str, str]],
+) -> tuple[list[str], dict[Path, dict[str, int]], np.ndarray, int]:
+    """Split cells into deterministic depth-balanced halves within every group.
+
+    Fragment multiplicities balance and normalize whole-cell pseudobulk halves;
+    each cell remains in one half, preserving a biological rather than technical split.
+    """
+    group_names = sorted({group for groups in groups_by_path.values() for group in groups.values()})
+    group_index = {group: index for index, group in enumerate(group_names)}
+    items_by_group: dict[str, list[tuple[Path, str, int]]] = {group: [] for group in group_names}
+    histogram_cells_missing_metadata = 0
+    for path in fragment_paths:
+        cell_groups = groups_by_path[path]
+        for cell, count in histograms[path].items():
+            group = cell_groups.get(cell)
+            if group is None:
+                histogram_cells_missing_metadata += 1
+                continue
+            items_by_group[group].append((path, cell, count))
+
+    assignments: dict[Path, dict[str, int]] = {path: {} for path in fragment_paths}
+    half_depths = np.zeros((len(group_names), 2), dtype=np.float64)
+    for group, items in items_by_group.items():
+        if not items:
+            continue
+        item_groups = np.repeat(group, len(items))
+        weights = np.asarray([item[2] for item in items], dtype=np.float64)
+        keys = np.asarray([f"{item[0]}\0{item[1]}" for item in items])
+        first_half = balanced_group_item_split(item_groups, weights, keys)
+        group_offset = 2 * group_index[group]
+        for item, first in zip(items, first_half, strict=True):
+            path, cell, count = item
+            half = 0 if first else 1
+            assignments[path][cell] = group_offset + half
+            half_depths[group_index[group], half] += count
+    return group_names, assignments, half_depths, histogram_cells_missing_metadata
 
 
 def read_fragment_histogram(path: Path) -> dict[str, int]:

@@ -15,12 +15,12 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from alphagenome_ft.finetune.reliability import (
-    balanced_group_item_split,
     double_centered_pearson,
     spearman_brown,
 )
 from alphagenome_ft.finetune.reprocessing import (
     BinnedAtacAccumulator,
+    depth_balanced_half_assignments,
     match_fragment_library,
     read_cell_groups,
     read_cell_groups_by_library,
@@ -70,42 +70,6 @@ def load_cell_groups(
     return histograms, groups_by_path, matched_libraries
 
 
-def build_half_assignments(
-    fragment_paths: list[Path],
-    histograms: dict[Path, dict[str, int]],
-    groups_by_path: dict[Path, dict[str, str]],
-) -> tuple[list[str], dict[Path, dict[str, int]], np.ndarray, int]:
-    group_names = sorted({group for groups in groups_by_path.values() for group in groups.values()})
-    group_index = {group: index for index, group in enumerate(group_names)}
-    items_by_group: dict[str, list[tuple[Path, str, int]]] = {group: [] for group in group_names}
-    histogram_cells_missing_metadata = 0
-    for path in fragment_paths:
-        cell_groups = groups_by_path[path]
-        for cell, count in histograms[path].items():
-            group = cell_groups.get(cell)
-            if group is None:
-                histogram_cells_missing_metadata += 1
-                continue
-            items_by_group[group].append((path, cell, count))
-
-    assignments: dict[Path, dict[str, int]] = {path: {} for path in fragment_paths}
-    half_depths = np.zeros((len(group_names), 2), dtype=np.float64)
-    for group, items in items_by_group.items():
-        if not items:
-            continue
-        item_groups = np.repeat(group, len(items))
-        weights = np.asarray([item[2] for item in items], dtype=np.float64)
-        keys = np.asarray([f"{item[0]}\0{item[1]}" for item in items])
-        first_half = balanced_group_item_split(item_groups, weights, keys)
-        group_offset = 2 * group_index[group]
-        for item, first in zip(items, first_half, strict=True):
-            path, cell, count = item
-            half = 0 if first else 1
-            assignments[path][cell] = group_offset + half
-            half_depths[group_index[group], half] += count
-    return group_names, assignments, half_depths, histogram_cells_missing_metadata
-
-
 def quantiles(values: np.ndarray) -> dict[str, float]:
     return {
         str(quantile): float(np.quantile(values, quantile))
@@ -127,7 +91,7 @@ def main() -> None:
         args.cell_metadata_h5ad,
         cell_id_mode=args.fragment_cell_id_mode,
     )
-    groups, assignments, half_depths, histogram_cells_missing_metadata = build_half_assignments(
+    groups, assignments, half_depths, histogram_cells_missing_metadata = depth_balanced_half_assignments(
         fragment_paths,
         histograms,
         groups_by_path,
