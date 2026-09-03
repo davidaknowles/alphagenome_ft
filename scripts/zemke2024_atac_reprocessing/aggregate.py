@@ -64,7 +64,10 @@ def read_metadata(path: Path) -> dict[str, dict[str, str]]:
             prefix = f"{donor}_"
             if not donor or not barcode.startswith(prefix) or not group:
                 continue
-            local_barcode = barcode[len(prefix) :]
+            # Most metadata IDs are ``donor_barcode``. hc11 uses the
+            # ``donor_deep_barcode`` library label, while fragments retain only
+            # the terminal 10x barcode in both cases.
+            local_barcode = barcode.rsplit("_", maxsplit=1)[-1]
             previous = groups_by_donor.setdefault(donor, {}).setdefault(local_barcode, group)
             if previous != group:
                 raise ValueError(
