@@ -2,6 +2,7 @@ import numpy as np
 import pytest
 
 from alphagenome_ft.finetune.reliability import (
+    balanced_group_item_split,
     balanced_library_split,
     binomial_count_split,
     counts_per_million,
@@ -50,6 +51,24 @@ def test_balanced_library_split_assigns_observed_samples_to_both_halves() -> Non
         observed = depths[:, group] > 0
         assert assignment[observed, group].any()
         assert (~assignment[observed, group]).any()
+
+
+def test_balanced_group_item_split_is_deterministic_and_depth_balanced() -> None:
+    groups = np.asarray(["a", "b", "a", "b", "a", "b"])
+    weights = np.asarray([9.0, 7.0, 4.0, 4.0, 3.0, 1.0])
+    keys = np.asarray(["a0", "b0", "a1", "b1", "a2", "b2"])
+
+    assignment = balanced_group_item_split(groups, weights, keys)
+    repeated = balanced_group_item_split(groups, weights, keys)
+
+    np.testing.assert_array_equal(assignment, repeated)
+    for group in ("a", "b"):
+        group_assignment = assignment[groups == group]
+        group_weights = weights[groups == group]
+        assert group_assignment.any()
+        assert (~group_assignment).any()
+        difference = abs(group_weights[group_assignment].sum() - group_weights[~group_assignment].sum())
+        assert difference <= group_weights.max()
 
 
 def test_counts_per_million_marks_empty_groups() -> None:

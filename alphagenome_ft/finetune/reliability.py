@@ -66,6 +66,36 @@ def balanced_library_split(library_sizes: np.ndarray) -> np.ndarray:
     return first_half
 
 
+def balanced_group_item_split(
+    groups: np.ndarray,
+    weights: np.ndarray,
+    item_keys: np.ndarray,
+) -> np.ndarray:
+    """Assign weighted items to depth-balanced halves independently by group.
+
+    ``groups``, ``weights``, and ``item_keys`` have shape ``[N]``. ``item_keys``
+    provides deterministic tie breaking, such as a library-qualified cell identifier.
+    The returned Boolean vector marks the first half.
+    """
+    groups = np.asarray(groups).astype(str)
+    weights = np.asarray(weights, dtype=np.float64)
+    item_keys = np.asarray(item_keys).astype(str)
+    if groups.ndim != 1 or weights.shape != groups.shape or item_keys.shape != groups.shape:
+        raise ValueError("Groups, weights, and item keys must be equal-length vectors.")
+    if np.any(~np.isfinite(weights)) or np.any(weights <= 0):
+        raise ValueError("Item weights must be finite and positive.")
+    first_half = np.zeros(len(groups), dtype=bool)
+    for group in np.unique(groups):
+        indices = np.flatnonzero(groups == group)
+        order = sorted(indices.tolist(), key=lambda index: (-weights[index], item_keys[index]))
+        totals = [0.0, 0.0]
+        for index in order:
+            half = 0 if totals[0] <= totals[1] else 1
+            first_half[index] = half == 0
+            totals[half] += float(weights[index])
+    return first_half
+
+
 def counts_per_million(counts: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     """Normalize a ``[C, G]`` count matrix and return valid group rows."""
     counts = np.asarray(counts, dtype=np.float64)
