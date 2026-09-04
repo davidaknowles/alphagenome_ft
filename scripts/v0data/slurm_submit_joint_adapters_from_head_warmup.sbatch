@@ -66,7 +66,7 @@ evaluation_tag="${tag_prefix}headwarm${source_epoch}_adapters_lr3e4"
 evaluation=$(
   "$sbatch_bin" --parsable \
     --dependency="afterok:${lora_full_job}_0:${locon_full_job}_1" \
-    --export="ALL,DATASET_CONFIG=${dataset_config},LORA_RUN=${lora_run},LOCON_RUN=${locon_run},EVALUATION_TAG=${evaluation_tag},GPU_GRES=${GPU_GRES},LOCON_TARGETS=${locon_targets},TARGET_WORKERS=${target_workers},WINDOW_WORKERS=${window_workers}" \
+    --export="ALL,DATASET_CONFIG=${dataset_config},LORA_RUN=${lora_run},LOCON_RUN=${locon_run},EVALUATION_TAG=${evaluation_tag},GPU_GRES=${GPU_GRES},LOCON_TARGETS=${locon_targets},TARGET_WORKERS=${target_workers},WINDOW_WORKERS=${window_workers},TARGET_CACHE_DIR=${TARGET_CACHE_DIR:-},TARGET_CACHE_SPLITS=${TARGET_CACHE_SPLITS:-valid;test},TARGET_CACHE_DTYPE=${TARGET_CACHE_DTYPE:-float16}" \
     scripts/v0data/slurm_submit_joint_selected_evaluations.sbatch
 )
 printf '%s selected-checkpoint-evaluation-dispatch=%s\n' "$suffix" "$evaluation"

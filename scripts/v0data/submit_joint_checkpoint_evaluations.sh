@@ -28,7 +28,7 @@ sbatch_args=(
   --parsable
   --array=0-9%4
   --gres="$gpu_gres"
-  --export="ALL,EVALUATION_STRATEGY=${strategy},SOURCE_CHECKPOINT=${source_checkpoint},EVALUATION_TAG=${evaluation_tag},DATASET_CONFIG=${dataset_config},LOCON_TARGETS=${locon_targets}"
+  --export="ALL,EVALUATION_STRATEGY=${strategy},SOURCE_CHECKPOINT=${source_checkpoint},EVALUATION_TAG=${evaluation_tag},DATASET_CONFIG=${dataset_config},LOCON_TARGETS=${locon_targets},TARGET_CACHE_DIR=${TARGET_CACHE_DIR:-},TARGET_CACHE_SPLITS=${TARGET_CACHE_SPLITS:-valid;test},TARGET_CACHE_DTYPE=${TARGET_CACHE_DTYPE:-float16}"
 )
 if [[ -n "$source_job" ]]; then
   sbatch_args+=(--dependency="afterok:${source_job}")

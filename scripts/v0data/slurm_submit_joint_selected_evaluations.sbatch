@@ -20,6 +20,9 @@ gpu_gres="${GPU_GRES:-gpu:l40s:2}"
 locon_targets="${LOCON_TARGETS:-default}"
 target_workers="${TARGET_WORKERS:-24}"
 window_workers="${WINDOW_WORKERS:-8}"
+target_cache_dir="${TARGET_CACHE_DIR:-}"
+target_cache_splits="${TARGET_CACHE_SPLITS:-valid;test}"
+target_cache_dtype="${TARGET_CACHE_DTYPE:-float16}"
 
 for checkpoint in "${lora_run}/best/metrics.json" "${locon_run}/best/metrics.json"; do
   test -f "$checkpoint"
@@ -35,6 +38,9 @@ lora_submission=$( \
   GPU_GRES="$gpu_gres" \
   TARGET_WORKERS="$target_workers" \
   WINDOW_WORKERS="$window_workers" \
+  TARGET_CACHE_DIR="$target_cache_dir" \
+  TARGET_CACHE_SPLITS="$target_cache_splits" \
+  TARGET_CACHE_DTYPE="$target_cache_dtype" \
   bash scripts/v0data/submit_joint_checkpoint_evaluations.sh
 )
 locon_submission=$( \
@@ -46,6 +52,9 @@ locon_submission=$( \
   LOCON_TARGETS="$locon_targets" \
   TARGET_WORKERS="$target_workers" \
   WINDOW_WORKERS="$window_workers" \
+  TARGET_CACHE_DIR="$target_cache_dir" \
+  TARGET_CACHE_SPLITS="$target_cache_splits" \
+  TARGET_CACHE_DTYPE="$target_cache_dtype" \
   bash scripts/v0data/submit_joint_checkpoint_evaluations.sh
 )
 lora_evaluations="${lora_submission##*=}"

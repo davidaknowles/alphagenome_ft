@@ -323,8 +323,10 @@ def test_head_warmup_branch_dispatches_selected_checkpoint_evaluation() -> None:
     assert 'locon_full_job="$submitted_full_job"' in branch
     assert 'afterok:${lora_full_job}_0:${locon_full_job}_1' in branch
     assert "slurm_submit_joint_selected_evaluations.sbatch" in branch
+    assert "TARGET_CACHE_DIR=${TARGET_CACHE_DIR:-}" in branch
     assert 'SOURCE_CHECKPOINT="${lora_run}/best"' in submission
     assert 'SOURCE_CHECKPOINT="${locon_run}/best"' in submission
+    assert 'TARGET_CACHE_DIR="$target_cache_dir"' in submission
     assert 'afterok:${lora_evaluations}:${locon_evaluations}' in submission
     assert "slurm_collate_joint_selected_evaluations.sbatch" in submission
     assert '"${lora_tag}=lora"' in collation

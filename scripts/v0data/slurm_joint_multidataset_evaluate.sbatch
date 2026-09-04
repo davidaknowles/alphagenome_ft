@@ -60,6 +60,17 @@ evaluation_dir="${evaluation_base}/${route_path}"
 dataset_config="${DATASET_CONFIG:-outputs/v0data/joint-all-nonencode/datasets.json}"
 locon_targets="${LOCON_TARGETS:-default}"
 locon_targets="${locon_targets//;/,}"
+target_cache_dir="${TARGET_CACHE_DIR:-}"
+target_cache_splits="${TARGET_CACHE_SPLITS:-valid;test}"
+target_cache_splits="${target_cache_splits//;/,}"
+target_cache_args=()
+if [[ -n "$target_cache_dir" ]]; then
+  target_cache_args=(
+    --target-cache-dir "$target_cache_dir"
+    --target-cache-dtype "${TARGET_CACHE_DTYPE:-float16}"
+    --target-cache-splits "$target_cache_splits"
+  )
+fi
 if [[ ! -f "$dataset_config" ]]; then
   printf 'Missing joint dataset configuration: %s\n' "$dataset_config" >&2
   exit 1
@@ -101,4 +112,5 @@ fi
   --locon-compute-dtype "${LOCON_COMPUTE_DTYPE:-bfloat16}" \
   --target-workers "${TARGET_WORKERS:-24}" \
   --window-workers "${WINDOW_WORKERS:-8}" \
-  --eval-splits valid,test
+  --eval-splits valid,test \
+  "${target_cache_args[@]}"
