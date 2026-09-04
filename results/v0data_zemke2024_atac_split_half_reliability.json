@@ -1,0 +1,30 @@
+{
+  "dataset": "zemke2024",
+  "chromosome": "chr9",
+  "chromosome_size": 138394717,
+  "bin_size": 100,
+  "signal": "coverage",
+  "fragment_files": 40,
+  "groups": 18,
+  "groups_estimable_in_both_halves": 18,
+  "half_depth_quantiles": {
+    "0.0": 2933171.0,
+    "0.1": 5078814.0,
+    "0.5": 52847241.0,
+    "0.9": 295773542.5,
+    "1.0": 1432691914.0
+  },
+  "within_group_half_depth_ratio_quantiles": {
+    "0.0": 0.9998824737883597,
+    "0.1": 0.9999783698518425,
+    "0.5": 0.9999978691238576,
+    "0.9": 1.0,
+    "1.0": 1.0
+  },
+  "split_half_double_centered_r": 0.6798020256246895,
+  "full_target_reliability_estimate": 0.8093835050256982,
+  "model_correlation_ceiling_estimate": 0.8996574375981662,
+  "histogram_cells_missing_metadata": 23293505,
+  "chromosome_records_matched": 243188425,
+  "chromosome_records_missing_metadata": 137679611
+}
