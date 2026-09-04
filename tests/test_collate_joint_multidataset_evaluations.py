@@ -106,3 +106,60 @@ def test_collate_accepts_arbitrary_labeled_runs(tmp_path: Path):
         "LoCon control",
         "LoCon RNA weight 2",
     ]
+
+
+def test_collate_uses_manifest_kind_for_source_specific_head_ids(tmp_path: Path):
+    manifest = tmp_path / "targets.json"
+    manifest.write_text(
+        json.dumps(
+            {
+                "heads": [
+                    {"id": "allen_atac_human", "kind": "atac"},
+                    {"id": "allen_rna_human", "kind": "rna_seq"},
+                ]
+            }
+        )
+    )
+    config = tmp_path / "datasets.json"
+    config.write_text(
+        json.dumps(
+            {
+                "datasets": [
+                    {
+                        "name": "johansen2025",
+                        "sources": [
+                            {"name": "human", "targets_config": str(manifest)}
+                        ],
+                    }
+                ]
+            }
+        )
+    )
+    root = tmp_path / "evaluations"
+    for run, offset in (("lora", 0.7), ("lora_locon", 0.72)):
+        path = root / run / "johansen2025_human" / "evaluation.json"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(
+            json.dumps(
+                {
+                    "source_epoch": 2,
+                    "source_global_step": 200,
+                    "metrics": {
+                        split: {
+                            "allen_atac_human": {
+                                "differential_pearson_r": offset + split_offset
+                            },
+                            "allen_rna_human": {
+                                "differential_pearson_r": offset + split_offset - 0.1
+                            },
+                        }
+                        for split, split_offset in (("valid", 0.0), ("test", 0.05))
+                    },
+                }
+            )
+        )
+
+    result = collate(config, root)
+
+    assert result["strategy_summaries"][0]["mean_atac_valid_r"] == pytest.approx(0.7)
+    assert result["strategy_summaries"][0]["mean_rna_valid_r"] == pytest.approx(0.6)

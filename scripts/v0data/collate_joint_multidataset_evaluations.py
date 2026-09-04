@@ -25,6 +25,57 @@ def expected_routes(dataset_config: Path) -> list[tuple[str, str]]:
     return routes
 
 
+def _resolve_manifest(path_value: str, *, config_path: Path) -> Path:
+    path = Path(path_value).expanduser()
+    if not path.is_absolute():
+        path = config_path.parent / path
+    return path.resolve()
+
+
+def expected_head_modalities(
+    dataset_config: Path,
+) -> dict[tuple[str, str], dict[str, str] | None]:
+    """Return manifest-declared modality for every native-source head."""
+    payload = json.loads(dataset_config.read_text())
+    modalities: dict[tuple[str, str], dict[str, str] | None] = {}
+    for dataset in payload.get("datasets", ()):
+        dataset_name = str(dataset["name"])
+        for source in dataset.get("sources", ()):
+            route = (dataset_name, str(source["name"]))
+            manifest_value = source.get("targets_config")
+            if manifest_value is None:
+                modalities[route] = None
+                continue
+            manifest_path = _resolve_manifest(
+                str(manifest_value), config_path=dataset_config
+            )
+            manifest = json.loads(manifest_path.read_text())
+            route_modalities: dict[str, str] = {}
+            for head in manifest.get("heads", ()):
+                kind = str(head.get("kind", "")).lower()
+                if kind == "atac":
+                    modality = "atac"
+                elif kind == "rna_seq":
+                    modality = "rna"
+                else:
+                    continue
+                head_id = str(head["id"])
+                if head_id in route_modalities:
+                    raise ValueError(f"Duplicate head ID {head_id!r} in {manifest_path}.")
+                route_modalities[head_id] = modality
+            modalities[route] = route_modalities
+    return modalities
+
+
+def _fallback_head_modality(head: str) -> str | None:
+    tokens = set(head.lower().split("_"))
+    if "atac" in tokens:
+        return "atac"
+    if "rna" in tokens:
+        return "rna"
+    return None
+
+
 def collate(
     dataset_config: Path,
     evaluation_root: Path,
@@ -39,10 +90,12 @@ def collate(
         }
     if not runs or len(set(runs.values())) != len(runs):
         raise ValueError("Evaluation run paths and labels must be nonempty and unique.")
+    routes = expected_routes(dataset_config)
+    head_modalities = expected_head_modalities(dataset_config)
     rows = []
     missing = []
     for run_path, strategy_label in runs.items():
-        for dataset, source in expected_routes(dataset_config):
+        for dataset, source in routes:
             route_path = f"{dataset}_{source}"
             evaluation_path = (
                 evaluation_root
@@ -79,6 +132,16 @@ def collate(
                     raise ValueError(
                         f"Non-finite differential correlation for {head} in {evaluation_path}."
                     )
+                manifest_modalities = head_modalities[(dataset, source)]
+                modality = (
+                    _fallback_head_modality(str(head))
+                    if manifest_modalities is None
+                    else manifest_modalities.get(str(head))
+                )
+                if modality is None:
+                    raise ValueError(
+                        f"Could not determine modality for {head!r} in {evaluation_path}."
+                    )
                 rows.append(
                     {
                         "dataset": dataset,
@@ -87,6 +150,7 @@ def collate(
                         "source_epoch": source_epoch,
                         "source_global_step": source_global_step,
                         "head": str(head),
+                        "modality": modality,
                         "valid_r": float(valid_r),
                         "test_r": float(test_r),
                     }
@@ -99,13 +163,13 @@ def collate(
     for strategy_label in runs.values():
         strategy_rows = [row for row in rows if row["strategy"] == strategy_label]
         modality_rows = {
-            modality: [
-                row
-                for row in strategy_rows
-                if row["head"].endswith(f"_{modality}")
-            ]
+            modality: [row for row in strategy_rows if row["modality"] == modality]
             for modality in ("atac", "rna")
         }
+
+        def mean_or_none(values: list[float]) -> float | None:
+            return sum(values) / len(values) if values else None
+
         summaries.append(
             {
                 "strategy": strategy_label,
@@ -118,10 +182,9 @@ def collate(
                 "mean_test_r": sum(row["test_r"] for row in strategy_rows)
                 / len(strategy_rows),
                 **{
-                    f"mean_{modality}_{split}_r": sum(
-                        row[f"{split}_r"] for row in modality_rows[modality]
+                    f"mean_{modality}_{split}_r": mean_or_none(
+                        [row[f"{split}_r"] for row in modality_rows[modality]]
                     )
-                    / len(modality_rows[modality])
                     for modality in ("atac", "rna")
                     for split in ("valid", "test")
                 },
@@ -153,13 +216,19 @@ def render_markdown(result: Mapping[str, Any]) -> str:
             "|---|---:|---:|---:|---:|---:|---:|---:|---:|",
         ]
     )
+    def format_optional(value: Any) -> str:
+        if isinstance(value, (int, float)) and math.isfinite(value):
+            return f"{value:.4f}"
+        return ""
+
     for summary in result["strategy_summaries"]:
         lines.append(
             f"| `{summary['strategy']}` | {summary['native_sources']} | "
             f"{summary['heads']} | {summary['mean_valid_r']:.4f} | "
-            f"{summary['mean_test_r']:.4f} | {summary['mean_atac_valid_r']:.4f} | "
-            f"{summary['mean_atac_test_r']:.4f} | {summary['mean_rna_valid_r']:.4f} | "
-            f"{summary['mean_rna_test_r']:.4f} |"
+            f"{summary['mean_test_r']:.4f} | {format_optional(summary['mean_atac_valid_r'])} | "
+            f"{format_optional(summary['mean_atac_test_r'])} | "
+            f"{format_optional(summary['mean_rna_valid_r'])} | "
+            f"{format_optional(summary['mean_rna_test_r'])} |"
         )
     return "\n".join(lines) + "\n"
 
