@@ -253,6 +253,12 @@ def test_all_gene_launcher_can_validate_reused_target_artifacts() -> None:
     assert 'reuse_prepared_targets="${REUSE_PREPARED_TARGETS:-0}"' in script
     assert 'REUSE_PREPARED_TARGETS must be 0 or 1' in script
     assert 'if [[ "$reuse_prepared_targets" == "1" ]]' in script
+    assert 'build_target_cache="${BUILD_TARGET_CACHE:-0}"' in script
+    assert 'BUILD_TARGET_CACHE must be 0 or 1' in script
+    assert 'if [[ "$build_target_cache" == "1" ]]' in script
+    assert 'BUILD_TARGET_CACHE requires SOURCE_SPECIFIC_HEADS=1 and TARGET_CACHE_DIR.' in script
+    assert 'scripts/v0data/slurm_build_joint_target_cache.sbatch' in script
+    assert 'INITIAL_DEPENDENCY="$initial_dependency"' in script
     assert 'test -f "${zemke2023_dir}/species.json"' in script
     assert 'test -f "$zemke2024_target"' in script
     assert 'zemke2024_target="${ZEMKE2024_TARGET:-outputs/v0data/zemke2024-gene-only/targets.json}"' in script

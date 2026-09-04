@@ -11,6 +11,7 @@ config_dir="${CONFIG_DIR:-outputs/v0data/joint-objective-variants/metric-tempere
 source_specific_heads="${SOURCE_SPECIFIC_HEADS:-0}"
 separate_head_updates="${SEPARATE_HEAD_UPDATES:-0}"
 reuse_prepared_targets="${REUSE_PREPARED_TARGETS:-0}"
+build_target_cache="${BUILD_TARGET_CACHE:-0}"
 if [[ "$source_specific_heads" != "0" && "$source_specific_heads" != "1" ]]; then
   printf 'SOURCE_SPECIFIC_HEADS must be 0 or 1, got %s.\n' "$source_specific_heads" >&2
   exit 2
@@ -21,6 +22,10 @@ if [[ "$separate_head_updates" != "0" && "$separate_head_updates" != "1" ]]; the
 fi
 if [[ "$reuse_prepared_targets" != "0" && "$reuse_prepared_targets" != "1" ]]; then
   printf 'REUSE_PREPARED_TARGETS must be 0 or 1, got %s.\n' "$reuse_prepared_targets" >&2
+  exit 2
+fi
+if [[ "$build_target_cache" != "0" && "$build_target_cache" != "1" ]]; then
+  printf 'BUILD_TARGET_CACHE must be 0 or 1, got %s.\n' "$build_target_cache" >&2
   exit 2
 fi
 variant_suffix=""
@@ -90,10 +95,30 @@ if [[ "$source_specific_heads" == "1" ]]; then
   target_cache_dir="${TARGET_CACHE_DIR:-outputs/v0data/target-caches/joint-source-specific${cache_variant}-all-gene-valid-test-f16}"
 fi
 
+initial_dependency="${INITIAL_DEPENDENCY:-}"
+if [[ "$build_target_cache" == "1" ]]; then
+  if [[ -z "$target_cache_dir" ]]; then
+    printf 'BUILD_TARGET_CACHE requires SOURCE_SPECIFIC_HEADS=1 and TARGET_CACHE_DIR.\n' >&2
+    exit 2
+  fi
+  cache_job=$(sbatch --parsable \
+    --export="ALL,DATASET_CONFIG=${dataset_config},TARGET_CACHE_DIR=${target_cache_dir},TARGET_CACHE_DTYPE=${TARGET_CACHE_DTYPE:-float16},TARGET_CACHE_SPLITS=${TARGET_CACHE_SPLITS:-valid;test},TARGET_CACHE_WORKERS=${TARGET_CACHE_WORKERS:-24}" \
+    scripts/v0data/slurm_build_joint_target_cache.sbatch)
+  cache_dependency="afterok:${cache_job}"
+  if [[ -n "$initial_dependency" ]]; then
+    initial_dependency="${initial_dependency},${cache_dependency}"
+  else
+    initial_dependency="$cache_dependency"
+  fi
+  printf 'target-cache=%s dependency=%s\n' "$cache_job" "$initial_dependency"
+fi
+
 DATASET_CONFIG="$dataset_config" \
 RUN_TAG="$run_tag" \
 TARGET_CACHE_DIR="$target_cache_dir" \
 TARGET_CACHE_SPLITS="${TARGET_CACHE_SPLITS:-valid;test}" \
+TARGET_CACHE_DTYPE="${TARGET_CACHE_DTYPE:-float16}" \
+INITIAL_DEPENDENCY="$initial_dependency" \
 SMOKE_LIMIT_TRAIN="${SMOKE_LIMIT_TRAIN:-40}" \
 SMOKE_LIMIT_VALID="${SMOKE_LIMIT_VALID:-40}" \
 SMOKE_LIMIT_TEST="${SMOKE_LIMIT_TEST:-40}" \
