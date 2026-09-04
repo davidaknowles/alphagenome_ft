@@ -308,6 +308,29 @@ def test_joint_launcher_exposes_evaluate_only_with_checkpoint() -> None:
     assert "EXTRA_ARGS+=(--defer-test-evaluation)" in script
 
 
+def test_head_warmup_branch_dispatches_selected_checkpoint_evaluation() -> None:
+    branch = Path(
+        "scripts/v0data/slurm_submit_joint_adapters_from_head_warmup.sbatch"
+    ).read_text()
+    submission = Path(
+        "scripts/v0data/slurm_submit_joint_selected_evaluations.sbatch"
+    ).read_text()
+    collation = Path(
+        "scripts/v0data/slurm_collate_joint_selected_evaluations.sbatch"
+    ).read_text()
+
+    assert 'lora_full_job="$submitted_full_job"' in branch
+    assert 'locon_full_job="$submitted_full_job"' in branch
+    assert 'afterok:${lora_full_job}_0:${locon_full_job}_1' in branch
+    assert "slurm_submit_joint_selected_evaluations.sbatch" in branch
+    assert 'SOURCE_CHECKPOINT="${lora_run}/best"' in submission
+    assert 'SOURCE_CHECKPOINT="${locon_run}/best"' in submission
+    assert 'afterok:${lora_evaluations}:${locon_evaluations}' in submission
+    assert "slurm_collate_joint_selected_evaluations.sbatch" in submission
+    assert '"${lora_tag}=lora"' in collation
+    assert '"${locon_tag}=lora+locon"' in collation
+
+
 def test_smoke_runs_use_isolated_checkpoint_names() -> None:
     for path in LAUNCHERS:
         script = Path(path).read_text()

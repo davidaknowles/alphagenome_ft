@@ -55,5 +55,18 @@ test -f "$dataset_config"
 suffix="_${tag_prefix}headwarm${source_epoch}_adapters_lr3e4_reset"
 submit_continuation 0 "$source_run" "$source_epoch" "$snapshot" "$learning_rate" \
   "$suffix" "$dataset_config"
+lora_full_job="$submitted_full_job"
 submit_continuation 1 "$source_run" "$source_epoch" "$snapshot" "$learning_rate" \
   "$suffix" "$dataset_config"
+locon_full_job="$submitted_full_job"
+
+lora_run="checkpoints/v0data/joint_all_nonencode_lora${suffix}"
+locon_run="checkpoints/v0data/joint_all_nonencode_lora_locon${suffix}"
+evaluation_tag="${tag_prefix}headwarm${source_epoch}_adapters_lr3e4"
+evaluation=$(
+  "$sbatch_bin" --parsable \
+    --dependency="afterok:${lora_full_job}_0:${locon_full_job}_1" \
+    --export="ALL,DATASET_CONFIG=${dataset_config},LORA_RUN=${lora_run},LOCON_RUN=${locon_run},EVALUATION_TAG=${evaluation_tag},GPU_GRES=${GPU_GRES},LOCON_TARGETS=${locon_targets},TARGET_WORKERS=${target_workers},WINDOW_WORKERS=${window_workers}" \
+    scripts/v0data/slurm_submit_joint_selected_evaluations.sbatch
+)
+printf '%s selected-checkpoint-evaluation-dispatch=%s\n' "$suffix" "$evaluation"

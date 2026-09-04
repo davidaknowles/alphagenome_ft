@@ -107,5 +107,7 @@ PY
     "$sbatch_bin" --parsable --array="$task" --gres="$gpu_gres" --dependency="afterok:${smoke}_${task}" \
       --export="$exports" scripts/v0data/slurm_joint_multidataset_adapters.sbatch
   )
+  submitted_smoke_job="$smoke"
+  submitted_full_job="$full"
   printf '%s smoke=%s full=%s\n' "$run_suffix" "$smoke" "$full"
 }
