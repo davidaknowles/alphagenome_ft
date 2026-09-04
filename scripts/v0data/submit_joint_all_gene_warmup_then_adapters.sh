@@ -4,10 +4,10 @@ set -euo pipefail
 cd "$(dirname "$0")/../.."
 
 python_bin="${HOME}/venv/jax/bin/python"
-zemke2023_dir="outputs/v0data/zemke2023-gene-only-species"
-zemke2024_target="outputs/v0data/zemke2024-gene-only/targets.json"
-base_dir="outputs/v0data/joint-all-nonencode-all-gene"
-config_dir="outputs/v0data/joint-objective-variants/metric-tempered-all-gene"
+zemke2023_dir="${ZEMKE2023_GENE_DIR:-outputs/v0data/zemke2023-gene-only-species}"
+zemke2024_target="${ZEMKE2024_TARGET:-outputs/v0data/zemke2024-gene-only/targets.json}"
+base_dir="${BASE_DIR:-outputs/v0data/joint-all-nonencode-all-gene}"
+config_dir="${CONFIG_DIR:-outputs/v0data/joint-objective-variants/metric-tempered-all-gene}"
 source_specific_heads="${SOURCE_SPECIFIC_HEADS:-0}"
 separate_head_updates="${SEPARATE_HEAD_UPDATES:-0}"
 reuse_prepared_targets="${REUSE_PREPARED_TARGETS:-0}"
@@ -29,7 +29,7 @@ if [[ "$separate_head_updates" == "1" ]]; then
   config_dir="${config_dir}${variant_suffix}"
 fi
 if [[ "$source_specific_heads" == "1" ]]; then
-  config_dir="outputs/v0data/joint-objective-variants/metric-tempered-all-gene-source-balanced${variant_suffix}"
+  config_dir="${SOURCE_BALANCED_CONFIG_DIR:-outputs/v0data/joint-objective-variants/metric-tempered-all-gene-source-balanced${variant_suffix}}"
 fi
 
 if [[ "$reuse_prepared_targets" == "1" ]]; then
@@ -70,7 +70,7 @@ fi
 dataset_config="${config_dir}/datasets.json"
 run_tag="all_gene"
 if [[ "$source_specific_heads" == "1" ]]; then
-  source_specific_dir="outputs/v0data/joint-objective-variants/metric-tempered-all-gene-source-specific${variant_suffix}"
+  source_specific_dir="${SOURCE_SPECIFIC_DIR:-outputs/v0data/joint-objective-variants/metric-tempered-all-gene-source-specific${variant_suffix}}"
   "$python_bin" scripts/v0data/prepare_source_specific_joint_heads.py \
     --input "$dataset_config" \
     --output-dir "$source_specific_dir"
@@ -80,6 +80,7 @@ fi
 if [[ "$separate_head_updates" == "1" ]]; then
   run_tag="${run_tag}_separate_heads"
 fi
+run_tag="${RUN_TAG_OVERRIDE:-$run_tag}"
 target_cache_dir=""
 if [[ "$source_specific_heads" == "1" ]]; then
   cache_variant="-joint-heads"

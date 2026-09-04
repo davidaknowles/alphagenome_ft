@@ -255,6 +255,11 @@ def test_all_gene_launcher_can_validate_reused_target_artifacts() -> None:
     assert 'if [[ "$reuse_prepared_targets" == "1" ]]' in script
     assert 'test -f "${zemke2023_dir}/species.json"' in script
     assert 'test -f "$zemke2024_target"' in script
+    assert 'zemke2024_target="${ZEMKE2024_TARGET:-outputs/v0data/zemke2024-gene-only/targets.json}"' in script
+    assert 'base_dir="${BASE_DIR:-outputs/v0data/joint-all-nonencode-all-gene}"' in script
+    assert 'config_dir="${CONFIG_DIR:-outputs/v0data/joint-objective-variants/metric-tempered-all-gene}"' in script
+    assert 'SOURCE_SPECIFIC_DIR:-outputs/v0data/joint-objective-variants/metric-tempered-all-gene-source-specific${variant_suffix}' in script
+    assert 'run_tag="${RUN_TAG_OVERRIDE:-$run_tag}"' in script
 
 
 def test_all_study_native_evaluation_uses_and_validates_provisional_runs() -> None:
