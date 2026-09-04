@@ -34,8 +34,8 @@ def audit(path: Path) -> dict[str, object]:
     }
 
 
-def _format(value: float) -> str:
-    return f"{value:.4f}"
+def _format(value: float | None) -> str:
+    return f"{value:.4f}" if value is not None else "-"
 
 
 def render_markdown(result: dict[str, object]) -> str:
@@ -61,7 +61,9 @@ def render_markdown(result: dict[str, object]) -> str:
                 f"| {label} | {summary['observations']:,} | {summary['tracks']} | "
                 f"{summary['entropy_effective_rank']:.2f} | "
                 f"{summary['rank_for_correlation']['0.8']} | "
-                + " | ".join(_format(ceilings[str(rank)]) for rank in (1, 4, 8, 16, 32))
+                + " | ".join(
+                    _format(ceilings.get(str(rank))) for rank in (1, 4, 8, 16, 32)
+                )
                 + " |"
             )
     lines.extend(

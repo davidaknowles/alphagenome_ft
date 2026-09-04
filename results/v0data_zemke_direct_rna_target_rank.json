@@ -1,0 +1,210 @@
+{
+  "definition": "Optimal singular-value approximation after centering genes and cell groups.",
+  "datasets": {
+    "zemke2023-human": {
+      "gene_supervision": "outputs/v0data/zemke2023-gene-supervision/human/gene_expression_supervision.npz",
+      "raw_cpm": {
+        "observations": 23264,
+        "tracks": 20,
+        "numerical_rank": 19,
+        "entropy_effective_rank": 10.784887325094916,
+        "participation_ratio": 8.04018809594653,
+        "rank_correlation_ceiling": {
+          "1": 0.49023568203401724,
+          "2": 0.6295025330391862,
+          "4": 0.7820000014979755,
+          "8": 0.9257134884058724,
+          "16": 0.9937800015460981
+        },
+        "rank_for_correlation": {
+          "0.8": 5,
+          "0.9": 7,
+          "0.95": 10
+        }
+      },
+      "log1p_cpm": {
+        "observations": 23264,
+        "tracks": 20,
+        "numerical_rank": 19,
+        "entropy_effective_rank": 8.149364799483534,
+        "participation_ratio": 5.2675421165561875,
+        "rank_correlation_ceiling": {
+          "1": 0.577880890575823,
+          "2": 0.7537849245758943,
+          "4": 0.8628681669549835,
+          "8": 0.9442240036204549,
+          "16": 0.9937281733999207
+        },
+        "rank_for_correlation": {
+          "0.8": 3,
+          "0.9": 6,
+          "0.95": 9
+        }
+      }
+    },
+    "zemke2023-macaque": {
+      "gene_supervision": "outputs/v0data/zemke2023-gene-supervision/macaque/gene_expression_supervision.npz",
+      "raw_cpm": {
+        "observations": 15841,
+        "tracks": 20,
+        "numerical_rank": 19,
+        "entropy_effective_rank": 8.492891762408322,
+        "participation_ratio": 5.230832944828963,
+        "rank_correlation_ceiling": {
+          "1": 0.6134049678718934,
+          "2": 0.7306720665839934,
+          "4": 0.8394001801352143,
+          "8": 0.9360235053119758,
+          "16": 0.9955168030210115
+        },
+        "rank_for_correlation": {
+          "0.8": 4,
+          "0.9": 6,
+          "0.95": 10
+        }
+      },
+      "log1p_cpm": {
+        "observations": 15841,
+        "tracks": 20,
+        "numerical_rank": 19,
+        "entropy_effective_rank": 7.473050417441129,
+        "participation_ratio": 4.705267299367723,
+        "rank_correlation_ceiling": {
+          "1": 0.5992735506532362,
+          "2": 0.7867308744534961,
+          "4": 0.8654268469322441,
+          "8": 0.9500754513740014,
+          "16": 0.9950409173936625
+        },
+        "rank_for_correlation": {
+          "0.8": 3,
+          "0.9": 6,
+          "0.95": 8
+        }
+      }
+    },
+    "zemke2023-marmoset": {
+      "gene_supervision": "outputs/v0data/zemke2023-gene-supervision/marmoset/gene_expression_supervision.npz",
+      "raw_cpm": {
+        "observations": 22046,
+        "tracks": 20,
+        "numerical_rank": 19,
+        "entropy_effective_rank": 8.47077068215283,
+        "participation_ratio": 5.023952678713318,
+        "rank_correlation_ceiling": {
+          "1": 0.6269349572259182,
+          "2": 0.734077390307373,
+          "4": 0.83956494832115,
+          "8": 0.9273357582654018,
+          "16": 0.9942824516236773
+        },
+        "rank_for_correlation": {
+          "0.8": 4,
+          "0.9": 7,
+          "0.95": 10
+        }
+      },
+      "log1p_cpm": {
+        "observations": 22046,
+        "tracks": 20,
+        "numerical_rank": 19,
+        "entropy_effective_rank": 6.650495619616758,
+        "participation_ratio": 4.008283427708485,
+        "rank_correlation_ceiling": {
+          "1": 0.6531119448433604,
+          "2": 0.8117654355196332,
+          "4": 0.8863429708730945,
+          "8": 0.9527304818385779,
+          "16": 0.9947792193336576
+        },
+        "rank_for_correlation": {
+          "0.8": 2,
+          "0.9": 5,
+          "0.95": 8
+        }
+      }
+    },
+    "zemke2023-mouse": {
+      "gene_supervision": "outputs/v0data/zemke2023-gene-supervision/mouse/gene_expression_supervision.npz",
+      "raw_cpm": {
+        "observations": 26291,
+        "tracks": 20,
+        "numerical_rank": 19,
+        "entropy_effective_rank": 7.369896184116478,
+        "participation_ratio": 4.8163649664216495,
+        "rank_correlation_ceiling": {
+          "1": 0.6074484940925037,
+          "2": 0.7552053190959634,
+          "4": 0.8894809298239377,
+          "8": 0.9551058398094461,
+          "16": 0.9955273341647441
+        },
+        "rank_for_correlation": {
+          "0.8": 3,
+          "0.9": 5,
+          "0.95": 8
+        }
+      },
+      "log1p_cpm": {
+        "observations": 26291,
+        "tracks": 20,
+        "numerical_rank": 19,
+        "entropy_effective_rank": 8.204728017407017,
+        "participation_ratio": 5.255324030524658,
+        "rank_correlation_ceiling": {
+          "1": 0.5939084574079626,
+          "2": 0.7473076371846546,
+          "4": 0.8501953224862809,
+          "8": 0.9456898059382797,
+          "16": 0.9939233981422338
+        },
+        "rank_for_correlation": {
+          "0.8": 3,
+          "0.9": 6,
+          "0.95": 9
+        }
+      }
+    },
+    "zemke2024": {
+      "gene_supervision": "outputs/v0data/zemke2024-gene-supervision/gene_expression_supervision.npz",
+      "raw_cpm": {
+        "observations": 36474,
+        "tracks": 22,
+        "numerical_rank": 18,
+        "entropy_effective_rank": 8.016842488229624,
+        "participation_ratio": 5.155849677461674,
+        "rank_correlation_ceiling": {
+          "1": 0.5910279020508246,
+          "2": 0.7569055780069079,
+          "4": 0.8603625628214915,
+          "8": 0.9454288517408396,
+          "16": 0.9958837877552884
+        },
+        "rank_for_correlation": {
+          "0.8": 3,
+          "0.9": 6,
+          "0.95": 9
+        }
+      },
+      "log1p_cpm": {
+        "observations": 36474,
+        "tracks": 22,
+        "numerical_rank": 18,
+        "entropy_effective_rank": 4.610028431680152,
+        "participation_ratio": 2.559532059738632,
+        "rank_correlation_ceiling": {
+          "1": 0.7743868929667996,
+          "2": 0.8688492974181997,
+          "4": 0.9190150358264038,
+          "8": 0.9678643294385278,
+          "16": 0.9977020371501004
+        },
+        "rank_for_correlation": {
+          "0.8": 2,
+          "0.9": 4,
+          "0.95": 6
+        }
+      }
+    }
+  }
+}
