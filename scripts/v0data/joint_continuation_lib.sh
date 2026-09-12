@@ -5,7 +5,7 @@ snapshot_checkpoint() {
   local expected_epoch=$2
   local snapshot=$3
   local actual_epoch
-  actual_epoch=$(jq -er '.epoch' "$source_checkpoint/metrics.json")
+  actual_epoch=$(checkpoint_epoch "$source_checkpoint/metrics.json")
   if [[ "$actual_epoch" -ne "$expected_epoch" ]]; then
     printf 'Expected epoch %s at %s, found %s.\n' \
       "$expected_epoch" "$source_checkpoint" "$actual_epoch" >&2
@@ -14,7 +14,17 @@ snapshot_checkpoint() {
   if [[ ! -e "$snapshot" ]]; then
     cp -a "$source_checkpoint" "$snapshot"
   fi
-  test "$(jq -er '.epoch' "$snapshot/metrics.json")" -eq "$expected_epoch"
+  test "$(checkpoint_epoch "$snapshot/metrics.json")" -eq "$expected_epoch"
+}
+
+checkpoint_epoch() {
+  "${HOME}/venv/jax/bin/python" - "$1" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1]) as handle:
+    print(int(json.load(handle)["epoch"]))
+PY
 }
 
 prepare_history() {
