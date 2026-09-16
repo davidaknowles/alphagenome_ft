@@ -69,8 +69,8 @@ def test_collate_requires_and_reports_every_strategy_source(tmp_path: Path):
     }
     markdown = render_markdown(result)
     assert (
-        "| `study` | `mouse` | `lora+locon` | 3 | `study_atac` | 0.7200 | "
-        "0.7700 | `study_rna` | 0.6200 | 0.6700 |"
+        "| `study` | `mouse` | `lora+locon` | 3 | 0.7200 | 0.7700 | "
+        "0.6200 | 0.6700 |"
     ) in markdown
 
 

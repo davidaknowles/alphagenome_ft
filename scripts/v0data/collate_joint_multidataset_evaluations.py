@@ -214,8 +214,8 @@ def render_markdown(result: Mapping[str, Any]) -> str:
         "Each row evaluates both modality heads from the same union model on one native source. "
         "R is signed double-centered Pearson correlation.",
         "",
-        "| Dataset | Source | Strategy | Epoch | ATAC head | ATAC valid R | ATAC test R | RNA head | RNA valid R | RNA test R |",
-        "|---|---|---|---:|---|---:|---:|---|---:|---:|",
+        "| Dataset | Source | Strategy | Epoch | ATAC valid R | ATAC test R | RNA valid R | RNA test R |",
+        "|---|---|---|---:|---:|---:|---:|---:|",
     ]
     for group in grouped.values():
         atac = group.get("atac", {})
@@ -225,9 +225,9 @@ def render_markdown(result: Mapping[str, Any]) -> str:
             f"`{atac.get('source', rna.get('source'))}` | "
             f"`{atac.get('strategy', rna.get('strategy'))}` | "
             f"{atac.get('source_epoch', rna.get('source_epoch'))} | "
-            f"`{atac.get('head', '')}` | {format_optional(atac.get('valid_r'))} | "
-            f"{format_optional(atac.get('test_r'))} | `"
-            f"{rna.get('head', '')}` | {format_optional(rna.get('valid_r'))} | "
+            f"{format_optional(atac.get('valid_r'))} | "
+            f"{format_optional(atac.get('test_r'))} | "
+            f"{format_optional(rna.get('valid_r'))} | "
             f"{format_optional(rna.get('test_r'))} |"
         )
     lines.extend(
