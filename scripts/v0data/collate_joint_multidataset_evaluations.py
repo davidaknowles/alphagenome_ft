@@ -194,20 +194,41 @@ def collate(
 
 
 def render_markdown(result: Mapping[str, Any]) -> str:
+    grouped: dict[tuple[str, str, str, int], dict[str, Any]] = {}
+    for row in result["rows"]:
+        key = (row["dataset"], row["source"], row["strategy"], row["source_epoch"])
+        group = grouped.setdefault(key, {})
+        modality = row["modality"]
+        if modality in group:
+            raise ValueError(f"Duplicate {modality} row for {key}.")
+        group[modality] = row
+
+    def format_optional(value: Any) -> str:
+        if isinstance(value, (int, float)) and math.isfinite(value):
+            return f"{value:.4f}"
+        return ""
+
     lines = [
         "# Joint native-source evaluation",
         "",
-        "Each row evaluates one head from the same union model on one native source. "
+        "Each row evaluates both modality heads from the same union model on one native source. "
         "R is signed double-centered Pearson correlation.",
         "",
-        "| Dataset | Source | Strategy | Epoch | Head | Validation R | Test R |",
-        "|---|---|---|---:|---|---:|---:|",
+        "| Dataset | Source | Strategy | Epoch | ATAC head | ATAC valid R | ATAC test R | RNA head | RNA valid R | RNA test R |",
+        "|---|---|---|---:|---|---:|---:|---|---:|---:|",
     ]
-    for row in result["rows"]:
+    for group in grouped.values():
+        atac = group.get("atac", {})
+        rna = group.get("rna", {})
         lines.append(
-            f"| `{row['dataset']}` | `{row['source']}` | `{row['strategy']}` | "
-            f"{row['source_epoch']} | `{row['head']}` | {row['valid_r']:.4f} | "
-            f"{row['test_r']:.4f} |"
+            f"| `{atac.get('dataset', rna.get('dataset'))}` | "
+            f"`{atac.get('source', rna.get('source'))}` | "
+            f"`{atac.get('strategy', rna.get('strategy'))}` | "
+            f"{atac.get('source_epoch', rna.get('source_epoch'))} | "
+            f"`{atac.get('head', '')}` | {format_optional(atac.get('valid_r'))} | "
+            f"{format_optional(atac.get('test_r'))} | `"
+            f"{rna.get('head', '')}` | {format_optional(rna.get('valid_r'))} | "
+            f"{format_optional(rna.get('test_r'))} |"
         )
     lines.extend(
         [
@@ -216,11 +237,6 @@ def render_markdown(result: Mapping[str, Any]) -> str:
             "|---|---:|---:|---:|---:|---:|---:|---:|---:|",
         ]
     )
-    def format_optional(value: Any) -> str:
-        if isinstance(value, (int, float)) and math.isfinite(value):
-            return f"{value:.4f}"
-        return ""
-
     for summary in result["strategy_summaries"]:
         lines.append(
             f"| `{summary['strategy']}` | {summary['native_sources']} | "

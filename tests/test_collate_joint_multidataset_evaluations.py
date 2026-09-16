@@ -68,7 +68,10 @@ def test_collate_requires_and_reports_every_strategy_source(tmp_path: Path):
         "mean_rna_test_r": pytest.approx(0.65),
     }
     markdown = render_markdown(result)
-    assert "| `study` | `mouse` | `lora+locon` | 3 | `study_rna` |" in markdown
+    assert (
+        "| `study` | `mouse` | `lora+locon` | 3 | `study_atac` | 0.7200 | "
+        "0.7700 | `study_rna` | 0.6200 | 0.6700 |"
+    ) in markdown
 
 
 def test_collate_rejects_missing_native_source_evaluation(tmp_path: Path):
