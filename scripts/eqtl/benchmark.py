@@ -281,7 +281,7 @@ def _load_head_specs(targets_path: Path):
     return spec
 
 
-def _load_model(label: str, checkpoint: Path | None, *, base_checkpoint: Path, targets_path: Path, seq_len: int):
+def _load_model(label: str, checkpoint: Path | None, *, base_checkpoint: Path, targets_path: Path, init_seq_len: int):
     from alphagenome_ft import create_model_with_heads, load_checkpoint
 
     _load_head_specs(targets_path)
@@ -290,16 +290,18 @@ def _load_model(label: str, checkpoint: Path | None, *, base_checkpoint: Path, t
             "all_folds",
             heads=["zemke2023_rna_human"],
             checkpoint_path=str(base_checkpoint),
-            init_seq_len=seq_len,
+            init_seq_len=init_seq_len,
             include_standard_heads=False,
             pretrained_head_initialization="semantic_neural_accessibility_bootstrap",
+            runtime_backbone_param_dtype="bfloat16",
             runtime_backbone_compute_dtype="bfloat16",
         )
     return load_checkpoint(
         checkpoint,
         base_model_version="all_folds",
         base_checkpoint_path=str(base_checkpoint),
-        init_seq_len=seq_len,
+        init_seq_len=init_seq_len,
+        runtime_backbone_param_dtype="bfloat16",
         runtime_backbone_compute_dtype="bfloat16",
     )
 
@@ -410,6 +412,7 @@ def main() -> None:
     parser.add_argument("--batch-size", type=int, default=2)
     parser.add_argument("--seed", type=int, default=20260917)
     parser.add_argument("--window", type=int, default=WINDOW)
+    parser.add_argument("--init-seq-len", type=int, default=131072)
     parser.add_argument("--panel", action="append", dest="panels", help="Restrict a smoke run to one or more panel names.")
     args = parser.parse_args()
     if args.window % 128:
@@ -424,7 +427,7 @@ def main() -> None:
     all_rows = []
     for label, checkpoint in models:
         print(f"loading model {label}", flush=True)
-        model = _load_model(label, checkpoint, base_checkpoint=args.base_checkpoint, targets_path=args.targets, seq_len=args.window)
+        model = _load_model(label, checkpoint, base_checkpoint=args.base_checkpoint, targets_path=args.targets, init_seq_len=args.init_seq_len)
         rows = score_model(model, records, extractor=extractor, encoder=encoder, genome=genome, batch_size=args.batch_size, window=args.window)
         for row in rows:
             row["model"] = label
