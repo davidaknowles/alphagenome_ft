@@ -59,6 +59,10 @@ fp8 = [
 fp4 = [
     "transformer-engine[jax]>=2.16.0",
 ]
+analysis = [
+    "plotnine>=0.13.0",
+    "scikit-learn>=1.4.0",
+]
 
 [project.urls]
 Homepage = "https://github.com/genomicsxai/alphagenome_ft"

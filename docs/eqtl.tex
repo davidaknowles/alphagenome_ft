@@ -1,0 +1,100 @@
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{siunitx}
+\usepackage{amsmath}
+\usepackage{microtype}
+
+\title{Fine-mapped single-cell eQTL evaluation of AlphaGenome fine-tuning}
+\author{}
+\date{}
+
+\begin{document}
+\maketitle
+
+\section{Overview}
+We evaluate whether sequence-derived mutation effects distinguish fine-mapped
+single-cell expression quantitative trait loci (eQTLs). A positive is a
+variant with posterior inclusion probability (PIP) greater than $0.75$ and a
+negative is a variant with PIP less than $0.01$. The evaluation uses human
+fine-mapping panels and a $1\,\mathrm{Mb}$ sequence window centered on the
+transcription start site (TSS) of the associated gene.
+
+The primary comparison is the pretrained AlphaGenome trunk with a
+cell-type-matched semantic RNA head versus the two best available joint
+fine-tuned models, a LoRA model and a LoRA+LoCon model. The benchmark retains
+up to 1,000 variants in each PIP class per fine-mapping panel with a fixed
+random seed. The raw and retained counts are recorded with the benchmark
+output.
+
+\section{Cell-type matching}
+The fine-mapping panels use the prefixes Ast, End, Ext, IN, MG, OD, and OPC,
+with numbered panels denoting subpanels. These map to the Zemke 2023 RNA head
+as follows. Ast maps to ASC, End maps to Endo, MG maps to MGC, OD maps to ODC,
+and OPC maps to OPC. Ext maps to the mean of the eight excitatory tracks
+L2/3 IT, L4/5 IT, L5/6 NP, L5 ET, L5 IT, L6 CT, L6 IT CAR3, and L6b. IN maps to
+the mean of LAMP5, PVALB, SNCG, SST, and VIP. This is the closest available
+cell-type match because the pretrained model does not provide native
+single-cell RNA tracks with the fine-mapping labels.
+
+\section{Mutation effects}
+For variant $i$, let $\mathbf{y}_{i,r}\in\mathbb{R}^{B\times C}$ and
+$\mathbf{y}_{i,a}\in\mathbb{R}^{B\times C}$ be the reference and alternate
+RNA predictions at the model's 128 bp resolution, where $B$ is the number of
+output bins and $C=20$ is the number of RNA tracks. Let $\mathcal{C}_g$ be the
+track indices for the matched cell group. The TSS score is
+\begin{equation}
+s_i^{\mathrm{TSS}}=\frac{1}{|\mathcal{C}_g|}\sum_{c\in\mathcal{C}_g}\left|y_{i,a,b_{\mathrm{TSS}},c}-y_{i,r,b_{\mathrm{TSS}},c}\right|,
+\end{equation}
+where $b_{\mathrm{TSS}}$ is the 128 bp bin containing the TSS. The gene score
+is the corresponding mean absolute alternate-reference difference after
+averaging each track over all 128 bp bins overlapping the annotated gene
+span,
+\begin{equation}
+s_i^{\mathrm{gene}}=\frac{1}{|\mathcal{C}_g|}\sum_{c\in\mathcal{C}_g}\left|\frac{1}{|\mathcal{B}_i|}\sum_{b\in\mathcal{B}_i}y_{i,a,b,c}-\frac{1}{|\mathcal{B}_i|}\sum_{b\in\mathcal{B}_i}y_{i,r,b,c}\right|,
+\end{equation}
+where $\mathcal{B}_i$ is the set of bins overlapping the gene span. Both
+scores are nonnegative because fine-mapping identifies variant probability,
+not the direction of expression change. Performance is measured by AUROC
+and average precision, overall and within bins of $|\mathrm{variant}-\mathrm{TSS}|$.
+
+\section{Results}
+The completed benchmark summary is shown in Table~\ref{tab:eqtl}.
+
+\begin{table}[ht]
+\centering
+\caption{Fine-mapped eQTL discrimination. Values are AUROC and average
+precision (AP); $n_+$ and $n_-$ are the retained positive and negative counts.
+The table is generated from the benchmark output.}
+\label{tab:eqtl}
+\begin{tabular}{llllrrr}
+\toprule
+Model & Aggregation & Distance & AUROC & AP & $n_+$ & $n_-$ \\
+\midrule
+\input{eqtl_results_table.tex}
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=0.95\linewidth]{figures/eqtl_auroc_by_distance.pdf}
+\caption{AUROC by distance from the TSS for TSS-bin and gene-span mutation
+effects. The dashed line is chance performance.}
+\label{fig:eqtl_distance}
+\end{figure}
+
+\section{Implementation details}
+Fine-mapping tables are streamed from compressed PIP files. Variant alleles
+are checked against the reference genome before constructing the alternate
+one-hot sequence. The same reference and alternate sequences are evaluated
+for every model. The base comparator uses the pretrained trunk and the same
+20-track RNA head, initialized by semantic bootstrap from compatible
+pretrained neural tracks; it is therefore a matched-head baseline rather than
+an uninitialized random head. Fine-tuned models retain their trained heads and
+adapters. All model prediction calls use the custom forward path so the
+fine-tuned heads, rather than the delegated pretrained variant scorer, are
+evaluated.
+
+\end{document}

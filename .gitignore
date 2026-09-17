@@ -54,6 +54,8 @@ logs/
 checkpoints/
 outputs/
 wandb/
+results/eqtl/*.out
+results/eqtl/*.err
 
 # Translations
 *.mo
