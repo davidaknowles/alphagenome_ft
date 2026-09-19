@@ -916,6 +916,10 @@ class CustomAlphaGenomeModel:
         self._state = jax.device_put(state, device)
 
         # Set forward functions
+        # Keep the raw transform available to inference and gradient helpers.  The
+        # delegated base model does not expose custom heads, so losing this handle
+        # makes a valid custom-head model look like a standard AlphaGenome model.
+        self._custom_forward_fn = custom_forward_fn
         if custom_forward_fn is not None:
             # Wrap custom forward function to process predictions like base model
             # This ensures predictions go through extract_predictions() and reverse_complement()
@@ -985,8 +989,6 @@ class CustomAlphaGenomeModel:
             self._predict = wrapped_predict
         else:
             self._predict = base_model._predict
-
-            self._custom_forward_fn = None  # No custom forward function
 
         self._predict_variant = base_model._predict_variant
 

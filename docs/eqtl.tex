@@ -29,7 +29,7 @@ random seed. The raw and retained counts are recorded with the benchmark
 output.
 
 \section{Cell-type matching}
-The fine-mapping panels use the prefixes Ast, End, Ext, IN, MG, OD, and OPC,
+The 35 fine-mapping panels use the prefixes Ast, End, Ext, IN, MG, OD, and OPC,
 with numbered panels denoting subpanels. These map to the Zemke 2023 RNA head
 as follows. Ast maps to ASC, End maps to Endo, MG maps to MGC, OD maps to ODC,
 and OPC maps to OPC. Ext maps to the mean of the eight excitatory tracks
@@ -42,7 +42,7 @@ single-cell RNA tracks with the fine-mapping labels.
 For variant $i$, let $\mathbf{y}_{i,r}\in\mathbb{R}^{B\times C}$ and
 $\mathbf{y}_{i,a}\in\mathbb{R}^{B\times C}$ be the reference and alternate
 RNA predictions at the model's 128 bp resolution, where $B$ is the number of
-output bins and $C=20$ is the number of RNA tracks. Let $\mathcal{C}_g$ be the
+output bins and $C=19$ is the number of RNA tracks. Let $\mathcal{C}_g$ be the
 track indices for the matched cell group. The TSS score is
 \begin{equation}
 s_i^{\mathrm{TSS}}=\frac{1}{|\mathcal{C}_g|}\sum_{c\in\mathcal{C}_g}\left|y_{i,a,b_{\mathrm{TSS}},c}-y_{i,r,b_{\mathrm{TSS}},c}\right|,

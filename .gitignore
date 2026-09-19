@@ -56,6 +56,16 @@ outputs/
 wandb/
 results/eqtl/*.out
 results/eqtl/*.err
+results/eqtl/pilot_*/
+results/eqtl/finemap_1mb_parallel/records.jsonl
+results/eqtl/finemap_1mb_parallel/scores*.tsv
+results/eqtl/finemap_1mb/*.json
+results/eqtl/finemap_1mb/*.tsv
+results/eqtl/finemap_1mb/records.jsonl
+results/eqtl/finemap_1mb_parallel/*.json
+results/eqtl/alt_pilot_*/
+results/eqtl/pilot_b*/
+results/eqtl/ref2_pilot/
 
 # Translations
 *.mo

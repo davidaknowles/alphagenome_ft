@@ -245,6 +245,48 @@ def load_records(
     return records, counts
 
 
+def save_records(path: Path, records: list[Record]) -> None:
+    with path.open("w") as handle:
+        for record in records:
+            handle.write(json.dumps({
+                "panel": record.panel,
+                "feature": record.feature,
+                "chrom": record.chrom,
+                "pos": record.pos,
+                "ref": record.ref,
+                "alt": record.alt,
+                "pip": record.pip,
+                "label": record.label,
+                "group": record.group,
+                "gene": {
+                    "chrom": record.gene.chrom,
+                    "start": record.gene.start,
+                    "end": record.gene.end,
+                    "strand": record.gene.strand,
+                },
+            }) + "\n")
+
+
+def load_records_cache(path: Path) -> list[Record]:
+    records = []
+    with path.open() as handle:
+        for line in handle:
+            value = json.loads(line)
+            records.append(Record(
+                panel=value["panel"],
+                feature=value["feature"],
+                chrom=value["chrom"],
+                pos=int(value["pos"]),
+                ref=value["ref"],
+                alt=value["alt"],
+                pip=float(value["pip"]),
+                label=int(value["label"]),
+                group=value["group"],
+                gene=Gene(**value["gene"]),
+            ))
+    return records
+
+
 def load_sequence_tools(fasta_path: Path):
     from alphagenome.data import genome
     from alphagenome_research.io import fasta as fasta_lib
@@ -331,7 +373,17 @@ def _predict(model, sequence: np.ndarray) -> np.ndarray:
     return np.asarray(jax.device_get(values), dtype=np.float32)
 
 
-def score_model(model, records: list[Record], *, extractor, encoder, genome, batch_size: int, window: int) -> list[dict[str, object]]:
+def score_model(
+    model,
+    records: list[Record],
+    *,
+    extractor,
+    encoder,
+    genome,
+    batch_size: int,
+    ref_batch_size: int,
+    window: int,
+) -> list[dict[str, object]]:
     track_names = np.asarray(["ASC", "Endo", "L2_3_IT", "L4_5_IT", "L5_6_NP", "L5_ET", "L5_IT", "L6_CT", "L6_IT_CAR3", "L6b", "LAMP5", "MGC", "ODC", "OPC", "PVALB", "SNCG", "SST", "VIP", "VLMC"])
     indices = _track_indices(track_names)
     groups: dict[tuple[str, int, int, str], list[Record]] = defaultdict(list)
@@ -339,55 +391,73 @@ def score_model(model, records: list[Record], *, extractor, encoder, genome, bat
         groups[(record.chrom, record.gene.tss, record.gene.start, record.feature)].append(record)
     output: list[dict[str, object]] = []
     skipped = 0
-    for group_records in groups.values():
-        first = group_records[0]
-        encoded = _encode_window(extractor, encoder, genome, first, window=window)
-        if encoded is None:
-            skipped += len(group_records)
+    alt_sequences = []
+    alt_metadata = []
+
+    def flush_alternates() -> None:
+        if not alt_sequences:
+            return
+        alt_values = _predict(model, np.stack(alt_sequences, axis=0))
+        for metadata, values in zip(alt_metadata, alt_values):
+            record, ref_values, tss_bin, gene_start_bin, gene_end_bin = metadata
+            track_index = indices[record.group]
+            tss_effect = float(np.mean(np.abs(values[tss_bin, track_index] - ref_values[tss_bin, track_index])))
+            gene_effect = float(np.mean(np.abs(np.mean(values[gene_start_bin:gene_end_bin, :][:, track_index], axis=0) - np.mean(ref_values[gene_start_bin:gene_end_bin, :][:, track_index], axis=0))))
+            output.append({
+                "panel": record.panel,
+                "feature": record.feature,
+                "chrom": record.chrom,
+                "pos": record.pos + 1,
+                "pip": record.pip,
+                "label": record.label,
+                "cell_group": record.group,
+                "distance_bp": record.distance,
+                "distance_bin": record.distance_bin,
+                "tss_effect": tss_effect,
+                "gene_effect": gene_effect,
+            })
+        alt_sequences.clear()
+        alt_metadata.clear()
+
+    group_items = list(groups.values())
+    for group_start in range(0, len(group_items), ref_batch_size):
+        prepared = []
+        for group_records in group_items[group_start : group_start + ref_batch_size]:
+            first = group_records[0]
+            encoded = _encode_window(extractor, encoder, genome, first, window=window)
+            if encoded is None:
+                skipped += len(group_records)
+                continue
+            reference, _ = encoded
+            sequence_start = first.gene.tss - window // 2
+            prepared.append((group_records, reference, sequence_start, first))
+        if not prepared:
             continue
-        reference, _ = encoded
-        ref_values = _predict(model, reference[None, ...])[0]
-        tss_bin = min(ref_values.shape[0] - 1, (window // 2) // 128)
-        gene_start_bin = max(0, (first.gene.start - (first.gene.tss - window // 2)) // 128)
-        gene_end_bin = min(ref_values.shape[0], (first.gene.end - (first.gene.tss - window // 2) + 127) // 128)
-        if gene_end_bin <= gene_start_bin:
-            gene_start_bin, gene_end_bin = tss_bin, tss_bin + 1
-        for start in range(0, len(group_records), batch_size):
-            chunk = group_records[start : start + batch_size]
-            alt_sequences = []
-            valid = []
-            for record in chunk:
-                alt = _encode_window(extractor, encoder, genome, record, window=window)
-                if alt is None:
+
+        ref_values_batch = _predict(model, np.stack([item[1] for item in prepared], axis=0))
+
+        for (group_records, reference, sequence_start, first), ref_values in zip(prepared, ref_values_batch):
+            tss_bin = min(ref_values.shape[0] - 1, (window // 2) // 128)
+            gene_start_bin = max(0, (first.gene.start - sequence_start) // 128)
+            gene_end_bin = min(ref_values.shape[0], (first.gene.end - sequence_start + 127) // 128)
+            if gene_end_bin <= gene_start_bin:
+                gene_start_bin, gene_end_bin = tss_bin, tss_bin + 1
+            for record in group_records:
+                offset = record.pos - sequence_start
+                ref_index = "ACGT".index(record.ref)
+                if offset < 0 or offset >= window or reference[offset, ref_index] < 0.5:
                     skipped += 1
                     continue
-                alt_sequence, offset = alt
+                alt_sequence = reference.copy()
                 alt_sequence[offset, :] = 0.0
                 alt_sequence[offset, "ACGT".index(record.alt)] = 1.0
                 alt_sequences.append(alt_sequence)
-                valid.append(record)
-            if not valid:
-                continue
-            alt_values = _predict(model, np.stack(alt_sequences, axis=0))
-            for record, values in zip(valid, alt_values):
-                track_index = indices[record.group]
-                tss_effect = float(np.mean(np.abs(values[tss_bin, track_index] - ref_values[tss_bin, track_index])))
-                gene_effect = float(np.mean(np.abs(np.mean(values[gene_start_bin:gene_end_bin, :][:, track_index], axis=0) - np.mean(ref_values[gene_start_bin:gene_end_bin, :][:, track_index], axis=0))))
-                output.append({
-                    "panel": record.panel,
-                    "feature": record.feature,
-                    "chrom": record.chrom,
-                    "pos": record.pos + 1,
-                    "pip": record.pip,
-                    "label": record.label,
-                    "cell_group": record.group,
-                    "distance_bp": record.distance,
-                    "distance_bin": record.distance_bin,
-                    "tss_effect": tss_effect,
-                    "gene_effect": gene_effect,
-                })
-        if len(output) % 1000 < len(group_records):
+                alt_metadata.append((record, ref_values, tss_bin, gene_start_bin, gene_end_bin))
+                if len(alt_sequences) >= batch_size:
+                    flush_alternates()
+        if len(output) % 1000 < sum(len(item[0]) for item in prepared):
             print(f"scored {len(output)} records, skipped={skipped}", flush=True)
+    flush_alternates()
     print(f"finished model, scored={len(output)}, skipped={skipped}", flush=True)
     return output
 
@@ -410,17 +480,33 @@ def main() -> None:
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("--max-per-panel", type=int, default=1000)
     parser.add_argument("--batch-size", type=int, default=2)
+    parser.add_argument("--ref-batch-size", type=int, default=8)
+    parser.add_argument("--max-records", type=int, default=None)
     parser.add_argument("--seed", type=int, default=20260917)
     parser.add_argument("--window", type=int, default=WINDOW)
     parser.add_argument("--init-seq-len", type=int, default=131072)
+    parser.add_argument("--records-cache", type=Path, default=None)
     parser.add_argument("--panel", action="append", dest="panels", help="Restrict a smoke run to one or more panel names.")
     args = parser.parse_args()
     if args.window % 128:
         raise ValueError("window must be divisible by 128")
     models = args.model or [(label, path) for label, path in [("base", None), *DEFAULT_CHECKPOINTS.items()]]
     args.output_dir.mkdir(parents=True, exist_ok=True)
-    genes = load_genes(args.gtf)
-    records, counts = load_records(args.finemap_dir, genes, max_per_panel=args.max_per_panel, seed=args.seed, panels=set(args.panels) if args.panels else None)
+    records_cache = args.records_cache or args.output_dir / "records.jsonl"
+    if records_cache.exists() and not args.panels:
+        records = load_records_cache(records_cache)
+        counts_path = args.output_dir / "sampling_counts.json"
+        if not counts_path.exists():
+            counts_path = records_cache.parent / "sampling_counts.json"
+        counts = json.loads(counts_path.read_text())
+        print(f"loaded {len(records)} records from {records_cache}", flush=True)
+    else:
+        genes = load_genes(args.gtf)
+        records, counts = load_records(args.finemap_dir, genes, max_per_panel=args.max_per_panel, seed=args.seed, panels=set(args.panels) if args.panels else None)
+        if not args.panels:
+            save_records(records_cache, records)
+    if args.max_records is not None:
+        records = records[: args.max_records]
     (args.output_dir / "sampling_counts.json").write_text(json.dumps(counts, indent=2, sort_keys=True))
     (args.output_dir / "benchmark_config.json").write_text(json.dumps({"window": args.window, "positive_pip": ">0.75", "negative_pip": "<0.01", "max_per_panel": args.max_per_panel, "models": {label: str(path) if path else "base+semantic_head" for label, path in models}, "cell_mapping": {"Ast": "ASC", "End": "Endo", "Ext": "mean excitatory Zemke tracks", "IN": "mean inhibitory Zemke tracks", "MG": "MGC", "OD": "ODC", "OPC": "OPC"}}, indent=2, sort_keys=True))
     genome, extractor, encoder = load_sequence_tools(args.fasta)
@@ -428,10 +514,15 @@ def main() -> None:
     for label, checkpoint in models:
         print(f"loading model {label}", flush=True)
         model = _load_model(label, checkpoint, base_checkpoint=args.base_checkpoint, targets_path=args.targets, init_seq_len=args.init_seq_len)
-        rows = score_model(model, records, extractor=extractor, encoder=encoder, genome=genome, batch_size=args.batch_size, window=args.window)
+        rows = score_model(model, records, extractor=extractor, encoder=encoder, genome=genome, batch_size=args.batch_size, ref_batch_size=args.ref_batch_size, window=args.window)
         for row in rows:
             row["model"] = label
         all_rows.extend(rows)
+        if rows:
+            with (args.output_dir / f"scores_{label}.tsv").open("w") as handle:
+                writer = csv.DictWriter(handle, fieldnames=list(rows[0]), delimiter="\t")
+                writer.writeheader()
+                writer.writerows(rows)
         del model
     if not all_rows:
         raise RuntimeError("No valid eQTL records were scored")
