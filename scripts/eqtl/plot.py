@@ -43,12 +43,13 @@ def main() -> None:
                 model = str(row.model).replace("_", "\\_")
                 aggregation = "TSS bin" if row.mode == "tss" else "Gene span"
                 handle.write(f"{model} & {aggregation} & {row.distance_bin} & {row.auroc:.3f} & {row.auprc:.3f} & {row.n_positive} & {row.n_negative} \\\\\n")
+            handle.write("\\bottomrule\n")
     bin_order = ["0-1kb", "1-10kb", "10-50kb", "50-100kb", "100-250kb", "250-500kb", ">500kb"]
     plot_summary = summary[summary["distance_bin"] != "all"].copy()
     plot_summary["distance_bin"] = pd.Categorical(plot_summary["distance_bin"], categories=bin_order, ordered=True)
     plot = (ggplot(plot_summary, aes("distance_bin", "auroc", color="model", group="model")) + geom_hline(yintercept=0.5, linetype="dashed", color="#808080") + geom_line() + geom_point() + facet_wrap("~mode") + scale_y_continuous(limits=(0.4, 1.0)) + labs(x="Distance from TSS", y="AUROC", color="Model") + theme_bw() + theme(axis_text_x=element_text(rotation=45, hjust=1)))
-    plot.save(args.output_dir / "auroc_by_distance.pdf", width=8, height=4.5, verbose=False)
-    plot.save(args.output_dir / "auroc_by_distance.png", width=8, height=4.5, dpi=180, verbose=False)
+    plot.save(args.output_dir / "eqtl_auroc_by_distance.pdf", width=8, height=4.5, verbose=False)
+    plot.save(args.output_dir / "eqtl_auroc_by_distance.png", width=8, height=4.5, dpi=180, verbose=False)
 
 
 if __name__ == "__main__":
