@@ -324,20 +324,13 @@ def _load_head_specs(targets_path: Path):
     return spec
 
 
-def _load_model(label: str, checkpoint: Path | None, *, base_checkpoint: Path, targets_path: Path, init_seq_len: int):
-    from alphagenome_ft import create_model_with_heads, load_checkpoint
+def _load_model(label: str, checkpoint: Path, *, base_checkpoint: Path, targets_path: Path, init_seq_len: int):
+    from alphagenome_ft import load_checkpoint
 
     _load_head_specs(targets_path)
     if checkpoint is None:
-        return create_model_with_heads(
-            "all_folds",
-            heads=["zemke2023_rna_human"],
-            checkpoint_path=str(base_checkpoint),
-            init_seq_len=init_seq_len,
-            include_standard_heads=False,
-            pretrained_head_initialization="semantic_neural_accessibility_bootstrap",
-            runtime_backbone_param_dtype="bfloat16",
-            runtime_backbone_compute_dtype="bfloat16",
+        raise ValueError(
+            f"Model {label!r} must use a trained checkpoint; untrained semantic-init heads are not valid inference baselines"
         )
     return load_checkpoint(
         checkpoint,
@@ -463,11 +456,13 @@ def score_model(
     return output
 
 
-def parse_model(value: str) -> tuple[str, Path | None]:
+def parse_model(value: str) -> tuple[str, Path]:
     label, sep, path = value.partition("=")
-    if not sep:
-        raise argparse.ArgumentTypeError("models must use LABEL=CHECKPOINT; use LABEL=semantic_init for the untrained initialized head")
-    return label, None if path == "semantic_init" else Path(path).expanduser().resolve()
+    if not sep or not label or not path:
+        raise argparse.ArgumentTypeError("models must use LABEL=CHECKPOINT")
+    if path == "semantic_init" or label.lower() == "base":
+        raise argparse.ArgumentTypeError("untrained semantic-init heads are not valid inference baselines; use a trained checkpoint")
+    return label, Path(path).expanduser().resolve()
 
 
 def main() -> None:
@@ -509,7 +504,7 @@ def main() -> None:
     if args.max_records is not None:
         records = records[: args.max_records]
     (args.output_dir / "sampling_counts.json").write_text(json.dumps(counts, indent=2, sort_keys=True))
-    (args.output_dir / "benchmark_config.json").write_text(json.dumps({"window": args.window, "positive_pip": ">0.75", "negative_pip": "<0.01", "max_per_panel": args.max_per_panel, "models": {label: str(path) if path else "base+semantic_head" for label, path in models}, "cell_mapping": {"Ast": "ASC", "End": "Endo", "Ext": "mean excitatory Zemke tracks", "IN": "mean inhibitory Zemke tracks", "MG": "MGC", "OD": "ODC", "OPC": "OPC"}}, indent=2, sort_keys=True))
+    (args.output_dir / "benchmark_config.json").write_text(json.dumps({"window": args.window, "positive_pip": ">0.75", "negative_pip": "<0.01", "max_per_panel": args.max_per_panel, "models": {label: str(path) for label, path in models}, "cell_mapping": {"Ast": "ASC", "End": "Endo", "Ext": "mean excitatory Zemke tracks", "IN": "mean inhibitory Zemke tracks", "MG": "MGC", "OD": "ODC", "OPC": "OPC"}}, indent=2, sort_keys=True))
     genome, extractor, encoder = load_sequence_tools(args.fasta)
     all_rows = []
     for label, checkpoint in models:

@@ -21,30 +21,31 @@ negative is a variant with PIP less than $0.01$. The evaluation uses human
 fine-mapping panels and a $1\,\mathrm{Mb}$ sequence window centered on the
 transcription start site (TSS) of the associated gene.
 
-The primary comparison is the pretrained AlphaGenome trunk with a
-cell-type-matched semantic RNA head versus the two best available joint
-fine-tuned models, a LoRA model and a LoRA+LoCon model. The benchmark retains
+The primary comparison is a trained head-only model versus the two best
+available joint fine-tuned models, a LoRA model and a LoRA+LoCon model. The
+benchmark retains
 up to 1,000 variants in each PIP class per fine-mapping panel with a fixed
 random seed. The raw and retained counts are recorded with the benchmark
 output.
 
 \section{Cell-type matching}
 The 35 fine-mapping panels use the prefixes Ast, End, Ext, IN, MG, OD, and OPC,
-with numbered panels denoting subpanels. The base AlphaGenome comparator uses
-a semantic-bootstrap-initialized copy of the human Zemke 2023 RNA head. The
-fine-tuned models retain the same target track definitions. The matching used
-for every model is shown below.
+with numbered panels denoting subpanels. The trained head-only, LoRA, and
+LoRA+LoCon models use the same target track definitions. The matching used for
+these models is shown below. A separate native AlphaGenome analysis evaluates
+all valid pretrained RNA-seq and CAGE tracks, without adding a newly initialized
+head.
 
 \begin{table}[ht]
 \centering
 \small
-\caption{Fine-mapping panel to RNA-track matching. A numbered panel inherits
-the mapping for its prefix. The base and fine-tuned models use the same
-matched RNA tracks.}
+\caption{Fine-mapping panel to RNA-track matching for the trained head-only,
+LoRA, and LoRA+LoCon models. A numbered panel inherits the mapping for its
+prefix.}
 \label{tab:cell_matching}
 \begin{tabular}{@{}p{0.16\linewidth}p{0.37\linewidth}p{0.37\linewidth}@{}}
 \toprule
-Panel prefix & Base AlphaGenome & LoRA and LoCon \\
+Panel prefix & Trained head-only & LoRA and LoCon \\
 \midrule
 \texttt{Ast*} & ASC & ASC \\
 \texttt{End*} & Endo & Endo \\
@@ -57,8 +58,9 @@ Panel prefix & Base AlphaGenome & LoRA and LoCon \\
 \end{tabular}
 \end{table}
 
-This is the closest available cell-type match because the pretrained model does
-not provide native single-cell RNA tracks with the fine-mapping labels.
+The panel labels do not exactly match the available pretrained output tracks.
+The native model therefore receives a separate track-level analysis; it is not
+represented by the trained-head comparison above.
 
 \section{Mutation effects}
 For variant $i$, let $\mathbf{y}_{i,r}\in\mathbb{R}^{B\times C}$ and
@@ -106,12 +108,16 @@ effects.}
 Fine-mapping tables are streamed from compressed PIP files. Variant alleles
 are checked against the reference genome before constructing the alternate
 one-hot sequence. The same reference and alternate sequences are evaluated
-for every model. The base comparator uses the pretrained trunk and the same
-20-track RNA head, initialized by semantic bootstrap from compatible
-pretrained neural tracks; it is therefore a matched-head baseline rather than
-an uninitialized random head. Fine-tuned models retain their trained heads and
+for every model. The head-only checkpoint was trained on the target tracks
+without LoRA or LoCon adapters; the fine-tuned models retain trained heads and
 adapters. All model prediction calls use the custom forward path so the
 fine-tuned heads, rather than the delegated pretrained variant scorer, are
-evaluated.
+evaluated. Native AlphaGenome VEPs use the original model's valid RNA-seq and
+CAGE tracks, with predictions reduced on device to the TSS bin and gene span
+before signed alternate-minus-reference effects are stored. CD14-positive
+monocytes are treated as a proxy for microglia. CAGE includes an
+oligodendrocyte-precursor track, but the native RNA-seq panel does not contain a
+direct oligodendrocyte track; this distinction is retained in cell-specificity
+interpretation.
 
 \end{document}
