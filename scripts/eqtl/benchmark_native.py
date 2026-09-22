@@ -203,6 +203,26 @@ def run(args: argparse.Namespace) -> None:
     predict_summary = _make_summary_predictor(model, indices, args.window)
     scored = 0
     skipped = 0
+
+    def store_alternate_batch(batch, reference_summary, tss_bin, gene_start_bin, gene_end_bin):
+        nonlocal scored
+        if not batch:
+            return
+        alternate_summaries = np.asarray(jax.device_get(predict_summary(
+            jnp.asarray(np.stack([sequence for _, sequence in batch]), dtype=jnp.float32),
+            jnp.asarray(tss_bin, dtype=jnp.int32),
+            jnp.asarray(gene_start_bin, dtype=jnp.int32),
+            jnp.asarray(gene_end_bin, dtype=jnp.int32),
+        )), dtype=np.float32)
+        for (record_index, _), alternate_summary in zip(batch, alternate_summaries, strict=True):
+            effects[record_index] = alternate_summary - reference_summary
+            completed[record_index] = True
+            scored += 1
+            if scored % args.progress_interval == 0:
+                effects.flush()
+                completed.flush()
+                print(f"scored {scored} variants, skipped={skipped}", flush=True)
+
     for group in groups:
         pending = [(index, record) for index, record in group if not completed[index]]
         if not pending:
@@ -227,7 +247,7 @@ def run(args: argparse.Namespace) -> None:
             jnp.asarray(gene_start_bin, dtype=jnp.int32),
             jnp.asarray(gene_end_bin, dtype=jnp.int32),
         )[0]), dtype=np.float32)
-        valid_alternates = []
+        alternate_batch = []
         for record_index, record in pending:
             offset = record.pos - sequence_start
             ref_index = "ACGT".index(record.ref)
@@ -238,23 +258,13 @@ def run(args: argparse.Namespace) -> None:
             alternate = reference.copy()
             alternate[offset, :] = 0.0
             alternate[offset, "ACGT".index(record.alt)] = 1.0
-            valid_alternates.append((record_index, alternate))
-        for batch_start in range(0, len(valid_alternates), args.batch_size):
-            batch = valid_alternates[batch_start : batch_start + args.batch_size]
-            alternate_summaries = np.asarray(jax.device_get(predict_summary(
-                jnp.asarray(np.stack([sequence for _, sequence in batch]), dtype=jnp.float32),
-                jnp.asarray(tss_bin, dtype=jnp.int32),
-                jnp.asarray(gene_start_bin, dtype=jnp.int32),
-                jnp.asarray(gene_end_bin, dtype=jnp.int32),
-            )), dtype=np.float32)
-            for (record_index, _), alternate_summary in zip(batch, alternate_summaries, strict=True):
-                effects[record_index] = alternate_summary - reference_summary
-                completed[record_index] = True
-                scored += 1
-                if scored % args.progress_interval == 0:
-                    effects.flush()
-                    completed.flush()
-                    print(f"scored {scored} variants, skipped={skipped}", flush=True)
+            alternate_batch.append((record_index, alternate))
+            if len(alternate_batch) == args.batch_size:
+                store_alternate_batch(
+                    alternate_batch, reference_summary, tss_bin, gene_start_bin, gene_end_bin
+                )
+                alternate_batch.clear()
+        store_alternate_batch(alternate_batch, reference_summary, tss_bin, gene_start_bin, gene_end_bin)
     effects.flush()
     completed.flush()
     total_scored = int(np.isfinite(effects[:, 0, :]).all(axis=1).sum())
