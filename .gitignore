@@ -66,6 +66,7 @@ results/eqtl/finemap_1mb_parallel/*.json
 results/eqtl/alt_pilot_*/
 results/eqtl/pilot_b*/
 results/eqtl/ref2_pilot/
+results/eqtl/native_*/
 
 # Translations
 *.mo

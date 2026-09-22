@@ -466,8 +466,8 @@ def score_model(
 def parse_model(value: str) -> tuple[str, Path | None]:
     label, sep, path = value.partition("=")
     if not sep:
-        raise argparse.ArgumentTypeError("models must use LABEL=CHECKPOINT, with LABEL=base for the pretrained model")
-    return label, None if path == "base" else Path(path).expanduser().resolve()
+        raise argparse.ArgumentTypeError("models must use LABEL=CHECKPOINT; use LABEL=semantic_init for the untrained initialized head")
+    return label, None if path == "semantic_init" else Path(path).expanduser().resolve()
 
 
 def main() -> None:
@@ -491,7 +491,7 @@ def main() -> None:
     args = parser.parse_args()
     if args.window % 128:
         raise ValueError("window must be divisible by 128")
-    models = args.model or [(label, path) for label, path in [("base", None), *DEFAULT_CHECKPOINTS.items()]]
+    models = args.model or list(DEFAULT_CHECKPOINTS.items())
     args.output_dir.mkdir(parents=True, exist_ok=True)
     records_cache = args.records_cache or args.output_dir / "records.jsonl"
     if records_cache.exists() and not args.panels:
