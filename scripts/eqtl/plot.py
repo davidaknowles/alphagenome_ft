@@ -15,7 +15,6 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("scores", type=Path)
     parser.add_argument("--output-dir", type=Path, required=True)
-    parser.add_argument("--tex-table", type=Path, default=None)
     args = parser.parse_args()
     args.output_dir.mkdir(parents=True, exist_ok=True)
     scores = pd.read_csv(args.scores, sep="\t")
@@ -36,20 +35,18 @@ def main() -> None:
         rows.append({"model": model, "mode": mode, "distance_bin": "all", "auroc": roc_auc_score(frame.label, frame.gene_effect), "auprc": average_precision_score(frame.label, frame.gene_effect), "n_positive": int(frame.label.sum()), "n_negative": int((1 - frame.label).sum())})
     summary = pd.DataFrame(rows)
     summary.to_csv(args.output_dir / "summary.tsv", sep="\t", index=False)
-    if args.tex_table is not None:
-        args.tex_table.parent.mkdir(parents=True, exist_ok=True)
-        with args.tex_table.open("w") as handle:
-            for row in summary.itertuples(index=False):
-                model = str(row.model).replace("_", "\\_")
-                aggregation = "TSS bin" if row.mode == "tss" else "Gene span"
-                handle.write(f"{model} & {aggregation} & {row.distance_bin} & {row.auroc:.3f} & {row.auprc:.3f} & {row.n_positive} & {row.n_negative} \\\\\n")
-            handle.write("\\bottomrule\n")
     bin_order = ["0-1kb", "1-10kb", "10-50kb", "50-100kb", "100-250kb", "250-500kb", ">500kb"]
     plot_summary = summary[summary["distance_bin"] != "all"].copy()
     plot_summary["distance_bin"] = pd.Categorical(plot_summary["distance_bin"], categories=bin_order, ordered=True)
-    plot = (ggplot(plot_summary, aes("distance_bin", "auroc", color="model", group="model")) + geom_hline(yintercept=0.5, linetype="dashed", color="#808080") + geom_line() + geom_point() + facet_wrap("~mode") + scale_y_continuous(limits=(0.4, 1.0)) + labs(x="Distance from TSS", y="AUROC", color="Model") + theme_bw() + theme(axis_text_x=element_text(rotation=45, hjust=1)))
-    plot.save(args.output_dir / "eqtl_auroc_by_distance.pdf", width=8, height=4.5, verbose=False)
-    plot.save(args.output_dir / "eqtl_auroc_by_distance.png", width=8, height=4.5, dpi=180, verbose=False)
+    def distance_plot(metric: str):
+        return (ggplot(plot_summary, aes("distance_bin", metric, color="model", group="model")) + geom_line() + geom_point() + facet_wrap("~mode") + labs(x="Distance from TSS", color="Model") + theme_bw() + theme(axis_text_x=element_text(rotation=45, hjust=1)))
+
+    auroc = distance_plot("auroc") + geom_hline(yintercept=0.5, linetype="dashed", color="#808080") + scale_y_continuous(limits=(0.4, 1.0), name="AUROC")
+    aupr = distance_plot("auprc") + scale_y_continuous(limits=(0.0, 1.0), name="AUPR")
+    auroc.save(args.output_dir / "eqtl_auroc_by_distance.pdf", width=8, height=4.5, verbose=False)
+    auroc.save(args.output_dir / "eqtl_auroc_by_distance.png", width=8, height=4.5, dpi=180, verbose=False)
+    aupr.save(args.output_dir / "eqtl_aupr_by_distance.pdf", width=8, height=4.5, verbose=False)
+    aupr.save(args.output_dir / "eqtl_aupr_by_distance.png", width=8, height=4.5, dpi=180, verbose=False)
 
 
 if __name__ == "__main__":

@@ -30,13 +30,35 @@ output.
 
 \section{Cell-type matching}
 The 35 fine-mapping panels use the prefixes Ast, End, Ext, IN, MG, OD, and OPC,
-with numbered panels denoting subpanels. These map to the Zemke 2023 RNA head
-as follows. Ast maps to ASC, End maps to Endo, MG maps to MGC, OD maps to ODC,
-and OPC maps to OPC. Ext maps to the mean of the eight excitatory tracks
-L2/3 IT, L4/5 IT, L5/6 NP, L5 ET, L5 IT, L6 CT, L6 IT CAR3, and L6b. IN maps to
-the mean of LAMP5, PVALB, SNCG, SST, and VIP. This is the closest available
-cell-type match because the pretrained model does not provide native
-single-cell RNA tracks with the fine-mapping labels.
+with numbered panels denoting subpanels. The base AlphaGenome comparator uses
+a semantic-bootstrap-initialized copy of the human Zemke 2023 RNA head. The
+fine-tuned models retain the same target track definitions. The matching used
+for every model is shown below.
+
+\begin{table}[ht]
+\centering
+\small
+\caption{Fine-mapping panel to RNA-track matching. A numbered panel inherits
+the mapping for its prefix. The base and fine-tuned models use the same
+matched RNA tracks.}
+\label{tab:cell_matching}
+\begin{tabular}{@{}p{0.16\linewidth}p{0.37\linewidth}p{0.37\linewidth}@{}}
+\toprule
+Panel prefix & Base AlphaGenome & LoRA and LoCon \\
+\midrule
+\texttt{Ast*} & ASC & ASC \\
+\texttt{End*} & Endo & Endo \\
+\texttt{Ext*} & Mean of L2/3 IT, L4/5 IT, L5/6 NP, L5 ET, L5 IT, L6 CT, L6 IT CAR3, and L6b & Same \\
+\texttt{IN*} & Mean of LAMP5, PVALB, SNCG, SST, and VIP & Same \\
+\texttt{MG*} & MGC & MGC \\
+\texttt{OD*} & ODC & ODC \\
+\texttt{OPC*} & OPC & OPC \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+This is the closest available cell-type match because the pretrained model does
+not provide native single-cell RNA tracks with the fine-mapping labels.
 
 \section{Mutation effects}
 For variant $i$, let $\mathbf{y}_{i,r}\in\mathbb{R}^{B\times C}$ and
@@ -60,21 +82,9 @@ not the direction of expression change. Performance is measured by AUROC
 and average precision, overall and within bins of $|\mathrm{variant}-\mathrm{TSS}|$.
 
 \section{Results}
-The completed benchmark summary is shown in Table~\ref{tab:eqtl}.
-
-\begin{table}[ht]
-\centering
-\caption{Fine-mapped eQTL discrimination. Values are AUROC and average
-precision (AP); $n_+$ and $n_-$ are the retained positive and negative counts.
-The table is generated from the benchmark output.}
-\label{tab:eqtl}
-\begin{tabular}{llllrrr}
-\toprule
-Model & Aggregation & Distance & AUROC & AP & $n_+$ & $n_-$ \\
-\midrule
-\input{eqtl_results_table.tex}
-\end{tabular}
-\end{table}
+The completed benchmark is summarized by distance from the TSS in the
+following figures. The underlying per-bin AUROC, AUPR, and class counts remain
+available in the machine-readable summary output.
 
 \begin{figure}[ht]
 \centering
@@ -82,6 +92,14 @@ Model & Aggregation & Distance & AUROC & AP & $n_+$ & $n_-$ \\
 \caption{AUROC by distance from the TSS for TSS-bin and gene-span mutation
 effects. The dashed line is chance performance.}
 \label{fig:eqtl_distance}
+\end{figure}
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=0.95\linewidth]{figures/eqtl_aupr_by_distance.pdf}
+\caption{AUPR by distance from the TSS for TSS-bin and gene-span mutation
+effects.}
+\label{fig:eqtl_aupr_distance}
 \end{figure}
 
 \section{Implementation details}
