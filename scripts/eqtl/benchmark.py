@@ -36,6 +36,7 @@ DEFAULT_FASTA = Path("/gpfs/commons/home/daknowles/knowles_lab/index/hg38/hg38.f
 DEFAULT_BASE = Path("/gpfs/commons/home/daknowles/.cache/kagglehub/models/google/alphagenome/jax/all_folds/1")
 DEFAULT_TARGETS = REPO_ROOT / "outputs/v0data/joint-objective-variants/metric-tempered-all-gene-source-specific/zemke2023/human/targets.json"
 DEFAULT_CHECKPOINTS = {
+    "head_only": REPO_ROOT / "checkpoints/v0data/joint_all_nonencode_all_gene_source_specific_semantic_neural_accessibility_bootstrap_head_warmup_seed_epoch12",
     "lora": REPO_ROOT / "checkpoints/v0data/joint_all_nonencode_lora_all_gene_source_specific_semantic_neural_accessibility_bootstrap_headwarm12_adapters_lr3e4_reset/best",
     "locon": REPO_ROOT / "checkpoints/v0data/joint_all_nonencode_lora_locon_all_gene_source_specific_semantic_neural_accessibility_bootstrap_headwarm12_adapters_lr3e4_reset/best",
 }

@@ -1,6 +1,6 @@
 #!/bin/bash
-# Run exactly one model so base, LoRA, and LoCon can occupy separate GPUs.
-# Set MODEL_LABEL to base, lora, or locon when submitting.
+# Run exactly one model so head-only, LoRA, and LoCon can occupy separate GPUs.
+# Set MODEL_LABEL to head_only, lora, or locon when submitting.
 #SBATCH -p gpu
 #SBATCH --gres=gpu:l40s:1
 #SBATCH --cpus-per-task=8
@@ -15,10 +15,10 @@ mkdir -p results/eqtl results/eqtl/finemap_1mb_parallel
 source "$HOME/venv/jax/bin/activate"
 export LD_LIBRARY_PATH="/nfs/sw/easybuild/software/Python/3.12.3-GCCcore-13.3.0/lib:${LD_LIBRARY_PATH:-}"
 
-: "${MODEL_LABEL:?MODEL_LABEL must be base, lora, or locon}"
+: "${MODEL_LABEL:?MODEL_LABEL must be head_only, lora, or locon}"
 case "$MODEL_LABEL" in
-  base)
-    MODEL_ARG="base=base"
+  head_only)
+    MODEL_ARG="head_only=checkpoints/v0data/joint_all_nonencode_all_gene_source_specific_semantic_neural_accessibility_bootstrap_head_warmup_seed_epoch12"
     ;;
   lora)
     MODEL_ARG="lora=checkpoints/v0data/joint_all_nonencode_lora_all_gene_source_specific_semantic_neural_accessibility_bootstrap_headwarm12_adapters_lr3e4_reset/best"
