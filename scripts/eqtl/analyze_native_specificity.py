@@ -13,11 +13,15 @@ from plotnine import (
     aes,
     facet_grid,
     geom_point,
+    geom_tile,
     ggplot,
     labs,
     position_jitter,
+    scale_fill_gradient,
     scale_y_reverse,
     theme_bw,
+    theme,
+    element_text,
 )
 from sklearn.metrics import average_precision_score, roc_auc_score
 
@@ -101,6 +105,39 @@ def _plot_specificity(metrics: pd.DataFrame, output_dir: Path) -> None:
     )
     rank_plot.save(output_dir / "native_proxy_track_ranks.pdf", width=11, height=6, verbose=False)
     rank_plot.save(output_dir / "native_proxy_track_ranks.png", width=11, height=6, dpi=180, verbose=False)
+
+    track_keys = ["output_type", "data_source", "biosample_name", "biosample_type", "assay"]
+    candidates["track_id"] = candidates[track_keys].astype(str).agg(" | ".join, axis=1)
+    top_ids = set().union(*(
+        set(group.nlargest(5, "aupr").track_id)
+        for _, group in candidates.groupby(["panel_group", "summary"])
+    ))
+    heatmap_data = metrics.copy()
+    heatmap_data["track_id"] = heatmap_data[track_keys].astype(str).agg(" | ".join, axis=1)
+    heatmap_data = heatmap_data[heatmap_data.track_id.isin(top_ids)].copy()
+    track_rows = heatmap_data[track_keys + ["track_id"]].drop_duplicates().copy()
+    assay_labels = {"polyA plus RNA-seq": "polyA", "total RNA-seq": "total", "hCAGE": "hCAGE", "LQhCAGE": "LQhCAGE"}
+    track_rows["track_label"] = track_rows.apply(
+        lambda row: f"{'RNA' if row.output_type == 'rna_seq' else 'CAGE'}: {row.biosample_name} ({row.data_source}, {assay_labels.get(row.assay, row.assay)})",
+        axis=1,
+    )
+    heatmap_data = heatmap_data.merge(track_rows[track_keys + ["track_id", "track_label"]], on=track_keys + ["track_id"], how="left")
+    label_order = track_rows.sort_values("track_label").track_label.tolist()
+    panel_order = ["Ast", "End", "Ext", "IN", "MG", "OD", "OPC"]
+    heatmap_data["track_label"] = pd.Categorical(heatmap_data.track_label, categories=label_order, ordered=True)
+    heatmap_data["panel_label"] = pd.Categorical(heatmap_data.panel_label, categories=[PANEL_LABELS[p] for p in panel_order], ordered=True)
+    heatmap_data["summary_label"] = pd.Categorical(heatmap_data.summary.map({"tss_bin": "TSS bin", "gene_span": "Gene span"}), categories=["TSS bin", "Gene span"], ordered=True)
+    heatmap = (
+        ggplot(heatmap_data, aes("panel_label", "track_label", fill="aupr"))
+        + geom_tile(color="white", size=0.15)
+        + facet_grid(". ~ summary_label")
+        + scale_fill_gradient(low="#f2f2f2", high="#176b87", limits=(0, 1), name="Average\nprecision")
+        + labs(x="eQTL cell type", y="Candidate native track", title="Native AlphaGenome track average precision")
+        + theme_bw()
+        + theme(axis_text_x=element_text(rotation=35, hjust=1, size=9), axis_text_y=element_text(size=8), figure_size=(13, 9))
+    )
+    heatmap.save(output_dir / "native_candidate_track_ap_heatmap.pdf", width=13, height=9, verbose=False)
+    heatmap.save(output_dir / "native_candidate_track_ap_heatmap.png", width=13, height=9, dpi=180, verbose=False)
 
 
 def analyze(input_dir: Path, output_dir: Path) -> None:

@@ -5,6 +5,7 @@
 \usepackage{amsmath}
 \usepackage{amssymb}
 \usepackage{microtype}
+\usepackage{pdflscape}
 
 \title{Fine-mapped single-cell eQTL evaluation of AlphaGenome fine-tuning}
 \author{}
@@ -124,7 +125,8 @@ effects. The dashed line is chance performance.}
 \centering
 \includegraphics[width=0.95\linewidth]{figures/eqtl_aupr_by_distance.pdf}
 \caption{AUPR by distance from the TSS for TSS-bin and gene-span mutation
-effects.}
+effects. Black diamonds show the random-ranking reference, equal to the positive
+variant fraction in each distance bin.}
 \label{fig:eqtl_aupr_distance}
 \end{figure}
 
@@ -172,6 +174,26 @@ RNA-seq and CAGE biosample groups are ranked separately. Bulk-brain ranks
 indicate tissue relevance and should not be interpreted as cell specificity.}
 \label{fig:native_track_ranks}
 \end{figure}
+
+Figure~\ref{fig:native_track_ap_heatmap} shows average precision (AP) for
+candidate tracks across all seven eQTL cell types. Candidate rows are the
+union of tracks ranking in the top five annotated candidates for at least one
+cell type and one summary; AP is then shown for every cell type. Tracks are
+grouped by output type, biosample, source, and assay. Separate panels retain
+the TSS-bin and gene-span summaries. Because positive-class prevalence differs
+between cell-type panels, AP is most directly compared between tracks within
+the same column.
+
+\begin{landscape}
+\begin{figure}[p]
+\centering
+\includegraphics[width=0.9\linewidth]{figures/native_candidate_track_ap_heatmap.pdf}
+\caption{Native AlphaGenome candidate-track average precision by eQTL cell
+type. Rows are the union of tracks ranked in the top five annotated candidates
+for at least one cell type and summary; columns show AP for each cell type.}
+\label{fig:native_track_ap_heatmap}
+\end{figure}
+\end{landscape}
 
 These track ranks are descriptive rather than a formal statistical test of
 cell-type specificity. Native track availability and assay/source coverage
