@@ -9,6 +9,16 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+from plotnine import (
+    aes,
+    facet_grid,
+    geom_point,
+    ggplot,
+    labs,
+    position_jitter,
+    scale_y_reverse,
+    theme_bw,
+)
 from sklearn.metrics import average_precision_score, roc_auc_score
 
 
@@ -126,6 +136,22 @@ def analyze(input_dir: Path, output_dir: Path) -> None:
         median_aupr_rank=("aupr_rank", "median"),
     )
     summary.to_csv(output_dir / "native_proxy_summary.tsv", sep="\t", index=False)
+    candidates = metrics.loc[metrics.proxy_tier != "unmatched"]
+    if not candidates.empty:
+        rank_plot = (
+            ggplot(candidates, aes("panel_group", "aupr_rank", color="proxy_tier"))
+            + geom_point(position=position_jitter(width=0.12, height=0), alpha=0.75)
+            + facet_grid("summary ~ output_type", scales="free_y")
+            + scale_y_reverse()
+            + labs(
+                x="Fine-mapping panel",
+                y="Average-precision rank among native tracks (1 is best)",
+                color="Track relationship",
+            )
+            + theme_bw()
+        )
+        rank_plot.save(output_dir / "native_proxy_track_ranks.pdf", width=11, height=6, verbose=False)
+        rank_plot.save(output_dir / "native_proxy_track_ranks.png", width=11, height=6, dpi=180, verbose=False)
     print(f"wrote {len(metrics)} track-panel metrics to {output_dir}", flush=True)
 
 
