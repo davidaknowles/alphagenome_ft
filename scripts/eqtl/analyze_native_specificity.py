@@ -45,8 +45,12 @@ def _proxy_tier(group: str, output_type: str, metadata: pd.Series, track_text: s
         return "direct_cell_label"
     if group == "Ext" and "glutamatergic neuron" in track_text:
         return "related_neuronal_cell"
-    if group == "IN" and re.search(r"\bneuron\b|neuronal stem", track_text):
+    if group == "IN" and re.search(r"\bneuron\b", track_text) and not re.search(
+        r"glutamatergic|motor neuron|neuronal stem", track_text
+    ):
         return "generic_neuronal_proxy"
+    if group == "MG" and "spleen" in track_text:
+        return "myeloid_rich_tissue_proxy"
     if group == "MG" and "monocyte" in track_text:
         return "microglia_proxy_cd14_monocyte"
     if group in {"OD", "OPC"}:
@@ -75,6 +79,33 @@ def _metric(y_true: np.ndarray, score: np.ndarray) -> tuple[float, float]:
     return float(roc_auc_score(y, s)), float(average_precision_score(y, s))
 
 
+def _refresh_proxy_annotations(metrics: pd.DataFrame) -> pd.DataFrame:
+    metrics = metrics.copy()
+    inhibitory = metrics.panel_group == "IN"
+    inhibitory_name = metrics.biosample_name.fillna("").str.lower()
+    generic_neuron = inhibitory_name.str.contains(r"\bneuron\b") & ~inhibitory_name.str.contains(
+        r"glutamatergic|motor neuron|neuronal stem"
+    )
+    metrics.loc[inhibitory, "proxy_tier"] = "unmatched"
+    metrics.loc[inhibitory & generic_neuron, "proxy_tier"] = "generic_neuronal_proxy"
+    spleen = (metrics.panel_group == "MG") & metrics.biosample_name.fillna("").str.lower().str.contains("spleen")
+    metrics.loc[spleen, "proxy_tier"] = "myeloid_rich_tissue_proxy"
+    return metrics
+
+
+def _write_proxy_summary(metrics: pd.DataFrame, output_dir: Path) -> None:
+    summary = metrics.groupby(["panel_group", "panel_label", "output_type", "summary", "proxy_tier"], as_index=False).agg(
+        tracks=("biosample_name", "size"),
+        median_auroc=("auroc", "median"),
+        median_aupr=("aupr", "median"),
+        best_auroc=("auroc", "max"),
+        best_aupr=("aupr", "max"),
+        median_auroc_rank=("auroc_rank", "median"),
+        median_aupr_rank=("aupr_rank", "median"),
+    )
+    summary.to_csv(output_dir / "native_proxy_summary.tsv", sep="\t", index=False)
+
+
 def _plot_specificity(metrics: pd.DataFrame, output_dir: Path) -> None:
     candidates = metrics.loc[metrics.proxy_tier != "unmatched"].copy()
     if candidates.empty:
@@ -86,6 +117,7 @@ def _plot_specificity(metrics: pd.DataFrame, output_dir: Path) -> None:
         "related_neuronal_cell": "Related neuronal cell",
         "generic_neuronal_proxy": "Generic neuronal proxy",
         "microglia_proxy_cd14_monocyte": "CD14+ monocyte proxy",
+        "myeloid_rich_tissue_proxy": "Myeloid-rich tissue proxy",
         "bulk_brain_proxy": "Bulk brain tissue",
         "direct_opc": "Direct OPC",
         "immature_oligo_proxy": "Immature oligo proxy",
@@ -138,6 +170,45 @@ def _plot_specificity(metrics: pd.DataFrame, output_dir: Path) -> None:
     )
     heatmap.save(output_dir / "native_candidate_track_ap_heatmap.pdf", width=13, height=9, verbose=False)
     heatmap.save(output_dir / "native_candidate_track_ap_heatmap.png", width=13, height=9, dpi=180, verbose=False)
+
+
+def _write_biological_matches(input_dir: Path, output_dir: Path, metrics: pd.DataFrame) -> None:
+    track_keys = ["output_type", "data_source", "biosample_name", "biosample_type", "assay"]
+    candidates = metrics.loc[metrics.proxy_tier != "unmatched"].copy()
+    candidates = candidates.pivot_table(
+        index=["panel_group", "panel_label", *track_keys, "proxy_tier"],
+        columns="summary",
+        values="aupr",
+    ).reset_index()
+    candidates["mean_ap"] = candidates[["tss_bin", "gene_span"]].mean(axis=1)
+    matches = (candidates.sort_values(["panel_group", "mean_ap", "biosample_name"], ascending=[True, False, True])
+               .drop_duplicates("panel_group", keep="first").copy())
+    matches = matches.rename(columns={"tss_bin": "tss_ap", "gene_span": "gene_ap"})
+    matches.to_csv(output_dir / "native_biological_track_matches.tsv", sep="\t", index=False)
+
+    variants = pd.read_csv(input_dir / "variants.tsv", sep="\t")
+    tracks = pd.read_csv(input_dir / "tracks.tsv", sep="\t").fillna("")
+    tracks = tracks.rename(columns={"Assay title": "assay"})
+    effects = np.load(input_dir / "native_vep_delta.npy", mmap_mode="r")
+    track_index = {track_id: i for i, track_id in enumerate(tracks.track_id)}
+    variant_groups = variants.panel.str.extract(r"^(Ast|End|Ext|IN|MG|OD|OPC)", expand=False)
+    selected_effects = np.full((len(variants), 2), np.nan, dtype=np.float32)
+    track_groups = tracks.groupby(track_keys, dropna=False, sort=False)
+    for match in matches.to_dict("records"):
+        group = match["panel_group"]
+        key = tuple(match[column] for column in track_keys)
+        sample = track_groups.get_group(key)
+        channel_indices = np.asarray([track_index[track_id] for track_id in sample.track_id], dtype=np.int32)
+        variant_indices = np.flatnonzero(variant_groups.to_numpy() == group)
+        for summary_index in range(2):
+            selected_effects[variant_indices, summary_index] = np.abs(
+                effects[variant_indices, summary_index, :][:, channel_indices]
+            ).mean(axis=1)
+
+    score_table = variants[["panel", "feature", "chrom", "pos", "label", "distance_bin"]].copy()
+    score_table["native_tss_effect"] = selected_effects[:, 0]
+    score_table["native_gene_effect"] = selected_effects[:, 1]
+    score_table.to_csv(output_dir / "native_biological_track_scores.tsv", sep="\t", index=False)
 
 
 def analyze(input_dir: Path, output_dir: Path) -> None:
@@ -204,17 +275,9 @@ def analyze(input_dir: Path, output_dir: Path) -> None:
     metrics["aupr_rank"] = metrics.groupby(["panel_group", "output_type", "summary"]).aupr.rank(ascending=False, method="min")
     metrics.to_csv(output_dir / "native_track_specificity.tsv", sep="\t", index=False)
 
-    summary = metrics.groupby(["panel_group", "panel_label", "output_type", "summary", "proxy_tier"], as_index=False).agg(
-        tracks=("biosample_name", "size"),
-        median_auroc=("auroc", "median"),
-        median_aupr=("aupr", "median"),
-        best_auroc=("auroc", "max"),
-        best_aupr=("aupr", "max"),
-        median_auroc_rank=("auroc_rank", "median"),
-        median_aupr_rank=("aupr_rank", "median"),
-    )
-    summary.to_csv(output_dir / "native_proxy_summary.tsv", sep="\t", index=False)
+    _write_proxy_summary(metrics, output_dir)
     _plot_specificity(metrics, output_dir)
+    _write_biological_matches(input_dir, output_dir, metrics)
     print(f"wrote {len(metrics)} track-panel metrics to {output_dir}", flush=True)
 
 
@@ -226,7 +289,11 @@ def main() -> None:
     args = parser.parse_args()
     if args.plot_only:
         metrics = pd.read_csv(args.output_dir / "native_track_specificity.tsv", sep="\t")
+        metrics = _refresh_proxy_annotations(metrics)
+        metrics.to_csv(args.output_dir / "native_track_specificity.tsv", sep="\t", index=False)
+        _write_proxy_summary(metrics, args.output_dir)
         _plot_specificity(metrics, args.output_dir)
+        _write_biological_matches(args.input_dir, args.output_dir, metrics)
     else:
         analyze(args.input_dir, args.output_dir)
 

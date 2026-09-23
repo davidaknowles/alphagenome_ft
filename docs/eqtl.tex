@@ -117,7 +117,9 @@ class counts are available in the machine-readable summary output.
 \centering
 \includegraphics[width=0.95\linewidth]{figures/eqtl_auroc_by_distance.pdf}
 \caption{AUROC by distance from the TSS for TSS-bin and gene-span mutation
-effects. The dashed line is chance performance.}
+effects. The dashed line is chance performance. Native matched tracks use the
+biologically defensible panel-specific selections in
+Table~\ref{tab:native_biological_matches}.}
 \label{fig:eqtl_distance}
 \end{figure}
 
@@ -126,7 +128,9 @@ effects. The dashed line is chance performance.}
 \includegraphics[width=0.95\linewidth]{figures/eqtl_aupr_by_distance.pdf}
 \caption{AUPR by distance from the TSS for TSS-bin and gene-span mutation
 effects. Black diamonds show the random-ranking reference, equal to the positive
-variant fraction in each distance bin.}
+variant fraction in each distance bin. Native matched tracks use the
+biologically defensible panel-specific selections in
+Table~\ref{tab:native_biological_matches}.}
 \label{fig:eqtl_aupr_distance}
 \end{figure}
 
@@ -177,6 +181,39 @@ Spleen's lead for both microglia eQTL summaries is biologically plausible given
 its macrophage content, but a bulk spleen signal is not a microglia-specific
 measurement. The non-testis winners for other panels remain heterogeneous,
 including tibial nerve, heart, pancreas, and metanephros.
+
+For the native matched-track curves, one eligible track was selected per cell
+type as the candidate with the highest mean AP across TSS-bin and gene-span
+summaries. Eligibility requires a direct cell label or an explicit biological
+proxy. Inhibitory-panel candidates exclude glutamatergic, motor-neuron, and
+neuronal-stem-cell tracks; spleen is included as a macrophage-rich tissue proxy
+for microglia. Mature oligodendrocyte channels are unavailable, so a brain-region
+track is used. The resulting panel-specific matches and their selection APs
+are shown in Table~\ref{tab:native_biological_matches}. These tracks were
+selected and evaluated on the same variants, so their results are descriptive
+and may be optimistic.
+
+\begin{table}[ht]
+\centering
+\scriptsize
+\caption{Biologically defensible native tracks used for the matched-track
+distance curves. Tracks were selected independently per cell type by mean AP
+across the two summaries.}
+\label{tab:native_biological_matches}
+\begin{tabular}{@{}p{0.10\linewidth}p{0.39\linewidth}p{0.20\linewidth}rr@{}}
+\toprule
+Cell type & Selected native track & Match type & TSS AP & Gene AP \\
+\midrule
+Ast & Astrocyte (ENCODE total RNA-seq) & Direct cell label & 0.335 & 0.341 \\
+End & Endothelial cell (ENCODE total RNA-seq) & Direct cell label & 0.226 & 0.242 \\
+Ext & Glutamatergic neuron (ENCODE total RNA-seq) & Related neuronal cell & 0.440 & 0.496 \\
+IN & Neuron (FANTOM hCAGE) & Generic neuronal proxy & 0.358 & 0.348 \\
+MG & Spleen (ENCODE total RNA-seq) & Myeloid-rich tissue proxy & 0.345 & 0.418 \\
+OD & Dorsolateral prefrontal cortex (ENCODE total RNA-seq) & Bulk brain proxy & 0.567 & 0.607 \\
+OPC & Dorsolateral prefrontal cortex (ENCODE total RNA-seq) & Bulk brain proxy & 0.452 & 0.507 \\
+\bottomrule
+\end{tabular}
+\end{table}
 
 Monocyte tracks are the clearest microglia proxy. On MG panels, generic
 monocyte CAGE ranks first of 273 biosample groups for TSS AP ($0.320$) and
