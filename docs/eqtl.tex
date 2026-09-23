@@ -44,7 +44,7 @@ head.
 
 \begin{table}[ht]
 \centering
-\small
+\scriptsize
 \caption{Fine-mapping panel to RNA-track matching for the trained head-only,
 LoRA, and LoRA+LoCon models. A numbered panel inherits the mapping for its
 prefix.}
@@ -141,6 +141,35 @@ against the positive and negative variants in each panel group; strand and
 channel tracks are grouped by source, biosample, and assay. Ranks are among the
 371 RNA-seq or 273 CAGE biosample groups. The full rank distribution is shown
 in Figure~\ref{fig:native_track_ranks}.
+
+Table~\ref{tab:native_best_tracks} lists the highest-AP native track across
+all 644 biosample/assay groups for each cell type, selecting the winner
+separately for the TSS-bin and gene-span summaries. These absolute winners
+need not be biologically matched tracks; for example, testis RNA-seq is the
+top track for several brain-cell panels. The heatmap below instead focuses on
+annotated direct or plausible cell-type candidates.
+
+\begin{table}[ht]
+\centering
+\scriptsize
+\caption{Highest average-precision native RNA-seq or CAGE track for each
+eQTL cell type. Winners are selected independently by summary from all
+RNA-seq and CAGE biosample groups.}
+\label{tab:native_best_tracks}
+\begin{tabular}{@{}p{0.12\linewidth}p{0.33\linewidth}r p{0.33\linewidth}r@{}}
+\toprule
+eQTL cell type & Best TSS-bin track & AP & Best gene-span track & AP \\
+\midrule
+Ast & Dorsolateral prefrontal cortex (ENCODE, total RNA-seq) & 0.400 & Testis (ENCODE, total RNA-seq) & 0.459 \\
+End & Tibial nerve (ENCODE, total RNA-seq) & 0.259 & Testis (ENCODE, total RNA-seq) & 0.294 \\
+Ext & Testis (ENCODE, total RNA-seq) & 0.476 & Testis (ENCODE, total RNA-seq) & 0.554 \\
+IN & Testis (GTEx, polyA RNA-seq) & 0.405 & Testis (ENCODE, total RNA-seq) & 0.486 \\
+MG & Spleen (ENCODE, total RNA-seq) & 0.345 & Spleen (ENCODE, total RNA-seq) & 0.418 \\
+OD & Dorsolateral prefrontal cortex (ENCODE, total RNA-seq) & 0.567 & Dorsolateral prefrontal cortex (ENCODE, total RNA-seq) & 0.607 \\
+OPC & Dorsolateral prefrontal cortex (ENCODE, total RNA-seq) & 0.452 & Parietal lobe (ENCODE, total RNA-seq) & 0.522 \\
+\bottomrule
+\end{tabular}
+\end{table}
 
 Monocyte tracks are the clearest microglia proxy. On MG panels, generic
 monocyte CAGE ranks first of 273 biosample groups for TSS AP ($0.320$) and
