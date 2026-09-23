@@ -1,5 +1,5 @@
 #!/bin/bash
-# Check whether two 1Mb reference windows fit while retaining alternate batch 8.
+# Check whether two 1Mb head-only reference windows fit while retaining alternate batch 8.
 #SBATCH -p gpu
 #SBATCH --gres=gpu:l40s:1
 #SBATCH --cpus-per-task=8
@@ -23,4 +23,4 @@ python scripts/eqtl/benchmark.py \
   --max-records 128 \
   --batch-size 8 \
   --ref-batch-size 2 \
-  --model base=base
+  --model head_only=checkpoints/v0data/joint_all_nonencode_all_gene_source_specific_semantic_neural_accessibility_bootstrap_head_warmup_seed_epoch12

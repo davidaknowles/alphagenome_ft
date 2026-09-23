@@ -19,19 +19,24 @@ single-cell expression quantitative trait loci (eQTLs). A positive is a
 variant with posterior inclusion probability (PIP) greater than $0.75$ and a
 negative is a variant with PIP less than $0.01$. The evaluation uses human
 fine-mapping panels and a $1\,\mathrm{Mb}$ sequence window centered on the
-transcription start site (TSS) of the associated gene.
+transcription start site (TSS) of the associated gene. RNA-seq denotes RNA
+sequencing and CAGE denotes Cap Analysis of Gene Expression. Average precision
+(AP) is reported as area under the precision-recall curve (AUPR); AUROC denotes
+area under the receiver operating characteristic curve.
 
 The primary comparison is a trained head-only model versus the two best
-available joint fine-tuned models, a LoRA model and a LoRA+LoCon model. The
-benchmark retains
+available joint fine-tuned models, a low-rank adaptation (LoRA) model and a
+LoRA model with convolutional low-rank adapters (LoCon). The benchmark retains
 up to 1,000 variants in each PIP class per fine-mapping panel with a fixed
 random seed. The raw and retained counts are recorded with the benchmark
 output.
 
 \section{Cell-type matching}
-The 35 fine-mapping panels use the prefixes Ast, End, Ext, IN, MG, OD, and OPC,
-with numbered panels denoting subpanels. The trained head-only, LoRA, and
-LoRA+LoCon models use the same target track definitions. The matching used for
+The 35 fine-mapping panels use the prefixes Ast (astrocyte), End (endothelial),
+Ext (excitatory), IN (inhibitory), MG (microglia), OD (oligodendrocyte), and
+OPC (oligodendrocyte precursor cell), with numbered panels denoting subpanels.
+The trained head-only, LoRA, and LoRA+LoCon models use the same target track
+definitions. The matching used for
 these models is shown below. A separate native AlphaGenome analysis evaluates
 all valid pretrained RNA-seq and CAGE tracks, without adding a newly initialized
 head.
@@ -65,17 +70,15 @@ represented by the trained-head comparison above.
 \section{Mutation effects}
 For variant $i$, let $\mathbf{y}_{i,r}\in\mathbb{R}^{B\times C}$ and
 $\mathbf{y}_{i,a}\in\mathbb{R}^{B\times C}$ be the reference and alternate
-RNA predictions at the model's 128 bp resolution, where $B$ is the number of
+RNA predictions at the model's 128 base-pair (bp) resolution, where $B$ is the number of
 output bins and $C=19$ is the number of RNA tracks. Let $\mathcal{C}_g$ be the
-track indices for the matched cell group. The TSS score is
-\begin{equation}
+track indices for the matched cell group. The TSS score is \begin{equation}
 s_i^{\mathrm{TSS}}=\frac{1}{|\mathcal{C}_g|}\sum_{c\in\mathcal{C}_g}\left|y_{i,a,b_{\mathrm{TSS}},c}-y_{i,r,b_{\mathrm{TSS}},c}\right|,
 \end{equation}
 where $b_{\mathrm{TSS}}$ is the 128 bp bin containing the TSS. The gene score
 is the corresponding mean absolute alternate-reference difference after
 averaging each track over all 128 bp bins overlapping the annotated gene
-span,
-\begin{equation}
+span, \begin{equation}
 s_i^{\mathrm{gene}}=\frac{1}{|\mathcal{C}_g|}\sum_{c\in\mathcal{C}_g}\left|\frac{1}{|\mathcal{B}_i|}\sum_{b\in\mathcal{B}_i}y_{i,a,b,c}-\frac{1}{|\mathcal{B}_i|}\sum_{b\in\mathcal{B}_i}y_{i,r,b,c}\right|,
 \end{equation}
 where $\mathcal{B}_i$ is the set of bins overlapping the gene span. Both
@@ -84,9 +87,30 @@ not the direction of expression change. Performance is measured by AUROC
 and average precision, overall and within bins of $|\mathrm{variant}-\mathrm{TSS}|$.
 
 \section{Results}
-The completed benchmark is summarized by distance from the TSS in the
-following figures. The underlying per-bin AUROC, AUPR, and class counts remain
-available in the machine-readable summary output.
+Each trained model scored the same 54,193 variants after reference-allele
+validation. LoRA has the highest TSS-bin AUROC and AP; the trained head-only
+checkpoint has the highest gene-span AUROC and AP. Overall differences are
+small, and the distance-stratified curves show similar trends.
+
+\begin{table}[ht]
+\centering
+\small
+\caption{Overall eQTL discrimination across scored variants. AP is average
+precision.}
+\label{tab:overall_performance}
+\begin{tabular}{@{}lrrrr@{}}
+\toprule
+Model & TSS AUROC & TSS AP & Gene AUROC & Gene AP \\
+\midrule
+Head-only & 0.5109 & 0.3817 & 0.5394 & 0.4269 \\
+LoRA & 0.5155 & 0.3862 & 0.5329 & 0.4156 \\
+LoRA+LoCon & 0.5091 & 0.3831 & 0.5233 & 0.4131 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Performance by distance from the TSS is shown below. Per-bin AUROC, AP, and
+class counts are available in the machine-readable summary output.
 
 \begin{figure}[ht]
 \centering
@@ -104,6 +128,56 @@ effects.}
 \label{fig:eqtl_aupr_distance}
 \end{figure}
 
+\subsection{Native track specificity}
+The native AlphaGenome evaluation stores signed alternate-minus-reference
+effects for 54,729 sampled variants and 1,213 valid pretrained channels, 667
+RNA-seq and 546 CAGE. Predictions are reduced on device to a 128 bp TSS bin
+and the mean over the annotated gene span. Of the variants, 54,193 have finite
+effects and 536 were skipped because the reference allele did not match the
+reference genome. Absolute effects are scored separately for each biosample
+against the positive and negative variants in each panel group; strand and
+channel tracks are grouped by source, biosample, and assay. Ranks are among the
+371 RNA-seq or 273 CAGE biosample groups. The full rank distribution is shown
+in Figure~\ref{fig:native_track_ranks}.
+
+Monocyte tracks are the clearest microglia proxy. On MG panels, generic
+monocyte CAGE ranks first of 273 biosample groups for TSS AP ($0.320$) and
+second for gene-span AP ($0.308$), versus unmatched-track medians of $0.261$
+and $0.242$. The CD14-positive, CD16-negative classical monocyte CAGE track
+ranks seventh for TSS AP ($0.306$) and fourth for gene-span AP ($0.295$).
+CD14-positive monocyte RNA-seq ranks 27th of 371 for TSS AP ($0.307$) and 47th
+for gene-span AP ($0.332$). This supports CD14-positive monocytes as a useful
+prediction proxy for these eQTL panels, without equating monocytes with
+microglia biologically.
+
+There is no mature oligodendrocyte-labeled native RNA-seq or CAGE channel. The
+single oligodendrocyte-precursor CAGE channel ranks 226th of 273 on OPC TSS AP
+($0.354$) and 246th on gene-span AP ($0.336$), below the unmatched-track
+medians ($0.362$ and $0.345$). Bulk brain tracks perform better: dorsolateral
+prefrontal cortex RNA-seq ranks first of 371 for OD panels on both summaries
+(AP $0.567$ and $0.607$), and brain-region tracks also rank highly for OPC
+panels. For OPC panels, dorsolateral prefrontal cortex RNA-seq ranks first for
+TSS AP and third for gene-span AP. These are broad neural-tissue proxies, not evidence of
+oligodendrocyte-specific prediction. Astrocyte tracks are weakly ranked;
+endothelial tracks are moderately enriched over unmatched tracks. The available
+glutamatergic and generic neuronal tracks provide mixed results, and there is
+no inhibitory-neuron-specific native channel.
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=0.95\linewidth]{figures/native_proxy_track_ranks.pdf}
+\caption{Average-precision rank of native tracks annotated as direct cell
+labels or plausible proxies within each fine-mapping panel. Rank 1 is best;
+RNA-seq and CAGE biosample groups are ranked separately. Bulk-brain ranks
+indicate tissue relevance and should not be interpreted as cell specificity.}
+\label{fig:native_track_ranks}
+\end{figure}
+
+These track ranks are descriptive rather than a formal statistical test of
+cell-type specificity. Native track availability and assay/source coverage
+differ across cell classes, and most fine-mapping labels have no exact native
+counterpart.
+
 \section{Implementation details}
 Fine-mapping tables are streamed from compressed PIP files. Variant alleles
 are checked against the reference genome before constructing the alternate
@@ -112,12 +186,12 @@ for every model. The head-only checkpoint was trained on the target tracks
 without LoRA or LoCon adapters; the fine-tuned models retain trained heads and
 adapters. All model prediction calls use the custom forward path so the
 fine-tuned heads, rather than the delegated pretrained variant scorer, are
-evaluated. Native AlphaGenome VEPs use the original model's valid RNA-seq and
+evaluated. Native AlphaGenome variant effect predictions (VEPs) use the original model's valid RNA-seq and
 CAGE tracks, with predictions reduced on device to the TSS bin and gene span
-before signed alternate-minus-reference effects are stored. CD14-positive
-monocytes are treated as a proxy for microglia. CAGE includes an
-oligodendrocyte-precursor track, but the native RNA-seq panel does not contain a
-direct oligodendrocyte track; this distinction is retained in cell-specificity
-interpretation.
+before signed alternate-minus-reference effects are stored. The full matrices
+and channel/variant metadata accompany the analysis outputs. Candidate tracks
+were ranked against all biosample groups separately for each panel and summary;
+the plotted annotations distinguish direct labels, neuronal/monocyte proxies,
+oligodendrocyte-precursor tracks, and bulk brain tissue.
 
 \end{document}

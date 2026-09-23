@@ -1,5 +1,5 @@
 #!/bin/bash
-# Short base-model pilot for 1Mb batch-size and peak-VRAM selection.
+# Short trained head-only pilot for 1Mb batch-size and peak-VRAM selection.
 #SBATCH -p gpu
 #SBATCH --gres=gpu:l40s:1
 #SBATCH --cpus-per-task=8
@@ -30,4 +30,4 @@ python scripts/eqtl/benchmark.py \
   --max-records 128 \
   --batch-size "$batch" \
   --ref-batch-size "$batch" \
-  --model base=base
+  --model head_only=checkpoints/v0data/joint_all_nonencode_all_gene_source_specific_semantic_neural_accessibility_bootstrap_head_warmup_seed_epoch12

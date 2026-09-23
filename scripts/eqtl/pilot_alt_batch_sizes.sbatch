@@ -1,5 +1,5 @@
 #!/bin/bash
-# Short 1Mb base-model pilot for alternate-batch size with safe reference batching.
+# Short 1Mb trained head-only pilot for alternate-batch size with safe reference batching.
 #SBATCH -p gpu
 #SBATCH --gres=gpu:l40s:1
 #SBATCH --cpus-per-task=8
@@ -30,4 +30,4 @@ python scripts/eqtl/benchmark.py \
   --max-records 2000 \
   --batch-size "$batch" \
   --ref-batch-size 1 \
-  --model base=base
+  --model head_only=checkpoints/v0data/joint_all_nonencode_all_gene_source_specific_semantic_neural_accessibility_bootstrap_head_warmup_seed_epoch12

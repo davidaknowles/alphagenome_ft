@@ -34,7 +34,7 @@ PANEL_LABELS = {
 }
 
 
-def _proxy_tier(group: str, output_type: str, track_text: str) -> str:
+def _proxy_tier(group: str, output_type: str, metadata: pd.Series, track_text: str) -> str:
     if group == "Ast" and "astrocyte" in track_text:
         return "direct_cell_label"
     if group == "End" and "endothelial" in track_text:
@@ -48,7 +48,16 @@ def _proxy_tier(group: str, output_type: str, track_text: str) -> str:
     if group in {"OD", "OPC"}:
         if output_type == "cage" and "oligodendrocyte precursor cell" in track_text:
             return "direct_opc" if group == "OPC" else "immature_oligo_proxy"
-        if re.search(r"\bbrain\b|cortex|cerebell", track_text):
+        tissue_name = " ".join(str(metadata.get(key, "") or "").lower() for key in ("biosample_name", "gtex_tissue"))
+        is_tissue = str(metadata.get("biosample_type", "")).lower() == "tissue"
+        is_brain_region = re.search(
+            r"\bbrain\b|cerebell|cerebral|prefrontal|frontal cortex|cingulate|parietal|temporal|"
+            r"occipital|spinal cord|basal ganglia|hippocamp|amygdala|hypothalam|substantia nigra|"
+            r"putamen|caudate|thalam|globus pallidus|corpus callosum|\bpons\b|midbrain|medulla|olfactory",
+            tissue_name,
+        )
+        is_kidney = re.search(r"kidney|renal", tissue_name)
+        if is_tissue and is_brain_region and not is_kidney:
             return "bulk_brain_proxy"
     return "unmatched"
 
@@ -60,6 +69,38 @@ def _metric(y_true: np.ndarray, score: np.ndarray) -> tuple[float, float]:
     if y.size == 0 or np.unique(y).size != 2:
         return float("nan"), float("nan")
     return float(roc_auc_score(y, s)), float(average_precision_score(y, s))
+
+
+def _plot_specificity(metrics: pd.DataFrame, output_dir: Path) -> None:
+    candidates = metrics.loc[metrics.proxy_tier != "unmatched"].copy()
+    if candidates.empty:
+        return
+    candidates["output_label"] = candidates.output_type.map({"rna_seq": "RNA-seq", "cage": "CAGE"})
+    candidates["summary_label"] = candidates.summary.map({"tss_bin": "TSS bin", "gene_span": "Gene span"})
+    candidates["proxy_label"] = candidates.proxy_tier.map({
+        "direct_cell_label": "Direct cell label",
+        "related_neuronal_cell": "Related neuronal cell",
+        "generic_neuronal_proxy": "Generic neuronal proxy",
+        "microglia_proxy_cd14_monocyte": "CD14+ monocyte proxy",
+        "bulk_brain_proxy": "Bulk brain tissue",
+        "direct_opc": "Direct OPC",
+        "immature_oligo_proxy": "Immature oligo proxy",
+    })
+    rank_plot = (
+        ggplot(candidates, aes("panel_group", "aupr_rank", color="proxy_label"))
+        + geom_point(position=position_jitter(width=0.12, height=0), alpha=0.75)
+        + facet_grid("summary_label ~ output_label", scales="free_y")
+        + scale_y_reverse()
+        + labs(
+            title="Ranks of native cell-type candidates across eQTL panels",
+            x="Fine-mapping panel",
+            y="Average-precision rank among native tracks (1 is best)",
+            color="Candidate track",
+        )
+        + theme_bw()
+    )
+    rank_plot.save(output_dir / "native_proxy_track_ranks.pdf", width=11, height=6, verbose=False)
+    rank_plot.save(output_dir / "native_proxy_track_ranks.png", width=11, height=6, dpi=180, verbose=False)
 
 
 def analyze(input_dir: Path, output_dir: Path) -> None:
@@ -100,7 +141,7 @@ def analyze(input_dir: Path, output_dir: Path) -> None:
             text = " ".join(str(metadata.get(key, "") or "").lower() for key in (
                 "biosample_name", "biosample_type", "gtex_tissue", "data_source", "Assay title", "ontology_curie"
             ))
-            proxy_tier = _proxy_tier(panel, output_type, text)
+            proxy_tier = _proxy_tier(panel, output_type, metadata, text)
             for summary_index, summary_name in enumerate(("tss_bin", "gene_span")):
                 values = np.abs(effects[panel_mask, summary_index, :][:, channel_indices]).mean(axis=1)
                 auroc, aupr = _metric(labels, values)
@@ -136,22 +177,7 @@ def analyze(input_dir: Path, output_dir: Path) -> None:
         median_aupr_rank=("aupr_rank", "median"),
     )
     summary.to_csv(output_dir / "native_proxy_summary.tsv", sep="\t", index=False)
-    candidates = metrics.loc[metrics.proxy_tier != "unmatched"]
-    if not candidates.empty:
-        rank_plot = (
-            ggplot(candidates, aes("panel_group", "aupr_rank", color="proxy_tier"))
-            + geom_point(position=position_jitter(width=0.12, height=0), alpha=0.75)
-            + facet_grid("summary ~ output_type", scales="free_y")
-            + scale_y_reverse()
-            + labs(
-                x="Fine-mapping panel",
-                y="Average-precision rank among native tracks (1 is best)",
-                color="Track relationship",
-            )
-            + theme_bw()
-        )
-        rank_plot.save(output_dir / "native_proxy_track_ranks.pdf", width=11, height=6, verbose=False)
-        rank_plot.save(output_dir / "native_proxy_track_ranks.png", width=11, height=6, dpi=180, verbose=False)
+    _plot_specificity(metrics, output_dir)
     print(f"wrote {len(metrics)} track-panel metrics to {output_dir}", flush=True)
 
 
@@ -159,8 +185,13 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("input_dir", type=Path)
     parser.add_argument("--output-dir", type=Path, required=True)
+    parser.add_argument("--plot-only", action="store_true", help="Regenerate the plot from existing track metrics")
     args = parser.parse_args()
-    analyze(args.input_dir, args.output_dir)
+    if args.plot_only:
+        metrics = pd.read_csv(args.output_dir / "native_track_specificity.tsv", sep="\t")
+        _plot_specificity(metrics, args.output_dir)
+    else:
+        analyze(args.input_dir, args.output_dir)
 
 
 if __name__ == "__main__":

@@ -38,8 +38,10 @@ def main() -> None:
     bin_order = ["0-1kb", "1-10kb", "10-50kb", "50-100kb", "100-250kb", "250-500kb", ">500kb"]
     plot_summary = summary[summary["distance_bin"] != "all"].copy()
     plot_summary["distance_bin"] = pd.Categorical(plot_summary["distance_bin"], categories=bin_order, ordered=True)
+    plot_summary["model_label"] = plot_summary.model.map({"head_only": "Head-only", "lora": "LoRA", "locon": "LoRA+LoCon"})
+    plot_summary["mode_label"] = plot_summary["mode"].map({"tss": "TSS bin", "gene": "Gene span"})
     def distance_plot(metric: str):
-        return (ggplot(plot_summary, aes("distance_bin", metric, color="model", group="model")) + geom_line() + geom_point() + facet_wrap("~mode") + labs(x="Distance from TSS", color="Model") + theme_bw() + theme(axis_text_x=element_text(rotation=45, hjust=1)))
+        return (ggplot(plot_summary, aes("distance_bin", metric, color="model_label", group="model_label")) + geom_line() + geom_point() + facet_wrap("~mode_label") + labs(x="Distance from TSS", color="Model") + theme_bw() + theme(axis_text_x=element_text(rotation=45, hjust=1)))
 
     auroc = distance_plot("auroc") + geom_hline(yintercept=0.5, linetype="dashed", color="#808080") + scale_y_continuous(limits=(0.4, 1.0), name="AUROC")
     aupr = distance_plot("auprc") + scale_y_continuous(limits=(0.0, 1.0), name="AUPR")
