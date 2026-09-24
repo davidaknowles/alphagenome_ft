@@ -108,22 +108,50 @@ their exact intersection.}
 }{The exact overlap scan completed, but the figure is missing.}
 
 \section{Variant-effect performance}
+The completed benchmark scores 10,452 of the 10,556 cached records. The
+remaining 104 records are variants that could not be represented in the
+reference sequence and are excluded consistently from model and native-track
+comparisons. Table~\ref{tab:xqtl_performance} reports aggregate performance;
+the native series uses one biologically constrained native RNA-seq or CAGE
+track selection per XQTL panel. Head-only is the strongest trained model on
+the aggregate TSS and gene-span metrics. Native matched tracks are close to
+the trained models for gene-span average precision, while distance-stratified
+performance is shown in Figures~\ref{fig:xqtl_auroc} and~\ref{fig:xqtl_aupr}.
+
+\begin{table}[ht]
+\centering
+\scriptsize
+\caption{Aggregate XQTL variant-effect performance across the six panels.}
+\label{tab:xqtl_performance}
+\begin{tabular}{@{}lrrrr@{}}
+\toprule
+Method & TSS AUROC & TSS AUPR & Gene AUROC & Gene AUPR \\
+\midrule
+Head-only & 0.564 & 0.514 & 0.658 & 0.626 \\
+LoRA & 0.550 & 0.498 & 0.643 & 0.608 \\
+LoRA+LoCon & 0.556 & 0.505 & 0.635 & 0.606 \\
+Native matched tracks & 0.541 & 0.491 & 0.627 & 0.626 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
 \IfFileExists{figures/eqtl_xqtl_auroc_by_distance.pdf}{
 \begin{figure}[ht]
 \centering
 \includegraphics[width=0.95\linewidth]{figures/eqtl_xqtl_auroc_by_distance.pdf}
+\label{fig:xqtl_auroc}
 \caption{AUROC by absolute distance from the TSS.}
 \end{figure}
-}{The model and native-track runs are pending; performance results will be
-inserted when scoring is complete.}
+}{The distance-stratified AUROC figure is missing.}
 
 \IfFileExists{figures/eqtl_xqtl_aupr_by_distance.pdf}{
 \begin{figure}[ht]
 \centering
 \includegraphics[width=0.95\linewidth]{figures/eqtl_xqtl_aupr_by_distance.pdf}
+\label{fig:xqtl_aupr}
 \caption{Average precision by absolute distance from the TSS. The random
 reference is the positive prevalence in each bin.}
 \end{figure}
-}{ }
+}{The distance-stratified AUPR figure is missing.}
 
 \end{document}
