@@ -504,7 +504,7 @@ def main() -> None:
     if args.max_records is not None:
         records = records[: args.max_records]
     (args.output_dir / "sampling_counts.json").write_text(json.dumps(counts, indent=2, sort_keys=True))
-    (args.output_dir / "benchmark_config.json").write_text(json.dumps({"window": args.window, "positive_pip": ">0.75", "negative_pip": "<0.01", "max_per_panel": args.max_per_panel, "models": {label: str(path) for label, path in models}, "cell_mapping": {"Ast": "ASC", "End": "Endo", "Ext": "mean excitatory Zemke tracks", "IN": "mean inhibitory Zemke tracks", "MG": "MGC", "OD": "ODC", "OPC": "OPC"}}, indent=2, sort_keys=True))
+    (args.output_dir / "benchmark_config.json").write_text(json.dumps({"window": args.window, "positive_pip": ">0.75", "negative_pip": "<0.01", "max_per_panel": args.max_per_panel if not args.records_cache else None, "records_cache": str(records_cache), "record_count": len(records), "models": {label: str(path) for label, path in models}, "cell_mapping": {"Ast": "ASC", "End": "Endo", "Ext": "mean excitatory Zemke tracks", "IN": "mean inhibitory Zemke tracks", "MG": "MGC", "OD": "ODC", "OPC": "OPC"}}, indent=2, sort_keys=True))
     genome, extractor, encoder = load_sequence_tools(args.fasta)
     all_rows = []
     for label, checkpoint in models:

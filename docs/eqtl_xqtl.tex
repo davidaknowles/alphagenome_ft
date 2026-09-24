@@ -28,8 +28,8 @@ For both data sources, gene identifiers are version-normalized and matched to
 the same GENCODE hg38 gene annotation. Variants are restricted to single-base
 ACGT substitutions on the gene chromosome within $512\,\mathrm{kb}$ of the
 gene transcription start site (TSS). Variants with PIP $>0.75$ are positives;
-those with PIP $<0.01$ are negatives. The benchmark samples up to 1,000
-variants from each class in each group with a fixed seed. Each model receives
+those with PIP $<0.01$ are negatives. The benchmark retains every positive
+and samples up to 1,000 negatives per group with a fixed seed. Each model receives
 a $1\,\mathrm{Mb}$ sequence window centered at the gene TSS.
 
 The trained comparisons reuse the head-only, LoRA, and LoRA+LoCon checkpoints
@@ -44,11 +44,7 @@ Gene Expression.
 Fine-mapping agreement is computed on gene-variant keys consisting of gene,
 chromosome, one-based position, reference allele, and alternate allele. Exact
 high-confidence overlap uses all eligible variants and reports intersection,
-Jaccard similarity, and directional recall at PIP $>0.75$. Continuous PIP
-agreement is assessed on a seeded sample of up to 25,000 eligible rows per
-group, matched by the same gene-variant key; Pearson and Spearman correlations
-are reported for shared sampled rows. The PIP sample is used for correlation
-and visualization only, not for the exact high-PIP overlap.
+Jaccard similarity, and directional recall at PIP $>0.75$.
 
 \section{Fine-mapping agreement}
 The full scan covered 70.9--218.7 million input rows per group. After
@@ -80,29 +76,24 @@ At the high-confidence threshold, exact gene-variant Jaccard similarity is
 0.080--0.118 (Table~\ref{tab:overlap}). XQTL positive recall against
 singlebrain is 0.28--0.37, while singlebrain positive recall against XQTL is
 0.09--0.16. Thus the sources share some high-confidence calls but the two
-sets are not interchangeable. On up to 25,000 randomly sampled eligible
-XQTL records per group, 9,238--12,359 have an exact gene-variant match in
-singlebrain. Their Spearman PIP correlations are 0.16--0.20, indicating weak
-rank agreement. Pearson correlations are higher in some groups because of
-the strongly zero-inflated PIP distribution and should not be interpreted as
-uniform agreement across the PIP range.
+sets are not interchangeable.
 
 \begin{table}[ht]
 \centering
 \scriptsize
-\caption{Exact high-PIP overlap and sampled continuous-PIP agreement. Recall
-columns use the named source as denominator.}
+\caption{Exact high-PIP overlap. Recall columns use the named source as
+denominator.}
 \label{tab:overlap}
-\begin{tabular}{@{}lrrrrrrr@{}}
+\begin{tabular}{@{}lrrrrrr@{}}
 \toprule
-Group & XQTL $n$ & Singlebrain $n$ & Shared & Jaccard & XQTL recall & SB recall & Spearman $r$ \\
+Group & XQTL $n$ & Singlebrain $n$ & Shared & Jaccard & XQTL recall & SB recall \\
 \midrule
-Astrocyte & 581 & 1,231 & 172 & 0.105 & 0.296 & 0.140 & 0.177 \\
-Excitatory & 1,784 & 3,420 & 504 & 0.107 & 0.283 & 0.147 & 0.194 \\
-Inhibitory & 813 & 1,838 & 236 & 0.098 & 0.290 & 0.128 & 0.187 \\
-Microglia & 168 & 668 & 62 & 0.080 & 0.369 & 0.093 & 0.196 \\
-OPC & 358 & 929 & 122 & 0.105 & 0.341 & 0.131 & 0.158 \\
-Oligodendrocyte & 852 & 1,820 & 283 & 0.118 & 0.332 & 0.155 & 0.172 \\
+Astrocyte & 581 & 1,231 & 172 & 0.105 & 0.296 & 0.140 \\
+Excitatory & 1,784 & 3,420 & 504 & 0.107 & 0.283 & 0.147 \\
+Inhibitory & 813 & 1,838 & 236 & 0.098 & 0.290 & 0.128 \\
+Microglia & 168 & 668 & 62 & 0.080 & 0.369 & 0.093 \\
+OPC & 358 & 929 & 122 & 0.105 & 0.341 & 0.131 \\
+Oligodendrocyte & 852 & 1,820 & 283 & 0.118 & 0.332 & 0.155 \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -115,16 +106,6 @@ Oligodendrocyte & 852 & 1,820 & 283 & 0.118 & 0.332 & 0.155 & 0.172 \\
 their exact intersection.}
 \end{figure}
 }{The exact overlap scan completed, but the figure is missing.}
-
-\IfFileExists{figures/eqtl_xqtl_finemap_pip_agreement.pdf}{
-\begin{figure}[ht]
-\centering
-\includegraphics[width=0.95\linewidth]{figures/eqtl_xqtl_finemap_pip_agreement.pdf}
-\caption{Continuous PIP agreement for sampled gene-variant pairs present in
-both sources. Axes show $\log_{10}(\max(\mathrm{PIP},10^{-6}))$; the dashed
-diagonal indicates equality.}
-\end{figure}
-}{The matched PIP sample was collected, but the figure is missing.}
 
 \section{Variant-effect performance}
 \IfFileExists{figures/eqtl_xqtl_auroc_by_distance.pdf}{

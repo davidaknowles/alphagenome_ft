@@ -7,7 +7,6 @@ import argparse
 import csv
 import gzip
 import json
-import random
 import sys
 import time
 from collections import defaultdict
@@ -28,6 +27,7 @@ from scripts.eqtl.benchmark import (  # noqa: E402
     Reservoir,
     _stable_seed,
     load_genes,
+    load_records_cache,
     save_records,
 )
 
@@ -71,9 +71,7 @@ def _scan_xqtl(args, genes):
     records: list[Record] = []
     counts: dict[str, dict[str, int]] = {}
     positive_sets: dict[str, set[tuple[str, str, int, str, str]]] = {}
-    pip_samples: dict[str, dict[tuple[str, str, int, str, str], float]] = {}
-    rngs: dict[tuple[str, int], random.Random] = {}
-    reservoirs: dict[tuple[str, int], Reservoir] = {}
+    negative_reservoirs: dict[str, Reservoir] = {}
 
     for cell_type, (panel, group) in XQTL_GROUPS.items():
         started = time.monotonic()
@@ -88,14 +86,9 @@ def _scan_xqtl(args, genes):
             "retained_positive": 0, "retained_negative": 0,
         }
         positive_sets[panel] = set()
-        pip_samples[panel] = {}
-        for label in (0, 1):
-            reservoirs[(panel, label)] = Reservoir(
-                args.max_per_class, _stable_seed(str(args.seed), panel, str(label))
-            )
-        rngs[(panel, 0)] = random.Random(_stable_seed(str(args.seed), panel, "sample"))
-        sample_seen = 0
-        sample_items: list[tuple[tuple[str, str, int, str, str], float]] = []
+        negative_reservoirs[panel] = Reservoir(
+            args.max_negatives_per_group, _stable_seed(str(args.seed), panel, "negative")
+        )
         scan_columns = ["pos", "ref", "alt", "pip", "gene_id"]
         has_partition_chrom = "chr" in dataset.schema.names
         if has_partition_chrom:
@@ -124,32 +117,25 @@ def _scan_xqtl(args, genes):
                 feature, pos0, ref, alt, gene = variant
                 counts[panel]["eligible_rows"] += 1
                 key = (feature, gene.chrom, pos0, ref, alt)
-                sample_seen += 1
-                if len(sample_items) < args.agreement_sample_size:
-                    sample_items.append((key, pip))
-                else:
-                    index = rngs[(panel, 0)].randrange(sample_seen)
-                    if index < args.agreement_sample_size:
-                        sample_items[index] = (key, pip)
                 label = 1 if pip > 0.75 else 0 if pip < 0.01 else None
                 if label is None:
                     continue
                 counts[panel]["positive" if label else "negative"] += 1
                 record = Record(panel, feature, gene.chrom, pos0, ref, alt, pip, label, group, gene)
-                reservoirs[(panel, label)].add(record)
                 if label:
                     positive_sets[panel].add(key)
+                    records.append(record)
+                else:
+                    negative_reservoirs[panel].add(record)
             if batch_number % 50 == 0:
                 print(
                     f"scanned XQTL {cell_type}: {counts[panel]['rows']:,} rows "
                     f"in {time.monotonic() - started:.0f}s",
                     flush=True,
                 )
-        for label in (0, 1):
-            items = reservoirs[(panel, label)].items
-            records.extend(items)
-            counts[panel]["retained_positive" if label else "retained_negative"] = len(items)
-        pip_samples[panel] = dict(sample_items)
+        records.extend(negative_reservoirs[panel].items)
+        counts[panel]["retained_positive"] = counts[panel]["positive"]
+        counts[panel]["retained_negative"] = len(negative_reservoirs[panel].items)
         print(
             f"prepared {cell_type}: rows={counts[panel]['rows']:,}, "
             f"eligible={counts[panel]['eligible_rows']:,}, "
@@ -157,21 +143,18 @@ def _scan_xqtl(args, genes):
             flush=True,
         )
     records.sort(key=lambda r: (r.panel, r.label, r.feature, r.pos, r.alt))
-    return records, counts, positive_sets, pip_samples
+    return records, counts, positive_sets
 
 
-def _scan_singlebrain(args, genes, positive_sets, pip_samples, counts):
+def _scan_singlebrain(args, genes, positive_sets, counts):
     overlap_rows = []
-    pair_rows = []
     for panel, filename in SINGLEBRAIN_FILES.items():
         path = args.singlebrain_dir / filename
         if not path.exists():
             raise FileNotFoundError(path)
         xqtl_panel = panel
         xqtl_positive = positive_sets[xqtl_panel]
-        xqtl_sample = pip_samples[xqtl_panel]
         sb_positive: set[tuple[str, str, int, str, str]] = set()
-        matched_pips: dict[tuple[str, str, int, str, str], float] = {}
         eligible = 0
         invalid = 0
         rows_seen = 0
@@ -202,16 +185,7 @@ def _scan_singlebrain(args, genes, positive_sets, pip_samples, counts):
                 key = (feature, gene.chrom, pos0, ref, alt)
                 if pip > 0.75:
                     sb_positive.add(key)
-                if key in xqtl_sample:
-                    matched_pips[key] = pip
         shared_positive = xqtl_positive & sb_positive
-        for key, x_pip in xqtl_sample.items():
-            if key in matched_pips:
-                pair_rows.append({
-                    "panel": panel, "feature": key[0], "chrom": key[1],
-                    "pos": key[2] + 1, "ref": key[3], "alt": key[4],
-                    "xqtl_pip": x_pip, "singlebrain_pip": matched_pips[key],
-                })
         union = len(xqtl_positive | sb_positive)
         overlap_rows.append({
             "panel": panel,
@@ -225,10 +199,64 @@ def _scan_singlebrain(args, genes, positive_sets, pip_samples, counts):
             "high_pip_jaccard": len(shared_positive) / union if union else float("nan"),
             "xqtl_high_pip_recall": len(shared_positive) / len(xqtl_positive) if xqtl_positive else float("nan"),
             "singlebrain_high_pip_recall": len(shared_positive) / len(sb_positive) if sb_positive else float("nan"),
-            "sampled_shared_pips": len(matched_pips),
         })
-        print(f"compared {panel}: eligible singlebrain rows={eligible:,}, shared PIP sample={len(matched_pips):,}", flush=True)
-    return overlap_rows, pair_rows
+        print(f"compared {panel}: eligible singlebrain rows={eligible:,}, shared high-PIP calls={len(shared_positive):,}", flush=True)
+    return overlap_rows
+
+
+def refresh_positive_panel(args, genes, panel: str, group: str) -> None:
+    """Replace one panel's cached positives without rescanning the full dataset."""
+    cell_type = next(cell for cell, mapping in XQTL_GROUPS.items() if mapping == (panel, group))
+    dataset_path = args.xqtl_root / f"{cell_type}_mega_eQTL/PIP_all_parquet/PIP_all.parquet"
+    dataset = ds.dataset(dataset_path, format="parquet", partitioning="hive")
+    columns = ["pos", "ref", "alt", "pip", "gene_id"]
+    has_partition_chrom = "chr" in dataset.schema.names
+    columns.append("chr" if has_partition_chrom else "variant_id")
+    positives: list[Record] = []
+    seen: set[tuple[str, str, int, str, str]] = set()
+    for batch in dataset.to_batches(
+        columns=columns,
+        filter=ds.field("pip") > 0.75,
+        batch_size=65_536,
+    ):
+        for row in batch.to_pylist():
+            try:
+                chrom = str(row.get("chr") or row["variant_id"].split(":", 1)[0])
+                variant = _valid_variant(
+                    chrom, int(row["pos"]), str(row["ref"]), str(row["alt"]),
+                    str(row["gene_id"]), genes,
+                )
+            except (TypeError, ValueError):
+                variant = None
+            if variant is None:
+                continue
+            feature, pos, ref, alt, gene = variant
+            key = (feature, gene.chrom, pos, ref, alt)
+            if key in seen:
+                continue
+            seen.add(key)
+            positives.append(Record(panel, feature, gene.chrom, pos, ref, alt, float(row["pip"]), 1, group, gene))
+
+    cache_path = args.output_dir / "records.jsonl"
+    records = [r for r in load_records_cache(cache_path) if not (r.panel == panel and r.label == 1)]
+    records.extend(positives)
+    records.sort(key=lambda r: (r.panel, r.label, r.feature, r.pos, r.alt))
+    save_records(cache_path, records)
+    counts_path = args.output_dir / "sampling_counts.json"
+    counts = json.loads(counts_path.read_text())
+    counts[panel]["retained_positive"] = len(positives)
+    counts_path.write_text(json.dumps(counts, indent=2, sort_keys=True) + "\n")
+    config_path = args.output_dir / "analysis_config.json"
+    if config_path.exists():
+        config = json.loads(config_path.read_text())
+        config.pop("agreement_sample_size_per_panel", None)
+        config.pop("benchmark_max_per_class_per_panel", None)
+        config["max_negative_records_per_panel"] = 1000
+        config["positive_records"] = "all eligible records with PIP >0.75"
+        config["negative_records"] = "up to 1,000 eligible records with PIP <0.01 per panel"
+        config["note"] = "Exact binary high-PIP overlap is calculated after common GTF gene, biallelic SNP and +/-512 kb TSS filters."
+        config_path.write_text(json.dumps(config, indent=2) + "\n")
+    print(f"refreshed {panel}: retained all {len(positives):,} eligible positives; cache now has {len(records):,} records")
 
 
 def _write_tsv(path: Path, rows: list[dict[str, object]]) -> None:
@@ -244,18 +272,22 @@ def main() -> None:
     parser.add_argument("--singlebrain-dir", type=Path, default=DEFAULT_FINEMAP_DIR)
     parser.add_argument("--gtf", type=Path, default=DEFAULT_GTF)
     parser.add_argument("--output-dir", type=Path, required=True)
-    parser.add_argument("--max-per-class", type=int, default=1000)
-    parser.add_argument("--agreement-sample-size", type=int, default=25000)
+    parser.add_argument("--max-negatives-per-group", type=int, default=1000)
+    parser.add_argument("--refresh-positive-panel", choices=sorted({p for p, _ in XQTL_GROUPS.values()}))
     parser.add_argument("--seed", type=int, default=20260923)
     args = parser.parse_args()
     args.output_dir.mkdir(parents=True, exist_ok=True)
     genes = load_genes(args.gtf)
-    records, counts, positives, pip_samples = _scan_xqtl(args, genes)
+    if args.refresh_positive_panel:
+        panel = args.refresh_positive_panel
+        group = next(group for candidate_panel, group in XQTL_GROUPS.values() if candidate_panel == panel)
+        refresh_positive_panel(args, genes, panel, group)
+        return
+    records, counts, positives = _scan_xqtl(args, genes)
     save_records(args.output_dir / "records.jsonl", records)
     (args.output_dir / "sampling_counts.json").write_text(json.dumps(counts, indent=2, sort_keys=True) + "\n")
-    overlap_rows, pair_rows = _scan_singlebrain(args, genes, positives, pip_samples, counts)
+    overlap_rows = _scan_singlebrain(args, genes, positives, counts)
     _write_tsv(args.output_dir / "finemap_overlap.tsv", overlap_rows)
-    _write_tsv(args.output_dir / "shared_pip_sample.tsv", pair_rows)
     (args.output_dir / "analysis_config.json").write_text(json.dumps({
         "xqtl_input": str(args.xqtl_root),
         "singlebrain_input": str(args.singlebrain_dir),
@@ -263,13 +295,12 @@ def main() -> None:
         "window_bp": 1_048_576,
         "positive_pip": ">0.75",
         "negative_pip": "<0.01",
-        "benchmark_max_per_class_per_panel": args.max_per_class,
-        "agreement_sample_size_per_panel": args.agreement_sample_size,
+        "max_negative_records_per_panel": args.max_negatives_per_group,
         "panel_mapping": {cell: {"singlebrain_panel": p, "model_group": g} for cell, (p, g) in XQTL_GROUPS.items()},
         "overlap_key": "gene, chromosome, one-based position, ref, alt",
         "note": "XQTL and singlebrain PIPs are compared only after common GTF gene, biallelic SNP and +/-512 kb from gene TSS filters.",
     }, indent=2) + "\n")
-    print(f"wrote {len(records)} benchmark records; {len(pair_rows)} shared sampled PIP pairs", flush=True)
+    print(f"wrote {len(records)} benchmark records with uncapped positives", flush=True)
 
 
 if __name__ == "__main__":
