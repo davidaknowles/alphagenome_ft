@@ -1,0 +1,1202 @@
+{
+  "org0/allen_atac_human/predictions_128bp": {
+    "shape": [
+      1,
+      1024,
+      47
+    ],
+    "max_abs_diff": 0.0,
+    "max_rel_diff": 0.0,
+    "pearson": 1.0
+  },
+  "org0/allen_atac_human/predictions_1bp": {
+    "shape": [
+      1,
+      131072,
+      47
+    ],
+    "max_abs_diff": 0.0,
+    "max_rel_diff": 0.0,
+    "pearson": 1.0
+  },
+  "org0/allen_atac_human/scaled_predictions_128bp": {
+    "shape": [
+      1,
+      1024,
+      47
+    ],
+    "max_abs_diff": 0.0,
+    "max_rel_diff": 0.0,
+    "pearson": 1.0
+  },
+  "org0/allen_atac_human/scaled_predictions_1bp": {
+    "shape": [
+      1,
+      131072,
+      47
+    ],
+    "max_abs_diff": 0.0,
+    "max_rel_diff": 0.0,
+    "pearson": 1.0
+  },
+  "org0/allen_atac_macaque/predictions_128bp": {
+    "shape": [
+      1,
+      1024,
+      47
+    ],
+    "max_abs_diff": 0.0,
+    "max_rel_diff": 0.0,
+    "pearson": 1.0
+  },
+  "org0/allen_atac_macaque/predictions_1bp": {
+    "shape": [
+      1,
+      131072,
+      47
+    ],
+    "max_abs_diff": 0.0,
+    "max_rel_diff": 0.0,
+    "pearson": 0.9999999999999999
+  },
+  "org0/allen_atac_macaque/scaled_predictions_128bp": {
+    "shape": [
+      1,
+      1024,
+      47
+    ],
+    "max_abs_diff": 0.0,
+    "max_rel_diff": 0.0,
+    "pearson": 0.9999999999999999
+  },
+  "org0/allen_atac_macaque/scaled_predictions_1bp": {
+    "shape": [
+      1,
+      131072,
+      47
+    ],
+    "max_abs_diff": 0.0,
+    "max_rel_diff": 0.0,
+    "pearson": 1.0
+  },
+  "org0/allen_atac_marmoset/predictions_128bp": {
+    "shape": [
+      1,
+      1024,
+      47
+    ],
+    "max_abs_diff": 0.0,
+    "max_rel_diff": 0.0,
+    "pearson": 1.0
+  },
+  "org0/allen_atac_marmoset/predictions_1bp": {
+    "shape": [
+      1,
+      131072,
+      47
+    ],
+    "max_abs_diff": 0.0,
+    "max_rel_diff": 0.0,
+    "pearson": 1.0
+  },
+  "org0/allen_atac_marmoset/scaled_predictions_128bp": {
+    "shape": [
+      1,
+      1024,
+      47
+    ],
+    "max_abs_diff": 0.0,
+    "max_rel_diff": 0.0,
+    "pearson": 1.0
+  },
+  "org0/allen_atac_marmoset/scaled_predictions_1bp": {
+    "shape": [
+      1,
+      131072,
+      47
+    ],
+    "max_abs_diff": 0.0,
+    "max_rel_diff": 0.0,
+    "pearson": 1.0
+  },
+  "org0/allen_rna_human/predictions_128bp": {
+    "shape": [
+      1,
+      1024,
+      94
+    ],
+    "max_abs_diff": 0.0,
+    "max_rel_diff": 0.0,
+    "pearson": 1.0
+  },
+  "org0/allen_rna_human/scaled_predictions_128bp": {
+    "shape": [
+      1,
+      1024,
+      94
+    ],
+    "max_abs_diff": 0.0,
+    "max_rel_diff": 0.0,
+    "pearson": 1.0
+  },
+  "org0/allen_rna_macaque/predictions_128bp": {
+    "shape": [
+      1,
+      1024,
+      94
+    ],
+    "max_abs_diff": 0.0,
+    "max_rel_diff": 0.0,
+    "pearson": 0.9999999999999998
+  },
+  "org0/allen_rna_macaque/scaled_predictions_128bp": {
+    "shape": [
+      1,
+      1024,
+      94
+    ],
+    "max_abs_diff": 0.0,
+    "max_rel_diff": 0.0,
+    "pearson": 0.9999999999999999
+  },
+  "org0/allen_rna_marmoset/predictions_128bp": {
+    "shape": [
+      1,
+      1024,
+      94
+    ],
+    "max_abs_diff": 0.0,
+    "max_rel_diff": 0.0,
+    "pearson": 1.0
+  },
+  "org0/allen_rna_marmoset/scaled_predictions_128bp": {
+    "shape": [
+      1,
+      1024,
+      94
+    ],
+    "max_abs_diff": 0.0,
+    "max_rel_diff": 0.0,
+    "pearson": 1.0
+  },
+  "org0/hda_atac/predictions_128bp": {
+    "shape": [
+      1,
+      1024,
+      134
+    ],
+    "max_abs_diff": 0.0,
+    "max_rel_diff": 0.0,
+    "pearson": 1.0
+  },
+  "org0/hda_atac/predictions_1bp": {
+    "shape": [
+      1,
+      131072,
+      134
+    ],
+    "max_abs_diff": 0.0,
+    "max_rel_diff": 0.0,
+    "pearson": 1.0
+  },
+  "org0/hda_atac/scaled_predictions_128bp": {
+    "shape": [
+      1,
+      1024,
+      134
+    ],
+    "max_abs_diff": 0.0,
+    "max_rel_diff": 0.0,
+    "pearson": 1.0
+  },
+  "org0/hda_atac/scaled_predictions_1bp": {
+    "shape": [
+      1,
+      131072,
+      134
+    ],
+    "max_abs_diff": 0.0,
+    "max_rel_diff": 0.0,
+    "pearson": 0.9999999999999999
+  },
+  "org0/hda_rna/predictions_128bp": {
+    "shape": [
+      1,
+      1024,
+      134
+    ],
+    "max_abs_diff": 0.0,
+    "max_rel_diff": 0.0,
+    "pearson": 1.0
+  },
+  "org0/hda_rna/scaled_predictions_128bp": {
+    "shape": [
+      1,
+      1024,
+      134
+    ],
+    "max_abs_diff": 0.0,
+    "max_rel_diff": 0.0,
+    "pearson": 1.0
+  },
+  "org0/liu_atac/predictions_128bp": {
+    "shape": [
+      1,
+      1024,
+      186
+    ],
+    "max_abs_diff": 0.0,
+    "max_rel_diff": 0.0,
+    "pearson": 0.9999999999999999
+  },
+  "org0/liu_atac/predictions_1bp": {
+    "shape": [
+      1,
+      131072,
+      186
+    ],
+    "max_abs_diff": 0.0,
+    "max_rel_diff": 0.0,
+    "pearson": 1.0
+  },
+  "org0/liu_atac/scaled_predictions_128bp": {
+    "shape": [
+      1,
+      1024,
+      186
+    ],
+    "max_abs_diff": 0.0,
+    "max_rel_diff": 0.0,
+    "pearson": 1.0
+  },
+  "org0/liu_atac/scaled_predictions_1bp": {
+    "shape": [
+      1,
+      131072,
+      186
+    ],
+    "max_abs_diff": 0.0,
+    "max_rel_diff": 0.0,
+    "pearson": 1.0
+  },
+  "org0/liu_rna/predictions_128bp": {
+    "shape": [
+      1,
+      1024,
+      372
+    ],
+    "max_abs_diff": 0.0,
+    "max_rel_diff": 0.0,
+    "pearson": 1.0
+  },
+  "org0/liu_rna/scaled_predictions_128bp": {
+    "shape": [
+      1,
+      1024,
+      372
+    ],
+    "max_abs_diff": 0.0,
+    "max_rel_diff": 0.0,
+    "pearson": 1.0
+  },
+  "org0/zemke2023_atac_human/predictions_128bp": {
+    "shape": [
+      1,
+      1024,
+      20
+    ],
+    "max_abs_diff": 0.0,
+    "max_rel_diff": 0.0,
+    "pearson": 1.0
+  },
+  "org0/zemke2023_atac_human/predictions_1bp": {
+    "shape": [
+      1,
+      131072,
+      20
+    ],
+    "max_abs_diff": 0.0,
+    "max_rel_diff": 0.0,
+    "pearson": 1.0
+  },
+  "org0/zemke2023_atac_human/scaled_predictions_128bp": {
+    "shape": [
+      1,
+      1024,
+      20
+    ],
+    "max_abs_diff": 0.0,
+    "max_rel_diff": 0.0,
+    "pearson": 0.9999999999999999
+  },
+  "org0/zemke2023_atac_human/scaled_predictions_1bp": {
+    "shape": [
+      1,
+      131072,
+      20
+    ],
+    "max_abs_diff": 0.0,
+    "max_rel_diff": 0.0,
+    "pearson": 1.0
+  },
+  "org0/zemke2023_atac_macaque/predictions_128bp": {
+    "shape": [
+      1,
+      1024,
+      20
+    ],
+    "max_abs_diff": 0.0,
+    "max_rel_diff": 0.0,
+    "pearson": 1.0
+  },
+  "org0/zemke2023_atac_macaque/predictions_1bp": {
+    "shape": [
+      1,
+      131072,
+      20
+    ],
+    "max_abs_diff": 0.0,
+    "max_rel_diff": 0.0,
+    "pearson": 0.9999999999999999
+  },
+  "org0/zemke2023_atac_macaque/scaled_predictions_128bp": {
+    "shape": [
+      1,
+      1024,
+      20
+    ],
+    "max_abs_diff": 0.0,
+    "max_rel_diff": 0.0,
+    "pearson": 0.9999999999999999
+  },
+  "org0/zemke2023_atac_macaque/scaled_predictions_1bp": {
+    "shape": [
+      1,
+      131072,
+      20
+    ],
+    "max_abs_diff": 0.0,
+    "max_rel_diff": 0.0,
+    "pearson": 1.0
+  },
+  "org0/zemke2023_atac_marmoset/predictions_128bp": {
+    "shape": [
+      1,
+      1024,
+      20
+    ],
+    "max_abs_diff": 0.0,
+    "max_rel_diff": 0.0,
+    "pearson": 1.0
+  },
+  "org0/zemke2023_atac_marmoset/predictions_1bp": {
+    "shape": [
+      1,
+      131072,
+      20
+    ],
+    "max_abs_diff": 0.0,
+    "max_rel_diff": 0.0,
+    "pearson": 1.0
+  },
+  "org0/zemke2023_atac_marmoset/scaled_predictions_128bp": {
+    "shape": [
+      1,
+      1024,
+      20
+    ],
+    "max_abs_diff": 0.0,
+    "max_rel_diff": 0.0,
+    "pearson": 1.0
+  },
+  "org0/zemke2023_atac_marmoset/scaled_predictions_1bp": {
+    "shape": [
+      1,
+      131072,
+      20
+    ],
+    "max_abs_diff": 0.0,
+    "max_rel_diff": 0.0,
+    "pearson": 1.0
+  },
+  "org0/zemke2023_atac_mouse/predictions_128bp": {
+    "shape": [
+      1,
+      1024,
+      20
+    ],
+    "max_abs_diff": 0.0,
+    "max_rel_diff": 0.0,
+    "pearson": 0.9999999999999999
+  },
+  "org0/zemke2023_atac_mouse/predictions_1bp": {
+    "shape": [
+      1,
+      131072,
+      20
+    ],
+    "max_abs_diff": 0.0,
+    "max_rel_diff": 0.0,
+    "pearson": 1.0
+  },
+  "org0/zemke2023_atac_mouse/scaled_predictions_128bp": {
+    "shape": [
+      1,
+      1024,
+      20
+    ],
+    "max_abs_diff": 0.0,
+    "max_rel_diff": 0.0,
+    "pearson": 0.9999999999999999
+  },
+  "org0/zemke2023_atac_mouse/scaled_predictions_1bp": {
+    "shape": [
+      1,
+      131072,
+      20
+    ],
+    "max_abs_diff": 0.0,
+    "max_rel_diff": 0.0,
+    "pearson": 1.0
+  },
+  "org0/zemke2023_rna_human/predictions_128bp": {
+    "shape": [
+      1,
+      1024,
+      20
+    ],
+    "max_abs_diff": 0.0,
+    "max_rel_diff": 0.0,
+    "pearson": 1.0
+  },
+  "org0/zemke2023_rna_human/scaled_predictions_128bp": {
+    "shape": [
+      1,
+      1024,
+      20
+    ],
+    "max_abs_diff": 0.0,
+    "max_rel_diff": 0.0,
+    "pearson": 1.0
+  },
+  "org0/zemke2023_rna_macaque/predictions_128bp": {
+    "shape": [
+      1,
+      1024,
+      20
+    ],
+    "max_abs_diff": 0.0,
+    "max_rel_diff": 0.0,
+    "pearson": 0.9999999999999999
+  },
+  "org0/zemke2023_rna_macaque/scaled_predictions_128bp": {
+    "shape": [
+      1,
+      1024,
+      20
+    ],
+    "max_abs_diff": 0.0,
+    "max_rel_diff": 0.0,
+    "pearson": 1.0
+  },
+  "org0/zemke2023_rna_marmoset/predictions_128bp": {
+    "shape": [
+      1,
+      1024,
+      20
+    ],
+    "max_abs_diff": 0.0,
+    "max_rel_diff": 0.0,
+    "pearson": 1.0
+  },
+  "org0/zemke2023_rna_marmoset/scaled_predictions_128bp": {
+    "shape": [
+      1,
+      1024,
+      20
+    ],
+    "max_abs_diff": 0.0,
+    "max_rel_diff": 0.0,
+    "pearson": 1.0
+  },
+  "org0/zemke2023_rna_mouse/predictions_128bp": {
+    "shape": [
+      1,
+      1024,
+      20
+    ],
+    "max_abs_diff": 0.0,
+    "max_rel_diff": 0.0,
+    "pearson": 1.0
+  },
+  "org0/zemke2023_rna_mouse/scaled_predictions_128bp": {
+    "shape": [
+      1,
+      1024,
+      20
+    ],
+    "max_abs_diff": 0.0,
+    "max_rel_diff": 0.0,
+    "pearson": 1.0
+  },
+  "org0/zemke2024_all_atac/predictions_128bp": {
+    "shape": [
+      1,
+      1024,
+      18
+    ],
+    "max_abs_diff": 0.0,
+    "max_rel_diff": 0.0,
+    "pearson": 0.9999999999999999
+  },
+  "org0/zemke2024_all_atac/predictions_1bp": {
+    "shape": [
+      1,
+      131072,
+      18
+    ],
+    "max_abs_diff": 0.0,
+    "max_rel_diff": 0.0,
+    "pearson": 1.0
+  },
+  "org0/zemke2024_all_atac/scaled_predictions_128bp": {
+    "shape": [
+      1,
+      1024,
+      18
+    ],
+    "max_abs_diff": 0.0,
+    "max_rel_diff": 0.0,
+    "pearson": 1.0
+  },
+  "org0/zemke2024_all_atac/scaled_predictions_1bp": {
+    "shape": [
+      1,
+      131072,
+      18
+    ],
+    "max_abs_diff": 0.0,
+    "max_rel_diff": 0.0,
+    "pearson": 1.0
+  },
+  "org0/zemke2024_all_rna/predictions_128bp": {
+    "shape": [
+      1,
+      1024,
+      22
+    ],
+    "max_abs_diff": 0.0,
+    "max_rel_diff": 0.0,
+    "pearson": 1.0
+  },
+  "org0/zemke2024_all_rna/scaled_predictions_128bp": {
+    "shape": [
+      1,
+      1024,
+      22
+    ],
+    "max_abs_diff": 0.0,
+    "max_rel_diff": 0.0,
+    "pearson": 0.9999999999999998
+  },
+  "org1/allen_atac_human/predictions_128bp": {
+    "shape": [
+      1,
+      1024,
+      47
+    ],
+    "max_abs_diff": 0.0,
+    "max_rel_diff": 0.0,
+    "pearson": 1.0
+  },
+  "org1/allen_atac_human/predictions_1bp": {
+    "shape": [
+      1,
+      131072,
+      47
+    ],
+    "max_abs_diff": 0.0,
+    "max_rel_diff": 0.0,
+    "pearson": 1.0
+  },
+  "org1/allen_atac_human/scaled_predictions_128bp": {
+    "shape": [
+      1,
+      1024,
+      47
+    ],
+    "max_abs_diff": 0.0,
+    "max_rel_diff": 0.0,
+    "pearson": 1.0
+  },
+  "org1/allen_atac_human/scaled_predictions_1bp": {
+    "shape": [
+      1,
+      131072,
+      47
+    ],
+    "max_abs_diff": 0.0,
+    "max_rel_diff": 0.0,
+    "pearson": 1.0
+  },
+  "org1/allen_atac_macaque/predictions_128bp": {
+    "shape": [
+      1,
+      1024,
+      47
+    ],
+    "max_abs_diff": 0.0,
+    "max_rel_diff": 0.0,
+    "pearson": 0.9999999999999999
+  },
+  "org1/allen_atac_macaque/predictions_1bp": {
+    "shape": [
+      1,
+      131072,
+      47
+    ],
+    "max_abs_diff": 0.0,
+    "max_rel_diff": 0.0,
+    "pearson": 0.9999999999999999
+  },
+  "org1/allen_atac_macaque/scaled_predictions_128bp": {
+    "shape": [
+      1,
+      1024,
+      47
+    ],
+    "max_abs_diff": 0.0,
+    "max_rel_diff": 0.0,
+    "pearson": 1.0
+  },
+  "org1/allen_atac_macaque/scaled_predictions_1bp": {
+    "shape": [
+      1,
+      131072,
+      47
+    ],
+    "max_abs_diff": 0.0,
+    "max_rel_diff": 0.0,
+    "pearson": 1.0
+  },
+  "org1/allen_atac_marmoset/predictions_128bp": {
+    "shape": [
+      1,
+      1024,
+      47
+    ],
+    "max_abs_diff": 0.0,
+    "max_rel_diff": 0.0,
+    "pearson": 1.0
+  },
+  "org1/allen_atac_marmoset/predictions_1bp": {
+    "shape": [
+      1,
+      131072,
+      47
+    ],
+    "max_abs_diff": 0.0,
+    "max_rel_diff": 0.0,
+    "pearson": 1.0
+  },
+  "org1/allen_atac_marmoset/scaled_predictions_128bp": {
+    "shape": [
+      1,
+      1024,
+      47
+    ],
+    "max_abs_diff": 0.0,
+    "max_rel_diff": 0.0,
+    "pearson": 1.0
+  },
+  "org1/allen_atac_marmoset/scaled_predictions_1bp": {
+    "shape": [
+      1,
+      131072,
+      47
+    ],
+    "max_abs_diff": 0.0,
+    "max_rel_diff": 0.0,
+    "pearson": 0.9999999999999998
+  },
+  "org1/allen_rna_human/predictions_128bp": {
+    "shape": [
+      1,
+      1024,
+      94
+    ],
+    "max_abs_diff": 0.0,
+    "max_rel_diff": 0.0,
+    "pearson": 1.0
+  },
+  "org1/allen_rna_human/scaled_predictions_128bp": {
+    "shape": [
+      1,
+      1024,
+      94
+    ],
+    "max_abs_diff": 0.0,
+    "max_rel_diff": 0.0,
+    "pearson": 1.0
+  },
+  "org1/allen_rna_macaque/predictions_128bp": {
+    "shape": [
+      1,
+      1024,
+      94
+    ],
+    "max_abs_diff": 0.0,
+    "max_rel_diff": 0.0,
+    "pearson": 1.0
+  },
+  "org1/allen_rna_macaque/scaled_predictions_128bp": {
+    "shape": [
+      1,
+      1024,
+      94
+    ],
+    "max_abs_diff": 0.0,
+    "max_rel_diff": 0.0,
+    "pearson": 1.0
+  },
+  "org1/allen_rna_marmoset/predictions_128bp": {
+    "shape": [
+      1,
+      1024,
+      94
+    ],
+    "max_abs_diff": 0.0,
+    "max_rel_diff": 0.0,
+    "pearson": 1.0
+  },
+  "org1/allen_rna_marmoset/scaled_predictions_128bp": {
+    "shape": [
+      1,
+      1024,
+      94
+    ],
+    "max_abs_diff": 0.0,
+    "max_rel_diff": 0.0,
+    "pearson": 1.0
+  },
+  "org1/hda_atac/predictions_128bp": {
+    "shape": [
+      1,
+      1024,
+      134
+    ],
+    "max_abs_diff": 0.0,
+    "max_rel_diff": 0.0,
+    "pearson": 1.0
+  },
+  "org1/hda_atac/predictions_1bp": {
+    "shape": [
+      1,
+      131072,
+      134
+    ],
+    "max_abs_diff": 0.0,
+    "max_rel_diff": 0.0,
+    "pearson": 0.9999999999999999
+  },
+  "org1/hda_atac/scaled_predictions_128bp": {
+    "shape": [
+      1,
+      1024,
+      134
+    ],
+    "max_abs_diff": 0.0,
+    "max_rel_diff": 0.0,
+    "pearson": 1.0
+  },
+  "org1/hda_atac/scaled_predictions_1bp": {
+    "shape": [
+      1,
+      131072,
+      134
+    ],
+    "max_abs_diff": 0.0,
+    "max_rel_diff": 0.0,
+    "pearson": 0.9999999999999999
+  },
+  "org1/hda_rna/predictions_128bp": {
+    "shape": [
+      1,
+      1024,
+      134
+    ],
+    "max_abs_diff": 0.0,
+    "max_rel_diff": 0.0,
+    "pearson": 1.0
+  },
+  "org1/hda_rna/scaled_predictions_128bp": {
+    "shape": [
+      1,
+      1024,
+      134
+    ],
+    "max_abs_diff": 0.0,
+    "max_rel_diff": 0.0,
+    "pearson": 1.0
+  },
+  "org1/liu_atac/predictions_128bp": {
+    "shape": [
+      1,
+      1024,
+      186
+    ],
+    "max_abs_diff": 0.0,
+    "max_rel_diff": 0.0,
+    "pearson": 1.0
+  },
+  "org1/liu_atac/predictions_1bp": {
+    "shape": [
+      1,
+      131072,
+      186
+    ],
+    "max_abs_diff": 0.0,
+    "max_rel_diff": 0.0,
+    "pearson": 1.0
+  },
+  "org1/liu_atac/scaled_predictions_128bp": {
+    "shape": [
+      1,
+      1024,
+      186
+    ],
+    "max_abs_diff": 0.0,
+    "max_rel_diff": 0.0,
+    "pearson": 1.0
+  },
+  "org1/liu_atac/scaled_predictions_1bp": {
+    "shape": [
+      1,
+      131072,
+      186
+    ],
+    "max_abs_diff": 0.0,
+    "max_rel_diff": 0.0,
+    "pearson": 1.0
+  },
+  "org1/liu_rna/predictions_128bp": {
+    "shape": [
+      1,
+      1024,
+      372
+    ],
+    "max_abs_diff": 0.0,
+    "max_rel_diff": 0.0,
+    "pearson": 1.0
+  },
+  "org1/liu_rna/scaled_predictions_128bp": {
+    "shape": [
+      1,
+      1024,
+      372
+    ],
+    "max_abs_diff": 0.0,
+    "max_rel_diff": 0.0,
+    "pearson": 1.0
+  },
+  "org1/zemke2023_atac_human/predictions_128bp": {
+    "shape": [
+      1,
+      1024,
+      20
+    ],
+    "max_abs_diff": 0.0,
+    "max_rel_diff": 0.0,
+    "pearson": 1.0
+  },
+  "org1/zemke2023_atac_human/predictions_1bp": {
+    "shape": [
+      1,
+      131072,
+      20
+    ],
+    "max_abs_diff": 0.0,
+    "max_rel_diff": 0.0,
+    "pearson": 1.0
+  },
+  "org1/zemke2023_atac_human/scaled_predictions_128bp": {
+    "shape": [
+      1,
+      1024,
+      20
+    ],
+    "max_abs_diff": 0.0,
+    "max_rel_diff": 0.0,
+    "pearson": 1.0
+  },
+  "org1/zemke2023_atac_human/scaled_predictions_1bp": {
+    "shape": [
+      1,
+      131072,
+      20
+    ],
+    "max_abs_diff": 0.0,
+    "max_rel_diff": 0.0,
+    "pearson": 1.0
+  },
+  "org1/zemke2023_atac_macaque/predictions_128bp": {
+    "shape": [
+      1,
+      1024,
+      20
+    ],
+    "max_abs_diff": 0.0,
+    "max_rel_diff": 0.0,
+    "pearson": 1.0
+  },
+  "org1/zemke2023_atac_macaque/predictions_1bp": {
+    "shape": [
+      1,
+      131072,
+      20
+    ],
+    "max_abs_diff": 0.0,
+    "max_rel_diff": 0.0,
+    "pearson": 1.0
+  },
+  "org1/zemke2023_atac_macaque/scaled_predictions_128bp": {
+    "shape": [
+      1,
+      1024,
+      20
+    ],
+    "max_abs_diff": 0.0,
+    "max_rel_diff": 0.0,
+    "pearson": 1.0
+  },
+  "org1/zemke2023_atac_macaque/scaled_predictions_1bp": {
+    "shape": [
+      1,
+      131072,
+      20
+    ],
+    "max_abs_diff": 0.0,
+    "max_rel_diff": 0.0,
+    "pearson": 1.0
+  },
+  "org1/zemke2023_atac_marmoset/predictions_128bp": {
+    "shape": [
+      1,
+      1024,
+      20
+    ],
+    "max_abs_diff": 0.0,
+    "max_rel_diff": 0.0,
+    "pearson": 1.0
+  },
+  "org1/zemke2023_atac_marmoset/predictions_1bp": {
+    "shape": [
+      1,
+      131072,
+      20
+    ],
+    "max_abs_diff": 0.0,
+    "max_rel_diff": 0.0,
+    "pearson": 1.0
+  },
+  "org1/zemke2023_atac_marmoset/scaled_predictions_128bp": {
+    "shape": [
+      1,
+      1024,
+      20
+    ],
+    "max_abs_diff": 0.0,
+    "max_rel_diff": 0.0,
+    "pearson": 1.0
+  },
+  "org1/zemke2023_atac_marmoset/scaled_predictions_1bp": {
+    "shape": [
+      1,
+      131072,
+      20
+    ],
+    "max_abs_diff": 0.0,
+    "max_rel_diff": 0.0,
+    "pearson": 1.0
+  },
+  "org1/zemke2023_atac_mouse/predictions_128bp": {
+    "shape": [
+      1,
+      1024,
+      20
+    ],
+    "max_abs_diff": 0.0,
+    "max_rel_diff": 0.0,
+    "pearson": 1.0
+  },
+  "org1/zemke2023_atac_mouse/predictions_1bp": {
+    "shape": [
+      1,
+      131072,
+      20
+    ],
+    "max_abs_diff": 0.0,
+    "max_rel_diff": 0.0,
+    "pearson": 1.0
+  },
+  "org1/zemke2023_atac_mouse/scaled_predictions_128bp": {
+    "shape": [
+      1,
+      1024,
+      20
+    ],
+    "max_abs_diff": 0.0,
+    "max_rel_diff": 0.0,
+    "pearson": 1.0
+  },
+  "org1/zemke2023_atac_mouse/scaled_predictions_1bp": {
+    "shape": [
+      1,
+      131072,
+      20
+    ],
+    "max_abs_diff": 0.0,
+    "max_rel_diff": 0.0,
+    "pearson": 1.0
+  },
+  "org1/zemke2023_rna_human/predictions_128bp": {
+    "shape": [
+      1,
+      1024,
+      20
+    ],
+    "max_abs_diff": 0.0,
+    "max_rel_diff": 0.0,
+    "pearson": 0.9999999999999998
+  },
+  "org1/zemke2023_rna_human/scaled_predictions_128bp": {
+    "shape": [
+      1,
+      1024,
+      20
+    ],
+    "max_abs_diff": 0.0,
+    "max_rel_diff": 0.0,
+    "pearson": 1.0
+  },
+  "org1/zemke2023_rna_macaque/predictions_128bp": {
+    "shape": [
+      1,
+      1024,
+      20
+    ],
+    "max_abs_diff": 0.0,
+    "max_rel_diff": 0.0,
+    "pearson": 1.0
+  },
+  "org1/zemke2023_rna_macaque/scaled_predictions_128bp": {
+    "shape": [
+      1,
+      1024,
+      20
+    ],
+    "max_abs_diff": 0.0,
+    "max_rel_diff": 0.0,
+    "pearson": 0.9999999999999999
+  },
+  "org1/zemke2023_rna_marmoset/predictions_128bp": {
+    "shape": [
+      1,
+      1024,
+      20
+    ],
+    "max_abs_diff": 0.0,
+    "max_rel_diff": 0.0,
+    "pearson": 0.9999999999999998
+  },
+  "org1/zemke2023_rna_marmoset/scaled_predictions_128bp": {
+    "shape": [
+      1,
+      1024,
+      20
+    ],
+    "max_abs_diff": 0.0,
+    "max_rel_diff": 0.0,
+    "pearson": 1.0
+  },
+  "org1/zemke2023_rna_mouse/predictions_128bp": {
+    "shape": [
+      1,
+      1024,
+      20
+    ],
+    "max_abs_diff": 0.0,
+    "max_rel_diff": 0.0,
+    "pearson": 1.0
+  },
+  "org1/zemke2023_rna_mouse/scaled_predictions_128bp": {
+    "shape": [
+      1,
+      1024,
+      20
+    ],
+    "max_abs_diff": 0.0,
+    "max_rel_diff": 0.0,
+    "pearson": 0.9999999999999998
+  },
+  "org1/zemke2024_all_atac/predictions_128bp": {
+    "shape": [
+      1,
+      1024,
+      18
+    ],
+    "max_abs_diff": 0.0,
+    "max_rel_diff": 0.0,
+    "pearson": 0.9999999999999998
+  },
+  "org1/zemke2024_all_atac/predictions_1bp": {
+    "shape": [
+      1,
+      131072,
+      18
+    ],
+    "max_abs_diff": 0.0,
+    "max_rel_diff": 0.0,
+    "pearson": 1.0
+  },
+  "org1/zemke2024_all_atac/scaled_predictions_128bp": {
+    "shape": [
+      1,
+      1024,
+      18
+    ],
+    "max_abs_diff": 0.0,
+    "max_rel_diff": 0.0,
+    "pearson": 1.0
+  },
+  "org1/zemke2024_all_atac/scaled_predictions_1bp": {
+    "shape": [
+      1,
+      131072,
+      18
+    ],
+    "max_abs_diff": 0.0,
+    "max_rel_diff": 0.0,
+    "pearson": 1.0
+  },
+  "org1/zemke2024_all_rna/predictions_128bp": {
+    "shape": [
+      1,
+      1024,
+      22
+    ],
+    "max_abs_diff": 0.0,
+    "max_rel_diff": 0.0,
+    "pearson": 0.9999999999999999
+  },
+  "org1/zemke2024_all_rna/scaled_predictions_128bp": {
+    "shape": [
+      1,
+      1024,
+      22
+    ],
+    "max_abs_diff": 0.0,
+    "max_rel_diff": 0.0,
+    "pearson": 1.0
+  }
+}
