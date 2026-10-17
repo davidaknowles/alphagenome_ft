@@ -417,7 +417,13 @@ def score_model(
     ref_batch_size: int,
     window: int,
     track_labels: list[str],
+    track_effects: dict[str, list[np.ndarray]] | None = None,
 ) -> list[dict[str, object]]:
+    """Score records on their matched tracks.
+
+    If ``track_effects`` is given, the absolute TSS-bin and gene-span effects on
+    every track are appended to its ``tss`` and ``gene`` lists in row order.
+    """
     indices = _track_indices(track_labels)
     groups: dict[tuple[str, int, int, str], list[Record]] = defaultdict(list)
     for record in records:
@@ -436,6 +442,9 @@ def score_model(
             track_index = indices[record.group]
             tss_effect = float(np.mean(np.abs(values[tss_bin, track_index] - ref_values[tss_bin, track_index])))
             gene_effect = float(np.mean(np.abs(np.mean(values[gene_start_bin:gene_end_bin, :][:, track_index], axis=0) - np.mean(ref_values[gene_start_bin:gene_end_bin, :][:, track_index], axis=0))))
+            if track_effects is not None:
+                track_effects["tss"].append(np.abs(values[tss_bin] - ref_values[tss_bin]).astype(np.float32))
+                track_effects["gene"].append(np.abs(np.mean(values[gene_start_bin:gene_end_bin], axis=0, dtype=np.float64) - np.mean(ref_values[gene_start_bin:gene_end_bin], axis=0, dtype=np.float64)).astype(np.float32))
             output.append({
                 "panel": record.panel,
                 "feature": record.feature,
@@ -553,7 +562,8 @@ def main() -> None:
         model = _load_model(label, checkpoint, base_checkpoint=args.base_checkpoint, targets_path=args.targets, init_seq_len=args.init_seq_len)
         track_labels = _rna_track_labels()
         print(f"{RNA_HEAD} tracks: {track_labels}", flush=True)
-        rows = score_model(model, records, extractor=extractor, encoder=encoder, genome=genome, batch_size=args.batch_size, ref_batch_size=args.ref_batch_size, window=args.window, track_labels=track_labels)
+        track_effects = {"tss": [], "gene": []}
+        rows = score_model(model, records, extractor=extractor, encoder=encoder, genome=genome, batch_size=args.batch_size, ref_batch_size=args.ref_batch_size, window=args.window, track_labels=track_labels, track_effects=track_effects)
         for row in rows:
             row["model"] = label
         all_rows.extend(rows)
@@ -562,6 +572,15 @@ def main() -> None:
                 writer = csv.DictWriter(handle, fieldnames=list(rows[0]), delimiter="\t")
                 writer.writeheader()
                 writer.writerows(rows)
+            # Per-track effects aligned to the rows of scores_{label}.tsv.
+            np.savez_compressed(
+                args.output_dir / f"track_effects_{label}.npz",
+                tss=np.stack(track_effects["tss"]),
+                gene=np.stack(track_effects["gene"]),
+                tracks=np.asarray(track_labels),
+                panel=np.asarray([row["panel"] for row in rows]),
+                pos=np.asarray([row["pos"] for row in rows]),
+            )
         del model
     if not all_rows:
         raise RuntimeError("No valid eQTL records were scored")
