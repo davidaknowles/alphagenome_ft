@@ -250,15 +250,23 @@ def load_targets_config(
     raise TypeError(f"load_targets_config expected Path or Mapping, got {type(source)!r}.")
 
 
-def _parse_targets(entries: Sequence[Mapping[str, Any]]) -> list[TrackInfo]:
-    """Convert normalized target entries into validated TrackInfo objects."""
+def _parse_targets(
+    entries: Sequence[Mapping[str, Any]],
+    *,
+    require_files: bool = True,
+) -> list[TrackInfo]:
+    """Convert normalized target entries into validated TrackInfo objects.
+
+    With ``require_files=False`` a target may omit ``path`` if it has a ``label``;
+    this describes an output track for inference without its training signal.
+    """
     tracks: list[TrackInfo] = []
     for item in entries:
         if not isinstance(item, Mapping):
             raise ValueError("Entries under 'targets' must be mappings with a 'path'.")
-        if "path" not in item:
+        if "path" not in item and (require_files or not item.get("label")):
             raise ValueError(f'Each target must include "path": {item!r}')
-        path = Path(str(item["path"]))
+        path = Path(str(item.get("path", "")))
         name = str(item.get("label") or path.stem)
         strand = str(item.get("strand", "."))
         if strand not in {"+", "-", "."}:
@@ -268,7 +276,7 @@ def _parse_targets(entries: Sequence[Mapping[str, Any]]) -> list[TrackInfo]:
         nonzero_mean = item.get("nonzero_mean")
         if nonzero_mean is not None:
             nonzero_mean = float(nonzero_mean)
-        if not path.exists():
+        if require_files and not path.exists():
             raise FileNotFoundError(f"Target file not found: {path}")
         tracks.append(
             TrackInfo(
@@ -317,6 +325,7 @@ def prepare_head_specs(
     config: Mapping[str, Any],
     *,
     organism: str | None = None,
+    require_target_files: bool = True,
 ) -> list[HeadSpec]:
     heads_cfg = config.get("heads")
     if not heads_cfg:
@@ -346,7 +355,7 @@ def prepare_head_specs(
         targets = entry.get("targets")
         if targets is None:
             raise ValueError(f'Head "{head_id}" must include "targets".')
-        tracks = _parse_targets(targets)
+        tracks = _parse_targets(targets, require_files=require_target_files)
         gene_supervision = entry.get("gene_supervision")
         target_transform = entry.get("target_transform")
         target_transform_path = None
