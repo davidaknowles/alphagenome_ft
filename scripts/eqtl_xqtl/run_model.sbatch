@@ -13,11 +13,12 @@ cd "${SLURM_SUBMIT_DIR}"
 mkdir -p results/eqtl_xqtl
 source "$HOME/venv/jax/bin/activate"
 export LD_LIBRARY_PATH="/nfs/sw/easybuild/software/Python/3.12.3-GCCcore-13.3.0/lib:${LD_LIBRARY_PATH:-}"
-: "${MODEL_LABEL:?MODEL_LABEL must be head_only, lora, or locon}"
+: "${MODEL_LABEL:?MODEL_LABEL must be head_only, lora, locon, or raw_locon}"
 case "$MODEL_LABEL" in
   head_only) MODEL_ARG="head_only=checkpoints/v0data/joint_all_nonencode_all_gene_source_specific_semantic_neural_accessibility_bootstrap_head_warmup_seed_epoch12" ;;
   lora) MODEL_ARG="lora=checkpoints/v0data/joint_all_nonencode_lora_all_gene_source_specific_semantic_neural_accessibility_bootstrap_headwarm12_adapters_lr3e4_reset/best" ;;
   locon) MODEL_ARG="locon=checkpoints/v0data/joint_all_nonencode_lora_locon_all_gene_source_specific_semantic_neural_accessibility_bootstrap_headwarm12_adapters_lr3e4_reset/best" ;;
+  raw_locon) MODEL_ARG="raw_locon=checkpoints/v0data/joint_all_nonencode_lora_locon_all_gene_source_specific_raw_zemke_atac_headwarm12_adapters_lr3e4_reset/best" ;;
   *) echo "unsupported MODEL_LABEL=$MODEL_LABEL" >&2; exit 2 ;;
 esac
 exec python scripts/eqtl/benchmark.py \

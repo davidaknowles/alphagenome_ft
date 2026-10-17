@@ -4,7 +4,8 @@
 The benchmark uses the human Zemke 2023 RNA head because its 20 cell labels are
 the closest available match to the 32 fine-mapping panels. Fine-mapping panels
 are reduced to the matching broad model cell group when a one-to-one label is
-not available.
+not available. Track positions are looked up by label in the loaded head's
+metadata, never assumed.
 """
 
 from __future__ import annotations
@@ -39,6 +40,19 @@ DEFAULT_CHECKPOINTS = {
     "head_only": REPO_ROOT / "checkpoints/v0data/joint_all_nonencode_all_gene_source_specific_semantic_neural_accessibility_bootstrap_head_warmup_seed_epoch12",
     "lora": REPO_ROOT / "checkpoints/v0data/joint_all_nonencode_lora_all_gene_source_specific_semantic_neural_accessibility_bootstrap_headwarm12_adapters_lr3e4_reset/best",
     "locon": REPO_ROOT / "checkpoints/v0data/joint_all_nonencode_lora_locon_all_gene_source_specific_semantic_neural_accessibility_bootstrap_headwarm12_adapters_lr3e4_reset/best",
+    "raw_locon": REPO_ROOT / "checkpoints/v0data/joint_all_nonencode_lora_locon_all_gene_source_specific_raw_zemke_atac_headwarm12_adapters_lr3e4_reset/best",
+}
+RNA_HEAD = "zemke2023_rna_human"
+# Zemke 2023 RNA tracks averaged for each broad cell group. L5_IT is excluded
+# because its direct-gene RNA target is invalid, so that output was never trained.
+GROUP_TRACKS = {
+    "ASC": ("ASC",),
+    "Endo": ("Endo",),
+    "EXC": ("L2_3_IT", "L4_5_IT", "L5_6_NP", "L5_ET", "L6_CT", "L6_IT", "L6_IT_CAR3", "L6b"),
+    "INH": ("LAMP5", "PVALB", "SNCG", "SST", "VIP"),
+    "MGC": ("MGC",),
+    "ODC": ("ODC",),
+    "OPC": ("OPC",),
 }
 
 WINDOW = 1_048_576
@@ -122,18 +136,21 @@ def _panel_group(panel: str) -> str:
     raise ValueError(f"Unsupported fine-map panel {panel!r}")
 
 
-def _track_indices(groups: np.ndarray) -> dict[str, np.ndarray]:
-    names = [str(x) for x in groups]
-    exact = {name: index for index, name in enumerate(names)}
-    return {
-        "ASC": np.asarray([exact["ASC"]]),
-        "Endo": np.asarray([exact["Endo"]]),
-        "EXC": np.asarray([exact[x] for x in ("L2_3_IT", "L4_5_IT", "L5_6_NP", "L5_ET", "L5_IT", "L6_CT", "L6_IT_CAR3", "L6b")]),
-        "INH": np.asarray([exact[x] for x in ("LAMP5", "PVALB", "SNCG", "SST", "VIP")]),
-        "MGC": np.asarray([exact["MGC"]]),
-        "ODC": np.asarray([exact["ODC"]]),
-        "OPC": np.asarray([exact["OPC"]]),
-    }
+def _track_indices(labels: list[str]) -> dict[str, np.ndarray]:
+    positions = {label: index for index, label in enumerate(labels)}
+    missing = sorted({track for tracks in GROUP_TRACKS.values() for track in tracks} - set(positions))
+    if missing:
+        raise ValueError(f"{RNA_HEAD} lacks tracks {missing}; available {labels}")
+    return {group: np.asarray([positions[track] for track in tracks]) for group, tracks in GROUP_TRACKS.items()}
+
+
+def _rna_track_labels() -> list[str]:
+    """Return the registered RNA head's output track labels in output order."""
+    from alphagenome.models import dna_client
+    from alphagenome_ft import get_registered_head_metadata
+
+    metadata = get_registered_head_metadata(RNA_HEAD)[dna_client.Organism.HOMO_SAPIENS]
+    return [str(name) for name in metadata.rna_seq["name"]]
 
 
 def _parse_gtf_attributes(value: str) -> dict[str, str]:
@@ -324,10 +341,32 @@ def _load_head_specs(targets_path: Path):
     return spec
 
 
+def _register_checkpoint_heads(checkpoint: Path, targets_path: Path) -> None:
+    """Register heads from the dataset config the checkpoint was trained with.
+
+    Adapter runs record it in ``continuation.json``; the head-only warmup
+    checkpoint predates that file and uses the semantic configuration.
+    """
+    from alphagenome_ft.finetune import load_targets_config, prepare_head_specs, register_predefined_heads
+
+    continuation = checkpoint.parent / "continuation.json"
+    if not continuation.exists():
+        _load_head_specs(targets_path)
+        return
+    dataset_config = REPO_ROOT / json.loads(continuation.read_text())["dataset_config"]
+    datasets = json.loads(dataset_config.read_text())["datasets"]
+    register_predefined_heads([
+        spec
+        for dataset in datasets
+        for source in dataset["sources"]
+        for spec in prepare_head_specs(load_targets_config(Path(source["targets_config"])))
+    ])
+
+
 def _load_model(label: str, checkpoint: Path, *, base_checkpoint: Path, targets_path: Path, init_seq_len: int):
     from alphagenome_ft import load_checkpoint
 
-    _load_head_specs(targets_path)
+    _register_checkpoint_heads(checkpoint, targets_path)
     if checkpoint is None:
         raise ValueError(
             f"Model {label!r} must use a trained checkpoint; untrained semantic-init heads are not valid inference baselines"
@@ -363,7 +402,7 @@ def _predict(model, sequence: np.ndarray) -> np.ndarray:
     batch = jnp.asarray(sequence)
     organisms = jnp.zeros((batch.shape[0],), dtype=jnp.int32)
     predictions = model._custom_forward_fn(model._params, model._state, None, batch, organisms)
-    values = predictions["zemke2023_rna_human"]["predictions_128bp"]
+    values = predictions[RNA_HEAD]["predictions_128bp"]
     return np.asarray(jax.device_get(values), dtype=np.float32)
 
 
@@ -377,9 +416,9 @@ def score_model(
     batch_size: int,
     ref_batch_size: int,
     window: int,
+    track_labels: list[str],
 ) -> list[dict[str, object]]:
-    track_names = np.asarray(["ASC", "Endo", "L2_3_IT", "L4_5_IT", "L5_6_NP", "L5_ET", "L5_IT", "L6_CT", "L6_IT_CAR3", "L6b", "LAMP5", "MGC", "ODC", "OPC", "PVALB", "SNCG", "SST", "VIP", "VLMC"])
-    indices = _track_indices(track_names)
+    indices = _track_indices(track_labels)
     groups: dict[tuple[str, int, int, str], list[Record]] = defaultdict(list)
     for record in records:
         groups[(record.chrom, record.gene.tss, record.gene.start, record.feature)].append(record)
@@ -429,6 +468,8 @@ def score_model(
             continue
 
         ref_values_batch = _predict(model, np.stack([item[1] for item in prepared], axis=0))
+        if ref_values_batch.shape[-1] != len(track_labels):
+            raise ValueError(f"{RNA_HEAD} returned {ref_values_batch.shape[-1]} tracks for {len(track_labels)} labels")
 
         for (group_records, reference, sequence_start, first), ref_values in zip(prepared, ref_values_batch):
             tss_bin = min(ref_values.shape[0] - 1, (window // 2) // 128)
@@ -504,13 +545,15 @@ def main() -> None:
     if args.max_records is not None:
         records = records[: args.max_records]
     (args.output_dir / "sampling_counts.json").write_text(json.dumps(counts, indent=2, sort_keys=True))
-    (args.output_dir / "benchmark_config.json").write_text(json.dumps({"window": args.window, "positive_pip": ">0.75", "negative_pip": "<0.01", "max_per_panel": args.max_per_panel if not args.records_cache else None, "records_cache": str(records_cache), "record_count": len(records), "models": {label: str(path) for label, path in models}, "cell_mapping": {"Ast": "ASC", "End": "Endo", "Ext": "mean excitatory Zemke tracks", "IN": "mean inhibitory Zemke tracks", "MG": "MGC", "OD": "ODC", "OPC": "OPC"}}, indent=2, sort_keys=True))
+    (args.output_dir / "benchmark_config.json").write_text(json.dumps({"window": args.window, "positive_pip": ">0.75", "negative_pip": "<0.01", "max_per_panel": args.max_per_panel if not args.records_cache else None, "records_cache": str(records_cache), "record_count": len(records), "models": {label: str(path) for label, path in models}, "cell_mapping": {"Ast": "ASC", "End": "Endo", "Ext": "EXC", "IN": "INH", "MG": "MGC", "OD": "ODC", "OPC": "OPC"}, "group_tracks": GROUP_TRACKS}, indent=2, sort_keys=True))
     genome, extractor, encoder = load_sequence_tools(args.fasta)
     all_rows = []
     for label, checkpoint in models:
         print(f"loading model {label}", flush=True)
         model = _load_model(label, checkpoint, base_checkpoint=args.base_checkpoint, targets_path=args.targets, init_seq_len=args.init_seq_len)
-        rows = score_model(model, records, extractor=extractor, encoder=encoder, genome=genome, batch_size=args.batch_size, ref_batch_size=args.ref_batch_size, window=args.window)
+        track_labels = _rna_track_labels()
+        print(f"{RNA_HEAD} tracks: {track_labels}", flush=True)
+        rows = score_model(model, records, extractor=extractor, encoder=encoder, genome=genome, batch_size=args.batch_size, ref_batch_size=args.ref_batch_size, window=args.window, track_labels=track_labels)
         for row in rows:
             row["model"] = label
         all_rows.extend(rows)

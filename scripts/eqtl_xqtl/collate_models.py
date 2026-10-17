@@ -13,7 +13,7 @@ def main() -> None:
     parser.add_argument("--input-root", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
-    paths = [args.input_root / f"models_{name}" / f"scores_{name}.tsv" for name in ("head_only", "lora", "locon")]
+    paths = [args.input_root / f"models_{name}" / f"scores_{name}.tsv" for name in ("head_only", "lora", "locon", "raw_locon")]
     missing = [path for path in paths if not path.is_file()]
     if missing:
         raise FileNotFoundError("Missing completed model score files: " + ", ".join(map(str, missing)))
