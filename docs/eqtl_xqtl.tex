@@ -32,8 +32,8 @@ those with PIP $<0.01$ are negatives. The benchmark retains every positive
 and samples up to 1,000 negatives per group with a fixed seed. Each model receives
 a $1\,\mathrm{Mb}$ sequence window centered at the gene TSS.
 
-The trained comparisons reuse the head-only, LoRA, and LoRA+LoCon checkpoints
-and RNA track mappings in \texttt{eqtl.tex}. Native AlphaGenome mutation
+The trained comparisons reuse the head-only, LoRA, LoRA+LoCon, and raw-Zemke
+LoRA+LoCon checkpoints and RNA track mappings in \texttt{eqtl.tex}. Native AlphaGenome mutation
 effects use all available RNA-seq and CAGE tracks, followed by the same
 biologically constrained track selection used in that report. Performance
 includes area under the receiver operating characteristic curve (AUROC) and
@@ -111,29 +111,90 @@ their exact intersection.}
 The completed benchmark scores 10,452 of the 10,556 cached records. The
 remaining 104 records are variants that could not be represented in the
 reference sequence and are excluded consistently from model and native-track
-comparisons. Table~\ref{tab:xqtl_performance} reports aggregate performance;
-the native series uses one biologically constrained native RNA-seq or CAGE
-track selection per XQTL panel. Head-only is the strongest trained model on
-the aggregate TSS and gene-span metrics. Native matched tracks are close to
-the trained models for gene-span average precision, while distance-stratified
-performance is shown in Figures~\ref{fig:xqtl_auroc} and~\ref{fig:xqtl_aupr}.
+comparisons. These results use the corrected Zemke 2023 RNA track lookup
+described in \texttt{eqtl.tex}; the earlier version scored microglia,
+oligodendrocyte, OPC, and inhibitory panels with other cell types' tracks.
+
+Table~\ref{tab:xqtl_performance} reports AUROC and AP pooled over panels and
+AUROC averaged over the six panel groups after computing it within each group.
+The native series uses one biologically constrained native RNA-seq or CAGE
+track selection per XQTL panel, chosen on these variants. The raw-Zemke
+LoRA+LoCon model has the highest pooled TSS-bin and gene-span AUROC and the
+highest TSS-bin AP. The native matched tracks have the highest within-group
+AUROC and gene-span AP, subject to selection optimism. Trained models differ by
+at most 0.033 in within-group TSS AUROC and 0.003 in within-group gene-span
+AUROC. Distance-stratified performance is shown in
+Figures~\ref{fig:xqtl_auroc} and~\ref{fig:xqtl_aupr}.
 
 \begin{table}[ht]
 \centering
 \scriptsize
-\caption{Aggregate XQTL variant-effect performance across the six panels.}
+\caption{Aggregate XQTL variant-effect performance across the six panels.
+``Within'' is the mean of per-group AUROC.}
 \label{tab:xqtl_performance}
-\begin{tabular}{@{}lrrrr@{}}
+\begin{tabular}{@{}lrrrrrr@{}}
 \toprule
-Method & TSS AUROC & TSS AUPR & Gene AUROC & Gene AUPR \\
+ & \multicolumn{3}{c}{TSS bin} & \multicolumn{3}{c}{Gene span} \\
+\cmidrule(lr){2-4}\cmidrule(lr){5-7}
+Method & AUROC & AUPR & Within & AUROC & AUPR & Within \\
 \midrule
-Head-only & 0.564 & 0.514 & 0.658 & 0.626 \\
-LoRA & 0.550 & 0.498 & 0.643 & 0.608 \\
-LoRA+LoCon & 0.556 & 0.505 & 0.635 & 0.606 \\
-Native matched tracks & 0.541 & 0.491 & 0.627 & 0.626 \\
+Head-only & 0.536 & 0.498 & 0.538 & 0.635 & 0.608 & 0.644 \\
+LoRA & 0.534 & 0.503 & 0.555 & 0.628 & 0.600 & 0.642 \\
+LoRA+LoCon & 0.533 & 0.496 & 0.543 & 0.637 & 0.615 & 0.643 \\
+LoRA+LoCon, raw Zemke ATAC & 0.558 & 0.545 & 0.571 & 0.643 & 0.623 & 0.646 \\
+Native matched tracks & 0.541 & 0.491 & 0.577 & 0.627 & 0.626 & 0.650 \\
 \bottomrule
 \end{tabular}
 \end{table}
+
+\subsection{Trained track specificity}
+The specificity statistic $D$ in \texttt{eqtl.tex} is the mean AUROC of each
+panel group scored with its own track-group composite minus the mean AUROC
+with other groups' composites. With six groups the exact permutation $p$-value
+has a minimum of $1/720\approx 0.0014$. $D$ is positive for every model and
+summary (Table~\ref{tab:xqtl_specificity}). On the gene-span summary it is
+0.033 to 0.057 and reaches the minimum $p$-value for all models; on the TSS
+bin it is 0.020 to 0.030 with $p\le 0.028$. Microglia panels are best
+discriminated by the microglia composite in every model and summary, with
+gene-span AUROC 0.69 to 0.73 compared with 0.54 to 0.63 for other composites
+(Figure~\ref{fig:xqtl_specificity}). Astrocyte and oligodendrocyte panels rank
+their own composite first in six and five of eight combinations. Excitatory
+panels rank their own composite first in four combinations, but never by more
+than 0.006 in AUROC. OPC panels rank it first on the gene-span summary for
+three models and fourth or fifth on the TSS bin, and inhibitory panels never
+rank it first for any model on the gene span.
+
+\begin{table}[ht]
+\centering
+\small
+\caption{Cell-type specificity of trained RNA tracks on XQTL panels. $D$ is
+the matched minus unmatched mean AUROC and $p$ its exact permutation
+$p$-value; $\rho$ is the median Spearman correlation between track effects.}
+\label{tab:xqtl_specificity}
+\begin{tabular}{@{}lrrrrrr@{}}
+\toprule
+ & \multicolumn{3}{c}{TSS bin} & \multicolumn{3}{c}{Gene span} \\
+\cmidrule(lr){2-4}\cmidrule(lr){5-7}
+Model & $D$ & $p$ & $\rho$ & $D$ & $p$ & $\rho$ \\
+\midrule
+Head-only & 0.020 & 0.0278 & 0.70 & 0.033 & 0.0014 & 0.69 \\
+LoRA & 0.028 & 0.0097 & 0.72 & 0.056 & 0.0014 & 0.68 \\
+LoRA+LoCon & 0.021 & 0.0125 & 0.71 & 0.057 & 0.0014 & 0.69 \\
+LoRA+LoCon, raw Zemke ATAC & 0.030 & 0.0069 & 0.72 & 0.052 & 0.0014 & 0.69 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\IfFileExists{figures/eqtl_trained_specificity_xqtl.pdf}{
+\begin{figure}[ht]
+\centering
+\includegraphics[width=\linewidth]{figures/eqtl_trained_specificity_xqtl.pdf}
+\caption{AUROC of each XQTL panel group (rows) scored with each track-group
+composite (columns). Color shows AUROC minus the row mean; black outlines mark
+the matched composite.}
+\label{fig:xqtl_specificity}
+\end{figure}
+}{The trained specificity figure is missing.}
 
 \IfFileExists{figures/eqtl_xqtl_auroc_by_distance.pdf}{
 \begin{figure}[ht]

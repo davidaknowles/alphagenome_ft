@@ -25,9 +25,12 @@ sequencing and CAGE denotes Cap Analysis of Gene Expression. Average precision
 (AP) is reported as area under the precision-recall curve (AUPR); AUROC denotes
 area under the receiver operating characteristic curve.
 
-The primary comparison is a trained head-only model versus the two best
-available joint fine-tuned models, a low-rank adaptation (LoRA) model and a
-LoRA model with convolutional low-rank adapters (LoCon). The benchmark retains
+The primary comparison is a trained head-only model versus three joint
+fine-tuned models. Two share the head-only model's targets and add low-rank
+adaptation (LoRA) or LoRA with convolutional low-rank adapters (LoCon). The
+third is the LoRA+LoCon model with the best held-out correlation in the joint
+fine-tuning comparison, which differs from the others in using Zemke 2023 ATAC
+targets rebuilt from raw fragments (raw-Zemke). The benchmark retains
 up to 1,000 variants in each PIP class per fine-mapping panel with a fixed
 random seed. The raw and retained counts are recorded with the benchmark
 output.
@@ -36,30 +39,30 @@ output.
 The 35 fine-mapping panels use the prefixes Ast (astrocyte), End (endothelial),
 Ext (excitatory), IN (inhibitory), MG (microglia), OD (oligodendrocyte), and
 OPC (oligodendrocyte precursor cell), with numbered panels denoting subpanels.
-The trained head-only, LoRA, and LoRA+LoCon models use the same target track
-definitions. The matching used for
-these models is shown below. A separate native AlphaGenome analysis evaluates
+All four trained models have the same 20 Zemke 2023 RNA output tracks, and
+track positions are looked up by label in each loaded head. The matching is
+shown below. The L5 IT output is excluded because its RNA training target was
+invalid, so that channel received no supervision. A separate native AlphaGenome analysis evaluates
 all valid pretrained RNA-seq and CAGE tracks, without adding a newly initialized
 head.
 
 \begin{table}[ht]
 \centering
 \scriptsize
-\caption{Fine-mapping panel to RNA-track matching for the trained head-only,
-LoRA, and LoRA+LoCon models. A numbered panel inherits the mapping for its
-prefix.}
+\caption{Fine-mapping panel to RNA-track matching for all trained models. A
+numbered panel inherits the mapping for its prefix.}
 \label{tab:cell_matching}
-\begin{tabular}{@{}p{0.16\linewidth}p{0.37\linewidth}p{0.37\linewidth}@{}}
+\begin{tabular}{@{}p{0.16\linewidth}p{0.74\linewidth}@{}}
 \toprule
-Panel prefix & Trained head-only & LoRA and LoCon \\
+Panel prefix & Zemke 2023 RNA tracks \\
 \midrule
-\texttt{Ast*} & ASC & ASC \\
-\texttt{End*} & Endo & Endo \\
-\texttt{Ext*} & Mean of L2/3 IT, L4/5 IT, L5/6 NP, L5 ET, L5 IT, L6 CT, L6 IT CAR3, and L6b & Same \\
-\texttt{IN*} & Mean of LAMP5, PVALB, SNCG, SST, and VIP & Same \\
-\texttt{MG*} & MGC & MGC \\
-\texttt{OD*} & ODC & ODC \\
-\texttt{OPC*} & OPC & OPC \\
+\texttt{Ast*} & ASC \\
+\texttt{End*} & Endo \\
+\texttt{Ext*} & Mean of L2/3 IT, L4/5 IT, L5/6 NP, L5 ET, L6 CT, L6 IT, L6 IT CAR3, and L6b \\
+\texttt{IN*} & Mean of LAMP5, PVALB, SNCG, SST, and VIP \\
+\texttt{MG*} & MGC \\
+\texttt{OD*} & ODC \\
+\texttt{OPC*} & OPC \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -89,23 +92,42 @@ and average precision, overall and within bins of $|\mathrm{variant}-\mathrm{TSS
 
 \section{Results}
 Each trained model scored the same 54,193 variants after reference-allele
-validation. LoRA has the highest TSS-bin AUROC and AP; the trained head-only
-checkpoint has the highest gene-span AUROC and AP. Overall differences are
-small, and the distance-stratified curves show similar trends.
+validation. An earlier version of this benchmark read the Zemke 2023 RNA head
+with a 19-label track list that omitted L6 IT, which shifted every track from
+position 8 onward. Microglia, oligodendrocyte, OPC, and inhibitory panels were
+therefore scored with other cell types' tracks. All results below use the
+corrected label lookup.
+
+Table~\ref{tab:overall_performance} reports AUROC and AP pooled over all
+panels, and AUROC averaged over the seven panel groups after computing it
+within each group. Pooled metrics rank variants from different panels against
+one another, so they also depend on the scale of each group's track effects;
+the within-group mean depends only on the ranking inside each panel. The
+raw-Zemke LoRA+LoCon model has the highest pooled TSS-bin and gene-span AUROC
+and AP. The head-only model has the highest within-group gene-span AUROC.
+Differences between trained models are at most 0.016 in AUROC, comparable to
+the variation of about 0.005 observed between repeated runs of the same model
+with nondeterministic GPU kernels. The native matched tracks are listed for
+reference; they were selected on the same variants and may be optimistic.
 
 \begin{table}[ht]
 \centering
 \small
 \caption{Overall eQTL discrimination across scored variants. AP is average
-precision.}
+precision. ``Within'' is the mean of per-group AUROC over the seven panel
+groups.}
 \label{tab:overall_performance}
-\begin{tabular}{@{}lrrrr@{}}
+\begin{tabular}{@{}lrrrrrr@{}}
 \toprule
-Model & TSS AUROC & TSS AP & Gene AUROC & Gene AP \\
+ & \multicolumn{3}{c}{TSS bin} & \multicolumn{3}{c}{Gene span} \\
+\cmidrule(lr){2-4}\cmidrule(lr){5-7}
+Model & AUROC & AP & Within & AUROC & AP & Within \\
 \midrule
-Head-only & 0.5109 & 0.3817 & 0.5394 & 0.4269 \\
-LoRA & 0.5155 & 0.3862 & 0.5329 & 0.4156 \\
-LoRA+LoCon & 0.5091 & 0.3831 & 0.5233 & 0.4131 \\
+Head-only & 0.512 & 0.391 & 0.513 & 0.547 & 0.444 & 0.550 \\
+LoRA & 0.521 & 0.404 & 0.524 & 0.540 & 0.432 & 0.539 \\
+LoRA+LoCon & 0.517 & 0.399 & 0.518 & 0.540 & 0.434 & 0.542 \\
+LoRA+LoCon, raw Zemke ATAC & 0.523 & 0.421 & 0.527 & 0.547 & 0.445 & 0.545 \\
+Native matched tracks & 0.500 & 0.367 & 0.526 & 0.524 & 0.439 & 0.535 \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -132,6 +154,62 @@ variant fraction in each distance bin. Native matched tracks use the
 biologically defensible panel-specific selections in
 Table~\ref{tab:native_biological_matches}.}
 \label{fig:eqtl_aupr_distance}
+\end{figure}
+
+\subsection{Trained track specificity}
+If the trained RNA tracks carry cell-type-specific signal, each panel should be
+discriminated best by its own group's tracks. For each panel group $p$ and
+track group $q$, let $A_{p,q}$ be the AUROC of panel $p$ variants scored with
+the composite effect of group $q$, the mean effect over that group's tracks.
+With $K$ groups, the specificity statistic is \begin{equation}
+D=\frac{1}{K}\sum_{p}A_{p,p}-\frac{1}{K(K-1)}\sum_{p\neq q}A_{p,q},
+\end{equation}
+the mean matched AUROC minus the mean unmatched AUROC. Its $p$-value is the
+fraction of the $K!$ assignments of composites to panels whose statistic is at
+least $D$; with $K=7$ the smallest attainable value is $1/5040$.
+
+Table~\ref{tab:trained_specificity} shows that $D$ is positive for every model
+and summary, with $p\le 0.006$. The size of the effect is small, 0.015 to
+0.032 in AUROC. Figure~\ref{fig:trained_specificity} and the rank output show that the matched
+composite ranks first for microglia panels in every model and summary, and for
+astrocyte panels in six of eight model and summary combinations.
+The matched composite ranks first for oligodendrocyte panels in five and for
+OPC panels in two of the eight combinations. Excitatory and inhibitory panels
+mostly rank their own composite second to fourth; these composites average
+closely related neuronal tracks. The endothelial composite
+is the weakest predictor for most other panels. The median Spearman
+correlation between the effects of different tracks on the same variants is
+0.63 to 0.72, so most of each variant's predicted effect is shared across cell
+types.
+
+\begin{table}[ht]
+\centering
+\small
+\caption{Cell-type specificity of trained RNA tracks. $D$ is the matched minus
+unmatched mean AUROC and $p$ its exact permutation $p$-value; $\rho$ is the
+median Spearman correlation between track effects.}
+\label{tab:trained_specificity}
+\begin{tabular}{@{}lrrrrrr@{}}
+\toprule
+ & \multicolumn{3}{c}{TSS bin} & \multicolumn{3}{c}{Gene span} \\
+\cmidrule(lr){2-4}\cmidrule(lr){5-7}
+Model & $D$ & $p$ & $\rho$ & $D$ & $p$ & $\rho$ \\
+\midrule
+Head-only & 0.016 & 0.0020 & 0.69 & 0.025 & 0.0010 & 0.63 \\
+LoRA & 0.021 & 0.0010 & 0.72 & 0.024 & 0.0006 & 0.66 \\
+LoRA+LoCon & 0.018 & 0.0012 & 0.71 & 0.032 & 0.0002 & 0.66 \\
+LoRA+LoCon, raw Zemke ATAC & 0.015 & 0.0060 & 0.72 & 0.025 & 0.0002 & 0.68 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=\linewidth]{figures/eqtl_trained_specificity_singlebrain.pdf}
+\caption{AUROC of each panel group (rows) scored with each track-group
+composite (columns). Color shows AUROC minus the row mean; black outlines mark
+the matched composite.}
+\label{fig:trained_specificity}
 \end{figure}
 
 \subsection{Native track specificity}
