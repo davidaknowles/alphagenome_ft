@@ -21,19 +21,22 @@ Held-out performance is signed double-centered Pearson correlation $R$ between p
 | `heads.json` | head definitions: track labels, strands, output scaling, organism, reference assembly, provenance |
 | `genes/<head>.npz` | exon geometry and observed pseudobulk CPM for each RNA head |
 | `evaluation.md` | held-out correlations per native source |
+| `build-constraints.txt` | build pins for the install command below |
 | `SHA256SUMS` | checksums; verify with `sha256sum -c SHA256SUMS` |
 
 ## Requirements
 
 - A CUDA GPU. The bundle was tested with JAX 0.9.2 on an NVIDIA L40S (48 GB).
-- `alphagenome-ft` at tag `v0data-inference-v1`, which adds the bundle loader used below:
+- `alphagenome-ft` at tag `v0data-inference-v1`, which adds the bundle loader used below, with the tested AlphaGenome commits. Install with [uv](https://docs.astral.sh/uv/) using `build-constraints.txt` from this directory:
   ```bash
-  pip install "alphagenome-ft @ git+https://github.com/davidaknowles/alphagenome_ft.git@v0data-inference-v1"
-  pip install git+https://github.com/google-deepmind/alphagenome.git
-  pip install git+https://github.com/google-deepmind/alphagenome_research.git
-  pip install "jax[cuda12]"
+  uv venv --python 3.12 ag_v0 && source ag_v0/bin/activate
+  uv pip install --build-constraint build-constraints.txt \
+    "alphagenome-ft @ git+https://github.com/davidaknowles/alphagenome_ft.git@v0data-inference-v1" \
+    "alphagenome @ git+https://github.com/google-deepmind/alphagenome.git@8e0a9f5f6ab2cf3222b1a11c1bd524a0f7ea344e" \
+    "alphagenome_research @ git+https://github.com/google-deepmind/alphagenome_research.git@232fc695d1eab27bac9e94bcd4b50499139ba4e1" \
+    "jax[cuda12]==0.9.2"
   ```
-  Tested versions are `alphagenome` 0.6.1, `alphagenome_research` 0.2.0, `jax` 0.9.2, `dm-haiku` 0.0.16 and `orbax-checkpoint` 0.12.0.
+  The pins are required. `alphagenome_research` 0.3.0 and later removed a module the loader uses, and `alphagenome_research` generates protobuf code at install time that fails to import if it is built with protobuf 7. These commands were tested in a new environment.
 - The pretrained AlphaGenome JAX weights (`google/alphagenome/jax/all_folds`) from Kaggle, downloaded under your own acceptance of the AlphaGenome model terms. Pass the downloaded directory as `base_checkpoint_path`; if you omit it, the loader downloads through `kagglehub`.
 
 ## Usage
@@ -71,7 +74,7 @@ gene_ids, cpm = gene_expression(coverage, annotation, window)  # (genes, 20 grou
 
 `predict_heads` runs all 20 heads in one forward pass and returns, for each head, a dictionary of arrays with shape (batch, positions, tracks). ATAC heads return `predictions_1bp` and `predictions_128bp`; RNA heads return `predictions_128bp`. The prediction is from the forward strand only; average it with the reverse-complement prediction if you need strand symmetry.
 
-GPU kernel autotuning can change predictions between processes by up to about 0.5% of the maximum value. For bit-identical results, set `XLA_FLAGS="--xla_gpu_deterministic_ops=true --xla_gpu_autotune_level=0"` before importing JAX; the bundle was checked to reproduce the original checkpoint exactly under these flags.
+GPU kernel autotuning can change predictions between processes by up to about 0.5% of the maximum value. The model also runs on CPU, but CPU predictions differ more from GPU ones (correlation above 0.998, individual values up to about 13% of an array's maximum). For bit-identical results, set `XLA_FLAGS="--xla_gpu_deterministic_ops=true --xla_gpu_autotune_level=0"` before importing JAX; the bundle was checked to reproduce the original checkpoint exactly under these flags.
 
 For a variant effect, predict the reference and alternate sequences in the same window and take the difference of the quantity of interest, such as gene-level CPM or ATAC signal near the variant.
 
@@ -123,4 +126,4 @@ ATAC predictions are in the units of each study's training target, after the per
 
 - Performance was evaluated on held-out chromosomes from the training cell groups, not on new samples or new cell types.
 - Held-out RNA correlation is lower than ATAC for every study, and lowest for Johansen marmoset.
-- Variant-effect accuracy of this checkpoint has not yet been benchmarked against fine-mapped eQTLs.
+- On fine-mapped single-nucleus brain eQTLs, variant effects from `zemke2023_rna_human` discriminate high- from low-PIP variants weakly: AUROC 0.52 and 0.56 at the TSS bin and 0.55 and 0.64 over the gene span on two benchmarks. Matching the eQTL cell type to its track adds a small, significant gain, mostly for microglia, astrocytes and oligodendrocytes; effects are largely shared across cell types.

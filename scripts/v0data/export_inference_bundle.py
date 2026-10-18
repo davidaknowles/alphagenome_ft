@@ -37,7 +37,7 @@ def main() -> None:
         "--docs",
         type=Path,
         default=REPO_ROOT / "docs/v0data_inference_bundle",
-        help="Directory of README.md/AGENTS.md copied into the bundle.",
+        help="Directory whose files (README.md, AGENTS.md, ...) are copied into the bundle.",
     )
     args = parser.parse_args()
 
@@ -63,9 +63,9 @@ def main() -> None:
     )
     if args.evaluation is not None:
         (bundle / "evaluation.md").write_text(args.evaluation.with_suffix(".md").read_text())
-    for name in ("README.md", "AGENTS.md"):
-        if (args.docs / name).exists():
-            (bundle / name).write_text((args.docs / name).read_text())
+    for path in sorted(args.docs.glob("*")):
+        if path.is_file():
+            (bundle / path.name).write_text(path.read_text())
     write_checksums(bundle)
     print(f"wrote {bundle}")
 

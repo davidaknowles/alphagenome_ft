@@ -1,0 +1,2 @@
+protobuf<7
+alphagenome @ git+https://github.com/google-deepmind/alphagenome.git@8e0a9f5f6ab2cf3222b1a11c1bd524a0f7ea344e
