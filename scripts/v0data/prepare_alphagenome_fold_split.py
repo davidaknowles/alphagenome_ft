@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import zlib
 from pathlib import Path
 
 import numpy as np
@@ -111,7 +112,8 @@ def main() -> None:
             labels = cache[key]
             kept = windows.assign(split=labels.to_numpy()).dropna(subset=["split"])
             kept.to_csv(full_bed, sep="\t", header=False, index=False)
-            rng = np.random.default_rng([args.seed, len(summary)])
+            # Seeded by assembly so sources on the same genome share held-out windows.
+            rng = np.random.default_rng([args.seed, zlib.crc32(Path(fasta).name.encode())])
             targets = {
                 "valid": int(windows.chrom.isin(_chrom_set(source["valid_chroms"])).sum()),
                 "test": int(windows.chrom.isin(_chrom_set(source["test_chroms"])).sum()),
