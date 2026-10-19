@@ -892,20 +892,30 @@ def main() -> None:
                         f"Source {route_name} target heads do not match its dataset layout."
                     )
                 source_fasta = entry["fasta"]
-                source_intervals = make_chromosome_split_intervals(
-                    source_fasta,
-                    window_size=args.window_size,
-                    stride=args.stride,
-                    valid_chroms=parse_chrom_set(str(entry["valid_chroms"])),
-                    test_chroms=parse_chrom_set(str(entry["test_chroms"])),
-                    exclude_chroms=parse_chrom_set(str(entry.get("exclude_chroms", ""))),
-                    limit_train=args.limit_train,
-                    limit_valid=args.limit_valid,
-                    limit_test=args.limit_test,
-                    include_chroms=(
-                        parse_chrom_set(str(entry.get("include_chroms", ""))) or None
-                    ),
-                )
+                if "split_intervals_bed" in entry:
+                    # Precomputed windows, e.g. aligned with AlphaGenome pretraining folds.
+                    source_intervals = prepare_intervals_from_split(
+                        bed_path=Path(entry["split_intervals_bed"]),
+                        window_size=None,
+                        limit_train=args.limit_train,
+                        limit_valid=args.limit_valid,
+                        limit_test=args.limit_test,
+                    )
+                else:
+                    source_intervals = make_chromosome_split_intervals(
+                        source_fasta,
+                        window_size=args.window_size,
+                        stride=args.stride,
+                        valid_chroms=parse_chrom_set(str(entry["valid_chroms"])),
+                        test_chroms=parse_chrom_set(str(entry["test_chroms"])),
+                        exclude_chroms=parse_chrom_set(str(entry.get("exclude_chroms", ""))),
+                        limit_train=args.limit_train,
+                        limit_valid=args.limit_valid,
+                        limit_test=args.limit_test,
+                        include_chroms=(
+                            parse_chrom_set(str(entry.get("include_chroms", ""))) or None
+                        ),
+                    )
                 if "exclude_intervals_bed" in entry:
                     original_counts = {
                         split: len(windows) for split, windows in source_intervals.items()
