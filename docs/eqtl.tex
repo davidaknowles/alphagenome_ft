@@ -29,9 +29,10 @@ The primary comparison is a trained head-only model versus three joint
 fine-tuned models. Two share the head-only model's targets and add low-rank
 adaptation (LoRA) or LoRA with convolutional low-rank adapters (LoCon). The
 third is the LoRA+LoCon model with the best held-out correlation in the joint
-fine-tuning comparison, which differs from the others only in using Zemke 2024
-ATAC targets rebuilt from raw fragments, 18 broad groups in place of 22
-released tracks (raw-Zemke). The benchmark retains
+fine-tuning comparison. It differs from the others in using Zemke 2024 ATAC
+targets rebuilt from raw fragments, 18 broad groups in place of 22 released
+tracks (raw-Zemke), and in starting from randomly initialized rather than
+pretrained-track-initialized heads. The benchmark retains
 up to 1,000 variants in each PIP class per fine-mapping panel with a fixed
 random seed. The raw and retained counts are recorded with the benchmark
 output.

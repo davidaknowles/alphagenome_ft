@@ -101,10 +101,12 @@ heads. Each source has its own ATAC and RNA heads, because target
 distributions differ between species of the same study; with equal sampling
 of sources this raised LoRA test $R$ from $0.584$ to $0.605$ relative to one
 pooled head per study and modality, a comparison that changes both factors
-together. Heads were first trained for 12 epochs on a frozen backbone,
-initialized from the pretrained neural accessibility tracks of matching cell
-types; at epoch 4 this initialization gave validation $R$ $0.507$ against
-$0.488$ for random initialization. Adapters were then trained from these heads:
+together. Heads were first trained on a frozen backbone, and the best
+warmup epoch (12) was used to start adapter training. Initializing heads from
+the pretrained neural accessibility tracks of matching cell types gave
+validation $R$ $0.507$ against $0.488$ for random initialization at warmup
+epoch 4, but the selected model used random initialization. Adapters were then
+trained from the warmed heads:
 LoRA (rank 16) on attention and pair projections, plus LoCon (rank 4) on
 downsampling blocks 2--5, at learning rate $3\times10^{-4}$. Broad LoCon
 improved test $R$ by $0.008$ and $0.005$ in two of three matched comparisons
@@ -123,11 +125,11 @@ ceilings of $0.82$--$0.93$ for Johansen ATAC and $0.90$ for Zemke 2024 ATAC,
 so those ATAC results are near the noise limit, whereas RNA targets have
 ceilings of $0.93$ or higher where measured and remain well below them.
 
-A matched run with released Zemke 2024 ATAC tracks reached test $R$ $0.603$.
-The two runs differ only in that one head, but most of the difference comes
-from other heads (for example Zemke 2023 mouse RNA, $0.311$ against $0.603$),
-so differences of a few hundredths in mean $R$ between single runs should not
-be over-interpreted.
+A run with released Zemke 2024 ATAC tracks and initialized heads reached test
+$R$ $0.603$. Most of its difference from the selected model comes from heads
+whose targets are identical in the two runs (for example Zemke 2023 mouse RNA,
+$0.311$ against $0.603$), so differences of a few hundredths in mean $R$
+between single runs should not be over-interpreted.
 
 \begin{table}[ht]
 \centering
