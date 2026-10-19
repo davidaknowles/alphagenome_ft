@@ -1,4 +1,4 @@
-# AlphaGenome v0data fine-tune (LoRA + LoCon, raw-Zemke ATAC)
+# AlphaGenome v0data fine-tune (LoRA + LoCon, raw Zemke 2024 ATAC)
 
 This directory holds an AlphaGenome model fine-tuned jointly on five single-cell pseudobulk studies (ten native sources across human, macaque, marmoset and mouse). It contains only what is needed for inference: the trained output heads, the backbone adapters, the output track layout, and the exon annotations used for gene-level RNA training. The pretrained AlphaGenome weights are not included and must be obtained separately (see Requirements).
 
@@ -7,7 +7,7 @@ This directory holds an AlphaGenome model fine-tuned jointly on five single-cell
 - **Backbone.** Pretrained AlphaGenome JAX `all_folds`, shared across all sources, with low-rank adapters (LoRA, rank 16, alpha 16) on the attention and pair projections and low-rank convolution adapters (LoCon, rank 4, alpha 1) on downsampling blocks 2–5.
 - **Heads.** 20 heads, one ATAC and one RNA head per native source. Multispecies studies (Johansen 2025, Zemke 2023) have a separate head per species.
 - **Training.** Frozen-backbone head warmup for 12 epochs, then joint training of heads and adapters. Native sources were sampled equally. Chromosomes 8 and 9 (or their equivalents) were held out for validation and test. The checkpoint is epoch 21, selected by mean validation correlation.
-- **Targets.** ATAC targets are pseudobulk accessibility coverage; Zemke 2023 ATAC was rebuilt from full-depth fragments. RNA targets are pseudobulk counts per million (CPM) per gene, built from raw counts and supervised only at the gene level (see RNA outputs).
+- **Targets.** ATAC targets are pseudobulk accessibility coverage. Liu, Johansen and Zemke 2024 ATAC were rebuilt from full-depth fragments as coverage per million fragments; HDA and Zemke 2023 use the released tracks. RNA targets are pseudobulk counts per million (CPM) per gene, built from raw counts and supervised only at the gene level (see RNA outputs).
 - **Training window.** 131,072 bp.
 
 Held-out performance is signed double-centered Pearson correlation $R$ between predicted and observed element-by-cell-group matrices, after removing row and column means. It measures recovery of relative structure across genomic elements and cell groups, not absolute scale. Mean test $R$ is 0.684 for ATAC and 0.570 for RNA. Per-source values are in `evaluation.md`, whose `lora+locon` rows correspond to this checkpoint.

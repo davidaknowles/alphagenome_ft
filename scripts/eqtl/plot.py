@@ -49,7 +49,7 @@ def main() -> None:
     bin_order = ["0-1kb", "1-10kb", "10-50kb", "50-100kb", "100-250kb", "250-500kb", ">500kb"]
     plot_summary = summary[summary["distance_bin"] != "all"].copy()
     plot_summary["distance_bin"] = pd.Categorical(plot_summary["distance_bin"], categories=bin_order, ordered=True)
-    plot_summary["model_label"] = plot_summary.model.map({"head_only": "Head-only", "lora": "LoRA", "locon": "LoRA+LoCon", "raw_locon": "LoRA+LoCon, raw Zemke ATAC", "native_matched": "Native matched tracks"})
+    plot_summary["model_label"] = plot_summary.model.map({"head_only": "Head-only", "lora": "LoRA", "locon": "LoRA+LoCon", "raw_locon": "LoRA+LoCon, raw Zemke 2024 ATAC", "native_matched": "Native matched tracks"})
     plot_summary["mode_label"] = plot_summary["mode"].map({"tss": "TSS bin", "gene": "Gene span"})
     random_summary = (plot_summary[plot_summary["mode"] == "tss"]
                       [["distance_bin", "n_positive", "n_negative"]]

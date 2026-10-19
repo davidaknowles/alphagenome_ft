@@ -29,8 +29,9 @@ The primary comparison is a trained head-only model versus three joint
 fine-tuned models. Two share the head-only model's targets and add low-rank
 adaptation (LoRA) or LoRA with convolutional low-rank adapters (LoCon). The
 third is the LoRA+LoCon model with the best held-out correlation in the joint
-fine-tuning comparison, which differs from the others in using Zemke 2023 ATAC
-targets rebuilt from raw fragments (raw-Zemke). The benchmark retains
+fine-tuning comparison, which differs from the others only in using Zemke 2024
+ATAC targets rebuilt from raw fragments, 18 broad groups in place of 22
+released tracks (raw-Zemke). The benchmark retains
 up to 1,000 variants in each PIP class per fine-mapping panel with a fixed
 random seed. The raw and retained counts are recorded with the benchmark
 output.
@@ -126,7 +127,7 @@ Model & AUROC & AP & Within & AUROC & AP & Within \\
 Head-only & 0.512 & 0.391 & 0.513 & 0.547 & 0.444 & 0.550 \\
 LoRA & 0.521 & 0.404 & 0.524 & 0.540 & 0.432 & 0.539 \\
 LoRA+LoCon & 0.517 & 0.399 & 0.518 & 0.540 & 0.434 & 0.542 \\
-LoRA+LoCon, raw Zemke ATAC & 0.523 & 0.421 & 0.527 & 0.547 & 0.445 & 0.545 \\
+LoRA+LoCon, raw Zemke 2024 ATAC & 0.523 & 0.421 & 0.527 & 0.547 & 0.445 & 0.545 \\
 Native matched tracks & 0.500 & 0.367 & 0.526 & 0.524 & 0.439 & 0.535 \\
 \bottomrule
 \end{tabular}
@@ -198,7 +199,7 @@ Model & $D$ & $p$ & $\rho$ & $D$ & $p$ & $\rho$ \\
 Head-only & 0.016 & 0.0020 & 0.69 & 0.025 & 0.0010 & 0.63 \\
 LoRA & 0.021 & 0.0010 & 0.72 & 0.024 & 0.0006 & 0.66 \\
 LoRA+LoCon & 0.018 & 0.0012 & 0.71 & 0.032 & 0.0002 & 0.66 \\
-LoRA+LoCon, raw Zemke ATAC & 0.015 & 0.0060 & 0.72 & 0.025 & 0.0002 & 0.68 \\
+LoRA+LoCon, raw Zemke 2024 ATAC & 0.015 & 0.0060 & 0.72 & 0.025 & 0.0002 & 0.68 \\
 \bottomrule
 \end{tabular}
 \end{table}

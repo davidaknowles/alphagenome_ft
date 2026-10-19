@@ -26,7 +26,7 @@ from analyze_native_specificity import _metric  # noqa: E402
 from benchmark import GROUP_TRACKS  # noqa: E402
 
 SUMMARIES = {"tss": "TSS bin", "gene": "Gene span"}
-MODEL_LABELS = {"head_only": "Head-only", "lora": "LoRA", "locon": "LoRA+LoCon", "raw_locon": "LoRA+LoCon, raw Zemke ATAC"}
+MODEL_LABELS = {"head_only": "Head-only", "lora": "LoRA", "locon": "LoRA+LoCon", "raw_locon": "LoRA+LoCon, raw Zemke 2024 ATAC"}
 GROUP_ORDER = list(GROUP_TRACKS)
 UNTRAINED_TRACKS = ("L5_IT",)
 
