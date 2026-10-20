@@ -10,7 +10,7 @@ This directory holds an AlphaGenome model fine-tuned jointly on five single-cell
 - **Targets.** ATAC targets are pseudobulk accessibility coverage. Liu, Johansen and Zemke 2024 ATAC were rebuilt from full-depth fragments as coverage per million fragments; HDA and Zemke 2023 use the released tracks. RNA targets are pseudobulk counts per million (CPM) per gene, built from raw counts and supervised only at the gene level (see RNA outputs).
 - **Training window.** 131,072 bp.
 
-Held-out performance is signed double-centered Pearson correlation $R$ between predicted and observed element-by-cell-group matrices, after removing row and column means. It measures recovery of relative structure across genomic elements and cell groups, not absolute scale. Mean test $R$ is 0.684 for ATAC and 0.570 for RNA. Per-source values are in `evaluation.md`, whose `lora+locon` rows correspond to this checkpoint.
+Held-out performance is signed double-centered Pearson correlation $R$ between predicted and observed element-by-cell-group matrices, after removing row and column means. It measures recovery of relative structure across genomic elements and cell groups, not absolute scale. Mean test $R$ is 0.684 for ATAC and 0.570 for RNA. Per-source values are in `evaluation.md`, whose `lora+locon` rows correspond to this checkpoint. These held-out values are deprecated: the base `all_folds` checkpoint was pretrained on chromosomes 8 and 9, so they overstate accuracy on unseen sequence. A model fine-tuned from a checkpoint that never saw its test regions is in progress.
 
 ## Contents
 

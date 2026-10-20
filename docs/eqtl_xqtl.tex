@@ -11,6 +11,13 @@
 \begin{document}
 \maketitle
 
+\noindent\fbox{\parbox{\dimexpr\linewidth-2\fboxsep-2\fboxrule}{\textbf{Deprecated.}
+The models in this report were fine-tuned from the AlphaGenome \texttt{all\_folds}
+checkpoint, whose pretraining included the held-out chromosomes 8 and 9. Their
+held-out chromosome results overstate generalization to unseen sequence, and
+the models are superseded by fine-tunes from the FOLD\_1 checkpoint evaluated
+on its held-out genome folds.}}
+
 \section{Overview}
 This analysis applies the variant-effect benchmark in \texttt{eqtl.tex} to
 six cell-type mega-eQTL fine-mapping datasets supplied as Sum of Single

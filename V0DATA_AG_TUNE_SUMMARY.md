@@ -1,5 +1,7 @@
 # V0Data AlphaGenome tuning summary
 
+**Deprecated results.** All results below come from fine-tuning the AlphaGenome `all_folds` checkpoint, whose pretraining included the held-out chromosomes 8 and 9. They overstate generalization to unseen sequence and are superseded by fine-tunes from the FOLD_1 checkpoint evaluated on its held-out genome folds.
+
 ## Goal
 
 Train one AlphaGenome model for the non-ENCODE single-cell pseudobulk resources: Mannens human developmental atlas (HDA), Liu Human Development Multiomic Atlas (HDMA), Johansen/Allen, Zemke 2023, and Zemke 2024. The panel spans human, macaque, marmoset, and mouse, with ATAC and RNA endpoints when each source provides them.
