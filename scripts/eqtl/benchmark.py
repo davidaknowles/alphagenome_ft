@@ -341,19 +341,21 @@ def _load_head_specs(targets_path: Path):
     return spec
 
 
-def _register_checkpoint_heads(checkpoint: Path, targets_path: Path) -> None:
+def _register_checkpoint_heads(checkpoint: Path, targets_path: Path, dataset_config: Path | None = None) -> None:
     """Register heads from the dataset config the checkpoint was trained with.
 
-    Adapter runs record it in ``continuation.json``; the head-only warmup
-    checkpoint predates that file and uses the semantic configuration.
+    Adapter runs record it in ``continuation.json``. Head-only warmup snapshots
+    lack that file and use ``dataset_config`` when given, otherwise the
+    semantic configuration.
     """
     from alphagenome_ft.finetune import load_targets_config, prepare_head_specs, register_predefined_heads
 
     continuation = checkpoint.parent / "continuation.json"
-    if not continuation.exists():
+    if continuation.exists():
+        dataset_config = REPO_ROOT / json.loads(continuation.read_text())["dataset_config"]
+    elif dataset_config is None:
         _load_head_specs(targets_path)
         return
-    dataset_config = REPO_ROOT / json.loads(continuation.read_text())["dataset_config"]
     datasets = json.loads(dataset_config.read_text())["datasets"]
     register_predefined_heads([
         spec
@@ -363,10 +365,10 @@ def _register_checkpoint_heads(checkpoint: Path, targets_path: Path) -> None:
     ])
 
 
-def _load_model(label: str, checkpoint: Path, *, base_checkpoint: Path, targets_path: Path, init_seq_len: int):
+def _load_model(label: str, checkpoint: Path, *, base_checkpoint: Path, targets_path: Path, init_seq_len: int, dataset_config: Path | None = None):
     from alphagenome_ft import load_checkpoint
 
-    _register_checkpoint_heads(checkpoint, targets_path)
+    _register_checkpoint_heads(checkpoint, targets_path, dataset_config)
     if checkpoint is None:
         raise ValueError(
             f"Model {label!r} must use a trained checkpoint; untrained semantic-init heads are not valid inference baselines"
@@ -522,6 +524,7 @@ def main() -> None:
     parser.add_argument("--fasta", type=Path, default=DEFAULT_FASTA)
     parser.add_argument("--base-checkpoint", type=Path, default=DEFAULT_BASE)
     parser.add_argument("--targets", type=Path, default=DEFAULT_TARGETS)
+    parser.add_argument("--dataset-config", type=Path, default=None, help="Head layout for checkpoints without continuation.json")
     parser.add_argument("--model", action="append", type=parse_model, default=None)
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("--max-per-panel", type=int, default=1000)
@@ -554,12 +557,12 @@ def main() -> None:
     if args.max_records is not None:
         records = records[: args.max_records]
     (args.output_dir / "sampling_counts.json").write_text(json.dumps(counts, indent=2, sort_keys=True))
-    (args.output_dir / "benchmark_config.json").write_text(json.dumps({"window": args.window, "positive_pip": ">0.75", "negative_pip": "<0.01", "max_per_panel": args.max_per_panel if not args.records_cache else None, "records_cache": str(records_cache), "record_count": len(records), "models": {label: str(path) for label, path in models}, "cell_mapping": {"Ast": "ASC", "End": "Endo", "Ext": "EXC", "IN": "INH", "MG": "MGC", "OD": "ODC", "OPC": "OPC"}, "group_tracks": GROUP_TRACKS}, indent=2, sort_keys=True))
+    (args.output_dir / "benchmark_config.json").write_text(json.dumps({"window": args.window, "positive_pip": ">0.75", "negative_pip": "<0.01", "max_per_panel": args.max_per_panel if not args.records_cache else None, "records_cache": str(records_cache), "record_count": len(records), "models": {label: str(path) for label, path in models}, "base_checkpoint": str(args.base_checkpoint), "cell_mapping": {"Ast": "ASC", "End": "Endo", "Ext": "EXC", "IN": "INH", "MG": "MGC", "OD": "ODC", "OPC": "OPC"}, "group_tracks": GROUP_TRACKS}, indent=2, sort_keys=True))
     genome, extractor, encoder = load_sequence_tools(args.fasta)
     all_rows = []
     for label, checkpoint in models:
         print(f"loading model {label}", flush=True)
-        model = _load_model(label, checkpoint, base_checkpoint=args.base_checkpoint, targets_path=args.targets, init_seq_len=args.init_seq_len)
+        model = _load_model(label, checkpoint, base_checkpoint=args.base_checkpoint, targets_path=args.targets, init_seq_len=args.init_seq_len, dataset_config=args.dataset_config)
         track_labels = _rna_track_labels()
         print(f"{RNA_HEAD} tracks: {track_labels}", flush=True)
         track_effects = {"tss": [], "gene": []}

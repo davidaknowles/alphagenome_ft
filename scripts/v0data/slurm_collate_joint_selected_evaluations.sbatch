@@ -1,6 +1,6 @@
 #!/bin/bash
 #SBATCH --job-name=v0_joint_eval_collate
-#SBATCH --partition=cpu
+#SBATCH --partition=cpu,io
 #SBATCH --cpus-per-task=2
 #SBATCH --mem=4G
 #SBATCH --time=00:15:00

@@ -1,6 +1,6 @@
 #!/bin/bash
 #SBATCH --job-name=v0_branch_warm
-#SBATCH --partition=cpu
+#SBATCH --partition=cpu,io
 #SBATCH --cpus-per-task=2
 #SBATCH --mem=4G
 #SBATCH --time=00:15:00
@@ -63,10 +63,22 @@ locon_full_job="$submitted_full_job"
 lora_run="checkpoints/v0data/joint_all_nonencode_lora${suffix}"
 locon_run="checkpoints/v0data/joint_all_nonencode_lora_locon${suffix}"
 evaluation_tag="${tag_prefix}headwarm${source_epoch}_adapters_lr3e4"
+# afterany: an arm that reaches its time limit still has a valid best checkpoint;
+# the evaluation dispatcher checks that both exist before submitting.
 evaluation=$(
   "$sbatch_bin" --parsable \
-    --dependency="afterok:${lora_full_job}_0:${locon_full_job}_1" \
+    --dependency="afterany:${lora_full_job}_0:${locon_full_job}_1" \
     --export="ALL,DATASET_CONFIG=${dataset_config},LORA_RUN=${lora_run},LOCON_RUN=${locon_run},EVALUATION_TAG=${evaluation_tag},GPU_GRES=${GPU_GRES},LOCON_TARGETS=${locon_targets},TARGET_WORKERS=${target_workers},WINDOW_WORKERS=${window_workers},TARGET_CACHE_DIR=${TARGET_CACHE_DIR:-},TARGET_CACHE_SPLITS=${TARGET_CACHE_SPLITS:-valid;test},TARGET_CACHE_DTYPE=${TARGET_CACHE_DTYPE:-float16}" \
     scripts/v0data/slurm_submit_joint_selected_evaluations.sbatch
 )
 printf '%s selected-checkpoint-evaluation-dispatch=%s\n' "$suffix" "$evaluation"
+if [[ -n "${POST_ADAPTER_SBATCH:-}" ]]; then
+  # Optional follow-up (e.g. eQTL benchmarks) once both adapter arms have ended.
+  post=$(
+    "$sbatch_bin" --parsable \
+      --dependency="afterany:${lora_full_job}_0:${locon_full_job}_1" \
+      --export="ALL,HEAD_ONLY_CHECKPOINT=${snapshot},LORA_RUN=${lora_run},LOCON_RUN=${locon_run},DATASET_CONFIG=${dataset_config}" \
+      "$POST_ADAPTER_SBATCH"
+  )
+  printf '%s post-adapter=%s\n' "$suffix" "$post"
+fi

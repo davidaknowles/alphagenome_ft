@@ -9,6 +9,9 @@ cd "$(dirname "$0")/../.."
 dataset_config="outputs/v0data/joint-objective-variants/metric-tempered-all-gene-source-specific-raw-zemke-atac-ag-fold1/datasets.json"
 target_cache_dir="outputs/v0data/target-caches/joint-source-specific-raw-zemke-atac-agfold1-valid-test-f32"
 export CHECKPOINT_PATH="${HOME}/.cache/kagglehub/models/google/alphagenome/jax/fold_1/1"
+# Queue SingleBrain and XQTL eQTL benchmarks once both adapter arms end.
+export POST_ADAPTER_SBATCH="scripts/eqtl/slurm_submit_eqtl_reruns.sbatch"
+export EQTL_OUTPUT_ROOT="results/eqtl_agfold1"
 test -f "$dataset_config"
 test -f "${CHECKPOINT_PATH}/_CHECKPOINT_METADATA"
 
