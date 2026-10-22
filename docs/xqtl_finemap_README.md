@@ -9,15 +9,16 @@ The source release does not document the cohorts or the eQTL mapping pipeline. S
 | Path | Contents |
 |---|---|
 | `<Cell>_mega_eQTL/PIP_all_parquet/PIP_all.parquet/chr=chrN/part.K.parquet` | per-variant, per-gene PIPs, hive-partitioned by chromosome |
+| `<Cell>_mega_eQTL/PIP_top_parquet/PIP_top.parquet/chr=chrN/part.K.parquet` | top loci per gene with marginal effect sizes, MAF and credible-set membership |
 | `derived/records.jsonl` | the 10,556 variant-gene records sampled for the benchmark |
 | `derived/sampling_counts.json` | row counts and positive/negative counts per cell type after filtering |
 | `derived/finemap_overlap.tsv` | high-PIP overlap with the SingleBrain fine-mapping panels |
 
 Cell types are `Ast` (astrocyte), `Exc` (excitatory neuron), `Inh` (inhibitory neuron), `Mic` (microglia), `OPC` (oligodendrocyte precursor) and `Oli` (oligodendrocyte). Each has partitions for chromosomes 1 to 22; there is no chrX or chrY.
 
-Only the `PIP_all_parquet` sets were copied. The source release also has `PIP_all` (per-gene CSV files), `PIP_all_other_parquet`, `PIP_top` and `PIP_top_parquet` for each cell type; they were not used here.
+The `PIP_all_parquet` and `PIP_top_parquet` sets were copied. The source release also has `PIP_all` and `PIP_top` (per-gene CSV versions of the same tables), `PIP_all_other_parquet` and `PIP_top_other_parquet` (the same columns for a separate "other" variant set, including indels and `*` alleles) for each cell type; they were not copied.
 
-## Columns
+## Columns of `PIP_all_parquet`
 
 | Column | Type | Meaning |
 |---|---|---|
@@ -37,6 +38,30 @@ import pyarrow.dataset as ds
 data = ds.dataset("Mic_mega_eQTL/PIP_all_parquet/PIP_all.parquet", format="parquet", partitioning="hive")
 high = data.to_table(filter=ds.field("pip") > 0.75).to_pandas()
 ```
+
+## Top loci with effect sizes (`PIP_top_parquet`)
+
+`PIP_all_parquet` has no effect sizes. `PIP_top_parquet` has them for a subset of variants per gene, the "top loci" reported alongside the fine-mapping. It has the `PIP_all_parquet` columns plus the following.
+
+| Column | Type | Meaning |
+|---|---|---|
+| `betahat`, `sebetahat` | double | effect estimate and standard error |
+| `maf` | double | minor allele frequency |
+| `cs_coverage_0.95`, `cs_coverage_0.7`, `cs_coverage_0.5` | int | credible set index (1 to 10) at 95%, 70% and 50% coverage; 0 means not in a credible set |
+| `cs_coverage_0.95_min_corr`, `cs_coverage_0.7_min_corr`, `cs_coverage_0.5_min_corr` | int | the same after the minimum within-set correlation (purity) filter |
+
+The column names follow the susieR summary-statistic convention, so `betahat` and `sebetahat` are likely marginal (single-variant) eQTL estimates. The release does not state the effect allele or the expression scale; check sign conventions before combining them with other effect estimates. About 19% of rows are indels.
+
+| Cell type | Rows | Genes | PIP > 0.75 | In a 95% credible set |
+|---|---:|---:|---:|---:|
+| Ast | 141,758 | 6,023 | 914 | 100,956 |
+| Exc | 293,569 | 9,143 | 2,864 | 231,739 |
+| Inh | 204,486 | 7,764 | 1,369 | 151,866 |
+| Mic | 45,449 | 2,303 | 249 | 31,723 |
+| OPC | 87,629 | 3,707 | 514 | 62,532 |
+| Oli | 159,241 | 6,367 | 1,271 | 116,104 |
+
+PIP > 0.75 counts here exceed the benchmark positives below because they include indels and are not restricted to GENCODE genes or the 512 kb window.
 
 ## Benchmark use and counts
 
