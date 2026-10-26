@@ -879,6 +879,7 @@ class CustomAlphaGenomeModel:
         custom_forward_fn: Any | None = None,
         custom_heads_list: Sequence[str] | None = None,
         head_configs: dict[str, Any] | None = None,
+        use_encoder_output: bool = False,
     ):
         """Initialize the custom model.
 
@@ -889,7 +890,10 @@ class CustomAlphaGenomeModel:
             custom_forward_fn: Optional custom forward function.
             custom_heads_list: List of head names (custom or predefined) in this model.
             head_configs: Dictionary mapping head names to head configs for loss computation.
+            use_encoder_output: Whether the forward pass is encoder-only (no transformer
+                or decoder). Saved to checkpoints so loading rebuilds the same model.
         """
+        self._use_encoder_output = use_encoder_output
         # Copy attributes from base model
         self._device_context = base_model._device_context
         self._metadata = base_model._metadata
@@ -1574,7 +1578,9 @@ class CustomAlphaGenomeModel:
             'pretrained_head_initialization': getattr(
                 self, "_pretrained_head_initialization", "none"
             ),
-            'use_encoder_output': hasattr(self, '_custom_forward_fn') and self._custom_forward_fn is not None,
+            # A custom forward function is present for every custom-head model, so it
+            # cannot distinguish encoder-only models; record the construction mode.
+            'use_encoder_output': self._use_encoder_output,
         }
 
         with open(checkpoint_dir / 'config.json', 'w') as f:
@@ -3253,6 +3259,7 @@ def create_model_with_heads(
         custom_forward_fn=custom_forward,
         custom_heads_list=list(normalized_heads),
         head_configs=head_configs,
+        use_encoder_output=use_encoder_output,
     )
     custom_model._backbone_lora_config = backbone_lora_config
     custom_model._backbone_locon_config = backbone_locon_config
@@ -3993,6 +4000,7 @@ def load_checkpoint(
                     name: custom_heads_module.get_custom_head_config(name)
                     for name in custom_heads
                 },
+                use_encoder_output=True,
             )
         else:
             # Standard full model: use base model's existing forward function.
