@@ -34,7 +34,7 @@ routes=(
 strategies=(lora lora_locon)
 if [[ -n "${EVALUATION_STRATEGY:-}" ]]; then
   strategy="$EVALUATION_STRATEGY"
-  if [[ "$strategy" != lora && "$strategy" != lora_locon ]]; then
+  if [[ "$strategy" != lora && "$strategy" != lora_locon && "$strategy" != head_only ]]; then
     printf 'Invalid evaluation strategy: %s\n' "$strategy" >&2
     exit 1
   fi
@@ -63,6 +63,11 @@ locon_targets="${locon_targets//;/,}"
 target_cache_dir="${TARGET_CACHE_DIR:-}"
 target_cache_splits="${TARGET_CACHE_SPLITS:-valid;test}"
 target_cache_splits="${target_cache_splits//;/,}"
+# head_only evaluates a frozen-backbone checkpoint without adapters.
+adapter_args=()
+if [[ "$strategy" != head_only ]]; then
+  adapter_args=(--backbone-lora --adapter-strategy "${strategy/_/+}")
+fi
 target_cache_args=()
 if [[ -n "$target_cache_dir" ]]; then
   target_cache_args=(
@@ -95,8 +100,7 @@ fi
   --drop-last \
   --learning-rate "${LEARNING_RATE:-1e-3}" \
   --weight-decay "${WEIGHT_DECAY:-1e-4}" \
-  --backbone-lora \
-  --adapter-strategy "${strategy/_/+}" \
+  "${adapter_args[@]}" \
   --lora-rank "${LORA_RANK:-16}" \
   --lora-alpha "${LORA_ALPHA:-16}" \
   --locon-rank "${LOCON_RANK:-4}" \

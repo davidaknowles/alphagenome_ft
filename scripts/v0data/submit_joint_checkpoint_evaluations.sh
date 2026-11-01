@@ -4,7 +4,7 @@ set -euo pipefail
 cd "$(dirname "$0")/../.."
 mkdir -p logs/v0data evaluations/v0data/joint_all_nonencode
 
-strategy="${STRATEGY:?Set STRATEGY to lora or lora_locon}"
+strategy="${STRATEGY:?Set STRATEGY to lora, lora_locon or head_only}"
 source_checkpoint="${SOURCE_CHECKPOINT:?Set SOURCE_CHECKPOINT to a selected checkpoint}"
 evaluation_tag="${EVALUATION_TAG:?Set EVALUATION_TAG to a unique result name}"
 source_job="${SOURCE_JOB:-}"
@@ -13,7 +13,7 @@ sbatch_bin="${SBATCH_BIN:-sbatch}"
 gpu_gres="${GPU_GRES:-gpu:l40s:2}"
 locon_targets="${LOCON_TARGETS:-default}"
 
-if [[ "$strategy" != lora && "$strategy" != lora_locon ]]; then
+if [[ "$strategy" != lora && "$strategy" != lora_locon && "$strategy" != head_only ]]; then
   printf 'Invalid strategy: %s\n' "$strategy" >&2
   exit 1
 fi
