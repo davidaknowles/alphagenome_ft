@@ -155,3 +155,5 @@ dmypy.json
 Thumbs.db
 results/v0data/inference_bundle_check/*.npz
 results/v0data/inference_bundle_check/*.out
+results/eqtl_agfold1/singlebrain/
+results/eqtl_agfold1/xqtl/
