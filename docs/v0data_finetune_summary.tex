@@ -5,6 +5,7 @@
 \usepackage{amsmath}
 \usepackage{amssymb}
 \usepackage{microtype}
+\usepackage[hidelinks]{hyperref}
 
 \title{Fine-tuning AlphaGenome on single-cell pseudobulk multiome data}
 \author{}
@@ -14,7 +15,7 @@
 \maketitle
 
 \section{Summary}
-One AlphaGenome model was fine-tuned jointly on five single-cell multiome
+One AlphaGenome~\cite{avsec2026} model was fine-tuned jointly on five single-cell multiome
 studies (ten species-specific sources, 20 output heads). It starts from the
 AlphaGenome FOLD\_1 checkpoint and is evaluated on genome regions that this
 checkpoint never saw as pretraining targets. The most effective changes were to
@@ -35,12 +36,12 @@ pretrained on. Its held-out results (mean test $R$ $0.627$) are superseded.
 
 \section{Data}
 Each study provides pseudobulk ATAC and RNA profiles for annotated cell groups
-(Table~\ref{tab:data}). Each source keeps its own genome assembly. Macaque and
+(Table~\ref{tab:data})~\cite{mannens2024,liu2026,johansen2025,zemke2023,zemke2026}. Each source keeps its own genome assembly. Macaque and
 marmoset sequences use AlphaGenome's human organism embedding.
 
 \begin{table}[ht]
 \centering
-\small
+\footnotesize
 \caption{Training data. Group counts are ATAC/RNA cell groups; Liu and
 Johansen RNA heads have one channel per strand. ATAC source is the released
 track or a reconstruction from raw fragments.}
@@ -49,18 +50,18 @@ track or a reconstruction from raw fragments.}
 \toprule
 Study & Tissue & Species & Groups & ATAC source \\
 \midrule
-Mannens (HDA) & first-trimester brain & human & 134/134 & released \\
-Liu (HDMA) & fetal, 12 organs & human & 186/186 & fragments \\
-Johansen 2025 & basal ganglia & human, macaque, marmoset & 47/47 & fragments \\
-Zemke 2023 & motor cortex & human, macaque, marmoset, mouse & 20/19 & released \\
-Zemke 2024 & hippocampus (aging) & human & 18/18 & fragments \\
+Mannens (HDA)~\cite{mannens2024} & first-trimester brain & human & 134/134 & released \\
+Liu (HDMA)~\cite{liu2026} & fetal, 12 organs & human & 186/186 & fragments \\
+Johansen 2025~\cite{johansen2025} & basal ganglia & human, macaque, marmoset & 47/47 & fragments \\
+Zemke 2023~\cite{zemke2023} & motor cortex & human, macaque, marmoset, mouse & 20/19 & released \\
+Zemke 2024~\cite{zemke2026} & hippocampus (aging) & human & 18/18 & fragments \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-\paragraph{Held-out regions.} AlphaGenome's FOLD\_1 checkpoint was pretrained
-without two of the eight Borzoi genome folds, one used here for validation and
-one for test. Input windows of 131,072 bp are assigned to training, validation
+\paragraph{Held-out regions.} AlphaGenome's FOLD\_1 checkpoint~\cite{avsec2026} was
+pretrained without two of the eight Borzoi genome folds~\cite{linder2025}, one
+used here for validation and one for test. Input windows of 131,072 bp are assigned to training, validation
 or test by these folds, directly for human and mouse and through liftover of
 4 kb bins to hg38 for macaque and marmoset, so that sequence orthologous to
 held-out human regions is also held out. Windows that overlap more than one
@@ -107,7 +108,8 @@ The released Zemke 2023 ATAC tracks contain bins with signal of 3,000 to
 60,000 RPKM in every cell group, mostly poly-G/C runs, against genome-wide
 99.99th percentiles of 97 to 169. In the macaque and marmoset held-out sets a
 single such bin or window carried 51--89\% of the double-centered variance, so
-validation and test $R$ for these heads measured one or two loci. A blacklist
+validation and test $R$ for these heads measured one or two loci. Following the
+idea of the ENCODE blacklist~\cite{amemiya2019}, a blacklist
 of bins whose minimum across cell groups exceeds ten times the 99.99th
 percentile, and of windows whose summed signal exceeds ten times the median
 window, flags 9 to 19 regions per species. Excluding them removes one held-out
@@ -126,9 +128,9 @@ distributions differ between species of the same study; with equal sampling of
 sources this raised LoRA test $R$ from $0.584$ to $0.605$ relative to one pooled
 head per study and modality, a comparison that changes both factors together.
 Randomly initialized heads are first trained on a frozen backbone; the best
-warmup epoch then starts adapter training. Adapters are LoRA (rank 16) on
-attention and pair projections, optionally with LoCon (rank 4) on downsampling
-blocks 2--5, at learning rate $3\times10^{-4}$; learning rate $10^{-3}$ was
+warmup epoch then starts adapter training. Adapters are LoRA~\cite{hu2021} (rank 16) on
+attention and pair projections, optionally with LoCon~\cite{yeh2024} (rank 4)
+on downsampling blocks 2--5, at learning rate $3\times10^{-4}$; learning rate $10^{-3}$ was
 unstable for LoCon. Initializing heads from pretrained neural accessibility
 tracks improved early warmup validation $R$ ($0.507$ against $0.488$ at epoch
 4) but was not used in the final runs.
@@ -180,10 +182,12 @@ Mean & & 0.627 & 0.282 & 0.661 & 0.353 & 0.667 & 0.333 \\
 \end{table}
 
 \section{Fine-mapped eQTL benchmark}
-Positives are variants with posterior inclusion probability (PIP) above
-$0.75$ and negatives have PIP below $0.01$, within 512 kb of the gene's TSS.
+Positives are variants with SuSiE~\cite{wang2020} posterior inclusion
+probability (PIP) above $0.75$ and negatives have PIP below $0.01$, within
+512 kb of the gene's TSS.
 SingleBrain has 35 fine-mapping panels in seven brain cell classes (54,193
-variants); XQTL has six cell-type panels (10,452 variants). Each variant is
+variants), with summary statistics labeled as mmQTL~\cite{zeng2022} analyses;
+XQTL has six cell-type panels (10,452 variants). Each variant is
 scored with the human Zemke 2023 RNA head on a 1 Mb window centered at the
 TSS. The gene-span effect is the absolute alternate-minus-reference
 difference in mean prediction over the gene's bins, averaged over the tracks
@@ -235,5 +239,20 @@ every model and dataset and for most astrocyte and oligodendrocyte panels,
 whereas excitatory and inhibitory neuron panels show little specificity.
 Predicted effects are largely shared across cell types, with median Spearman
 correlation $0.61$--$0.72$ between tracks.
+
+\begin{thebibliography}{99}
+\bibitem{avsec2026} Avsec \v{Z}, et al. Advancing regulatory variant effect prediction with AlphaGenome. \emph{Nature} 649, 1206--1218 (2026). \href{https://doi.org/10.1038/s41586-025-10014-0}{doi:10.1038/s41586-025-10014-0}
+\bibitem{linder2025} Linder J, et al. Predicting RNA-seq coverage from DNA sequence as a unifying model of gene regulation. \emph{Nat Genet} 57, 949--961 (2025). \href{https://doi.org/10.1038/s41588-024-02053-6}{doi:10.1038/s41588-024-02053-6}
+\bibitem{mannens2024} Mannens CCA, et al. Chromatin accessibility during human first-trimester neurodevelopment. \emph{Nature} 647, 179--186 (2024). \href{https://doi.org/10.1038/s41586-024-07234-1}{doi:10.1038/s41586-024-07234-1}
+\bibitem{liu2026} Liu BB, et al. Multiomics and deep learning dissect regulatory syntax in human development. \emph{Nature} 653, 1240--1253 (2026). \href{https://doi.org/10.1038/s41586-026-10326-9}{doi:10.1038/s41586-026-10326-9}
+\bibitem{johansen2025} Johansen NJ, et al. Cross-species consensus atlas of the primate basal ganglia. \emph{bioRxiv} (2025). \href{https://doi.org/10.64898/2025.12.15.694496}{doi:10.64898/2025.12.15.694496}
+\bibitem{zemke2023} Zemke NR, et al. Conserved and divergent gene regulatory programs of the mammalian neocortex. \emph{Nature} 624, 390--402 (2023). \href{https://doi.org/10.1038/s41586-023-06819-6}{doi:10.1038/s41586-023-06819-6}
+\bibitem{zemke2026} Zemke NR, et al. Epigenetic and 3D genome reprogramming during the aging of the human hippocampus. \emph{Science} 393, eadt8307 (2026). \href{https://doi.org/10.1126/science.adt8307}{doi:10.1126/science.adt8307}
+\bibitem{hu2021} Hu EJ, et al. LoRA: Low-rank adaptation of large language models. \emph{arXiv} 2106.09685 (2021). \href{https://arxiv.org/abs/2106.09685}{arXiv:2106.09685}
+\bibitem{yeh2024} Yeh S-Y, et al. Navigating text-to-image customization: from LyCORIS fine-tuning to model evaluation. \emph{International Conference on Learning Representations} (2024). \href{https://arxiv.org/abs/2309.14859}{arXiv:2309.14859}
+\bibitem{amemiya2019} Amemiya HM, Kundaje A, Boyle AP. The ENCODE blacklist: identification of problematic regions of the genome. \emph{Sci Rep} 9, 9354 (2019). \href{https://doi.org/10.1038/s41598-019-45839-z}{doi:10.1038/s41598-019-45839-z}
+\bibitem{wang2020} Wang G, Sarkar A, Carbonetto P, Stephens M. A simple new approach to variable selection in regression, with application to genetic fine mapping. \emph{J R Stat Soc Series B Stat Methodol} 82, 1273--1300 (2020). \href{https://doi.org/10.1111/rssb.12388}{doi:10.1111/rssb.12388}
+\bibitem{zeng2022} Zeng B, et al. Multi-ancestry eQTL meta-analysis of human brain identifies candidate causal variants for brain-related traits. \emph{Nat Genet} 54, 161--169 (2022). \href{https://doi.org/10.1038/s41588-021-00987-9}{doi:10.1038/s41588-021-00987-9}
+\end{thebibliography}
 
 \end{document}
