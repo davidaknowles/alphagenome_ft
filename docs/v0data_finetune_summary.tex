@@ -13,31 +13,30 @@
 \begin{document}
 \maketitle
 
-\noindent\fbox{\parbox{\dimexpr\linewidth-2\fboxsep-2\fboxrule}{\textbf{Deprecated.}
-The models in this report were fine-tuned from the AlphaGenome \texttt{all\_folds}
-checkpoint, whose pretraining included the held-out chromosomes 8 and 9. Their
-held-out chromosome results overstate generalization to unseen sequence, and
-the models are superseded by fine-tunes from the FOLD\_1 checkpoint evaluated
-on its held-out genome folds.}}
-
 \section{Summary}
 One AlphaGenome model was fine-tuned jointly on five single-cell multiome
-studies (ten species-specific sources, 20 output heads). The most effective
-changes were to the training targets: RNA rebuilt as gene-level pseudobulk
-counts per million (CPM) from raw counts, ATAC rebuilt from raw fragments where
-released tracks were unsuitable, and removal of near-empty or unsupported cell
-groups. A correlation term in the loss, staged head training, and low-rank
-adapters gave smaller gains. The selected model reaches mean held-out
-chromosome correlation $R=0.684$ for ATAC and $0.570$ for RNA. On fine-mapped
-brain eQTLs, gene-span variant effects give AUROC $0.55$ (SingleBrain) and
-$0.64$ (XQTL), with discrimination concentrated near the TSS and only small
-gains from matching the eQTL cell type to its model track.
+studies (ten species-specific sources, 20 output heads). It starts from the
+AlphaGenome FOLD\_1 checkpoint and is evaluated on genome regions that this
+checkpoint never saw as pretraining targets. The most effective changes were to
+the training targets: RNA rebuilt as gene-level pseudobulk counts per million
+(CPM) from raw counts, ATAC rebuilt from raw fragments where released tracks
+were unsuitable, and removal of near-empty, unsupported or artifactual signal.
+On held-out regions, frozen-backbone heads reach mean correlation $R=0.455$,
+and adding low-rank adapters raises it to $0.500$--$0.507$ (ATAC $0.66$--$0.67$,
+RNA $0.33$--$0.35$). LoRA and LoRA with convolutional adapters (LoCon) perform
+similarly. On fine-mapped brain eQTLs, gene-span variant effects give AUROC up
+to $0.57$ (SingleBrain) and $0.64$ (XQTL). The frozen-backbone model is best
+for eQTLs, adapter training lowers eQTL discrimination, and discrimination is
+concentrated within 10 kb of the TSS.
+
+An earlier version of this report fine-tuned from the \texttt{all\_folds}
+checkpoint and held out chromosomes 8 and 9, which that checkpoint was
+pretrained on. Its held-out results (mean test $R$ $0.627$) are superseded.
 
 \section{Data}
 Each study provides pseudobulk ATAC and RNA profiles for annotated cell groups
-(Table~\ref{tab:data}). Each source keeps its own genome assembly, and
-chromosomes 8 and 9 of each assembly are held out for validation and test.
-Macaque and marmoset sequences use AlphaGenome's human organism embedding.
+(Table~\ref{tab:data}). Each source keeps its own genome assembly. Macaque and
+marmoset sequences use AlphaGenome's human organism embedding.
 
 \begin{table}[ht]
 \centering
@@ -59,12 +58,24 @@ Zemke 2024 & hippocampus (aging) & human & 18/18 & fragments \\
 \end{tabular}
 \end{table}
 
+\paragraph{Held-out regions.} AlphaGenome's FOLD\_1 checkpoint was pretrained
+without two of the eight Borzoi genome folds, one used here for validation and
+one for test. Input windows of 131,072 bp are assigned to training, validation
+or test by these folds, directly for human and mouse and through liftover of
+4 kb bins to hg38 for macaque and marmoset, so that sequence orthologous to
+held-out human regions is also held out. Windows that overlap more than one
+split are dropped (0.4--4.4\% per source), and validation and test windows are
+subsampled to about 1,000 per source.
+
 \section{Training strategies}
 Performance is measured by signed double-centered Pearson correlation $R$. For
 target and prediction matrices $Y,\hat{Y}\in\mathbb{R}^{N\times C}$, with $N$
 genomic elements (genes for RNA, 128 bp bins for ATAC) and $C$ cell groups, row
 and column means are removed before computing the correlation, so $R$ measures
 relative structure across elements and cell groups rather than assay scale.
+The comparisons below come from matched pairs of earlier runs that differed
+in one setting; those runs used the chromosome split, so their absolute values
+are inflated but the differences between arms are informative.
 
 \paragraph{RNA targets and loss.} Released coordinate RNA tracks were replaced
 with gene-level targets. Raw counts are summed over the cells of each group
@@ -77,12 +88,10 @@ C}$ over $B$ 128 bp bins is read out per gene $g$ as \begin{equation}
 where $w_{g,b}\in[0,1]$ is the fraction of bin $b$ covered by exons of $g$,
 and the loss is the squared error between $\log(1+\hat{y}_{g,c})$ and
 $\log(1+y_{g,c})$. In a matched frozen-backbone comparison on Zemke 2023 that
-changed only this target, test RNA $R$ rose from $0.152$ to $0.421$ (validation
-$0.250$ to $0.360$) with ATAC unchanged. The gene-level target also avoids a
-ribosomal-repeat artifact in the released marmoset tracks, where one 341 bp
-window carried 71\% of the chromosome-9 RNA variance. Adding a per-bin
-coverage loss did not help (HDA, mean validation $R$ $0.604$ with versus
-$0.598$ without), so it was dropped.
+changed only this target, test RNA $R$ rose from $0.152$ to $0.421$ with ATAC
+unchanged. The gene-level target also avoids a ribosomal-repeat artifact in the
+released marmoset RNA tracks. Adding a per-bin coverage loss did not help (HDA,
+mean validation $R$ $0.604$ with versus $0.598$ without), so it was dropped.
 
 \paragraph{ATAC targets.} Where released tracks were significance scores or
 poorly matched coverage, ATAC was rebuilt from raw fragments as full-depth
@@ -90,75 +99,82 @@ fragment coverage per million fragments, without downsampling. For Johansen
 human, test $R$ was $0.210$ with released tracks and $0.458$ with the rebuilt
 target under the same training setup.
 
-\paragraph{Cell-group quality control.} One Johansen group with 33,424
-fragments (median $1.1\times 10^8$) contributed 48\% of all squared ATAC signal
-and was removed. Groups without supporting cell assignments are masked rather
-than given zero targets: four Zemke 2024 subtype channels and the Zemke 2023
-L5 IT RNA group.
+\paragraph{Quality control.} One Johansen group with 33,424 fragments (median
+$1.1\times 10^8$) contributed 48\% of all squared ATAC signal and was removed.
+Groups without supporting cell assignments are masked rather than given zero
+targets: four Zemke 2024 subtype channels and the Zemke 2023 L5 IT RNA group.
+The released Zemke 2023 ATAC tracks contain bins with signal of 3,000 to
+60,000 RPKM in every cell group, mostly poly-G/C runs, against genome-wide
+99.99th percentiles of 97 to 169. In the macaque and marmoset held-out sets a
+single such bin or window carried 51--89\% of the double-centered variance, so
+validation and test $R$ for these heads measured one or two loci. A blacklist
+of bins whose minimum across cell groups exceeds ten times the 99.99th
+percentile, and of windows whose summed signal exceeds ten times the median
+window, flags 9 to 19 regions per species. Excluding them removes one held-out
+window per affected split and leaves no held-out window with more than 4\% of
+the variance. The blacklist is applied at evaluation; the training windows
+still contain these regions.
 
 \paragraph{Loss.} A double-centered correlation term, $1-R$ computed within
 each batch, was added to the loss of every RNA head (weight $1$, HDA $0.1$) and
-of the Zemke 2023 ATAC heads (weight $3$). In a matched continuation of the
-joint model it raised validation $R$ from $0.568$ to $0.583$, mainly through
-RNA ($0.461$ to $0.491$). The effect varies by study; one weighting reduced
-Liu RNA, which the final weights recover.
+of the Zemke 2023 ATAC heads (weight $3$). In a matched continuation it raised
+validation $R$ from $0.568$ to $0.583$, mainly through RNA ($0.461$ to $0.491$).
 
 \paragraph{Model and optimization.} The pretrained backbone is shared by all
 heads. Each source has its own ATAC and RNA heads, because target
-distributions differ between species of the same study; with equal sampling
-of sources this raised LoRA test $R$ from $0.584$ to $0.605$ relative to one
-pooled head per study and modality, a comparison that changes both factors
-together. Heads were first trained on a frozen backbone, and the best
-warmup epoch (12) was used to start adapter training. Initializing heads from
-the pretrained neural accessibility tracks of matching cell types gave
-validation $R$ $0.507$ against $0.488$ for random initialization at warmup
-epoch 4, but the selected model used random initialization. Adapters were then
-trained from the warmed heads:
-LoRA (rank 16) on attention and pair projections, plus LoCon (rank 4) on
-downsampling blocks 2--5, at learning rate $3\times10^{-4}$. Broad LoCon
-improved test $R$ by $0.008$ and $0.005$ in two of three matched comparisons
-and was neutral in the third. Learning rate $10^{-3}$ was unstable for LoCon.
+distributions differ between species of the same study; with equal sampling of
+sources this raised LoRA test $R$ from $0.584$ to $0.605$ relative to one pooled
+head per study and modality, a comparison that changes both factors together.
+Randomly initialized heads are first trained on a frozen backbone; the best
+warmup epoch then starts adapter training. Adapters are LoRA (rank 16) on
+attention and pair projections, optionally with LoCon (rank 4) on downsampling
+blocks 2--5, at learning rate $3\times10^{-4}$; learning rate $10^{-3}$ was
+unstable for LoCon. Initializing heads from pretrained neural accessibility
+tracks improved early warmup validation $R$ ($0.507$ against $0.488$ at epoch
+4) but was not used in the final runs.
 
 \paragraph{Not helpful.} Higher adapter rank (LoRA 32, LoCon 8), uniform RNA
 loss upweighting, target value transforms, refitting heads after adapter
 training, and gene-balanced batch ordering did not improve held-out $R$.
 
-\section{Held-out chromosome results}
-The selected checkpoint (LoRA+LoCon, epoch 21) uses the targets above with
-Zemke 2024 ATAC rebuilt from fragments. Table~\ref{tab:heldout} lists test
-$R$ per source. Mean validation and test $R$ are $0.585$ and $0.627$ (ATAC
-$0.665$/$0.684$, RNA $0.504$/$0.570$). Split-half reliability gives correlation
-ceilings of $0.82$--$0.93$ for Johansen ATAC and $0.90$ for Zemke 2024 ATAC,
-so those ATAC results are near the noise limit, whereas RNA targets have
-ceilings of $0.93$ or higher where measured and remain well below them.
-
-A run with released Zemke 2024 ATAC tracks and initialized heads reached test
-$R$ $0.603$. Most of its difference from the selected model comes from heads
-whose targets are identical in the two runs (for example Zemke 2023 mouse RNA,
-$0.311$ against $0.603$), so differences of a few hundredths in mean $R$
-between single runs should not be over-interpreted.
+\section{Held-out results}
+The frozen-backbone warmup selected epoch 5 by validation $R$. Both adapter
+arms were trained from it to epoch 18 and selected epoch 18 (LoRA) and epoch 15
+(LoRA+LoCon). Table~\ref{tab:heldout} lists test $R$ per source with the Zemke
+2023 ATAC blacklist applied. Adapters raise mean test $R$ from $0.455$ to
+$0.507$ (LoRA) and $0.500$ (LoRA+LoCon). LoRA+LoCon is slightly better for ATAC
+($0.667$ against $0.661$) and worse for RNA ($0.333$ against $0.353$), so the two
+adapter strategies are effectively tied. RNA remains the weaker modality and
+varies between sources, from about $0.2$ (Johansen marmoset, HDA with LoCon,
+Liu) to $0.46$ (Zemke 2023 marmoset). Split-half reliability gives ATAC
+correlation ceilings of $0.82$--$0.93$ for Johansen and $0.90$ for Zemke 2024,
+and RNA ceilings of $0.93$ or higher where measured, so RNA is far below its
+noise limit.
 
 \begin{table}[ht]
 \centering
 \small
-\caption{Test-chromosome $R$ of the selected model.}
+\caption{Test $R$ on FOLD\_1 held-out regions with the Zemke 2023 ATAC
+blacklist applied.}
 \label{tab:heldout}
-\begin{tabular}{@{}llrr@{}}
+\begin{tabular}{@{}llrrrrrr@{}}
 \toprule
-Study & Species & ATAC & RNA \\
+ & & \multicolumn{2}{c}{Head-only} & \multicolumn{2}{c}{LoRA} & \multicolumn{2}{c}{LoRA+LoCon} \\
+\cmidrule(lr){3-4}\cmidrule(lr){5-6}\cmidrule(lr){7-8}
+Study & Species & ATAC & RNA & ATAC & RNA & ATAC & RNA \\
 \midrule
-HDA & human & 0.817 & 0.660 \\
-Liu & human & 0.784 & 0.485 \\
-Johansen 2025 & human & 0.644 & 0.584 \\
- & macaque & 0.463 & 0.524 \\
- & marmoset & 0.600 & 0.453 \\
-Zemke 2023 & human & 0.743 & 0.572 \\
- & macaque & 0.663 & 0.679 \\
- & marmoset & 0.615 & 0.649 \\
- & mouse & 0.739 & 0.610 \\
-Zemke 2024 & human & 0.769 & 0.484 \\
+HDA & human & 0.750 & 0.152 & 0.769 & 0.412 & 0.771 & 0.193 \\
+Liu & human & 0.745 & 0.218 & 0.752 & 0.235 & 0.750 & 0.293 \\
+Johansen 2025 & human & 0.559 & 0.316 & 0.588 & 0.426 & 0.591 & 0.405 \\
+ & macaque & 0.571 & 0.282 & 0.607 & 0.367 & 0.613 & 0.364 \\
+ & marmoset & 0.483 & 0.232 & 0.541 & 0.229 & 0.552 & 0.223 \\
+Zemke 2023 & human & 0.656 & 0.273 & 0.682 & 0.319 & 0.689 & 0.310 \\
+ & macaque & 0.587 & 0.320 & 0.629 & 0.398 & 0.638 & 0.372 \\
+ & marmoset & 0.589 & 0.423 & 0.641 & 0.434 & 0.652 & 0.464 \\
+ & mouse & 0.647 & 0.271 & 0.687 & 0.347 & 0.701 & 0.372 \\
+Zemke 2024 & human & 0.685 & 0.333 & 0.710 & 0.362 & 0.715 & 0.336 \\
 \midrule
-Mean & & 0.684 & 0.570 \\
+Mean & & 0.627 & 0.282 & 0.661 & 0.353 & 0.667 & 0.333 \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -174,15 +190,13 @@ difference in mean prediction over the gene's bins, averaged over the tracks
 matched to the panel's cell type. The TSS-bin summary performs worse and is
 not shown.
 
-Table~\ref{tab:eqtl} compares the selected model with the head-only model and
-two adapter models that use the released Zemke 2024 ATAC tracks, and with one
-selected pretrained AlphaGenome track per cell type. Trained models differ by
-at most $0.015$ in pooled AUROC, close to the variation of about $0.005$
-between repeated runs. The native tracks were selected on the same variants,
-so their values are optimistic. Discrimination is concentrated near the TSS:
-gene-span AUROC is $0.64$--$0.70$ (SingleBrain) and $0.81$--$0.87$ (XQTL)
-within 1 kb, and falls below $0.5$ for all models beyond about 50 kb
-(SingleBrain) and 100 kb (XQTL) (Figure~\ref{fig:distance}).
+Table~\ref{tab:eqtl} compares the three models with one selected pretrained
+AlphaGenome track per cell type. The frozen-backbone model is best on both
+datasets, and adapter training lowers pooled AUROC by $0.01$--$0.06$. The native tracks were
+selected on the same variants, so their values are optimistic. Discrimination
+is concentrated near the TSS: AUROC is $0.65$--$0.69$ (SingleBrain) and
+$0.83$--$0.88$ (XQTL) within 1 kb and falls below $0.5$ for all models beyond
+about 50 kb (SingleBrain) and 100 kb (XQTL) (Figure~\ref{fig:distance}).
 
 \begin{table}[ht]
 \centering
@@ -196,18 +210,17 @@ within 1 kb, and falls below $0.5$ for all models beyond about 50 kb
 \cmidrule(lr){2-4}\cmidrule(lr){5-7}
 Model & AUROC & AP & Within & AUROC & AP & Within \\
 \midrule
-Head-only & 0.547 & 0.444 & 0.550 & 0.635 & 0.608 & 0.644 \\
-LoRA & 0.540 & 0.432 & 0.539 & 0.628 & 0.600 & 0.642 \\
-LoRA+LoCon & 0.540 & 0.434 & 0.542 & 0.637 & 0.615 & 0.643 \\
-Selected (LoRA+LoCon, raw Zemke 2024 ATAC) & 0.547 & 0.445 & 0.545 & 0.643 & 0.623 & 0.646 \\
-Native matched tracks & 0.524 & 0.439 & 0.535 & 0.627 & 0.626 & 0.650 \\
+Head-only & 0.566 & 0.472 & 0.559 & 0.644 & 0.636 & 0.648 \\
+LoRA & 0.511 & 0.407 & 0.501 & 0.614 & 0.591 & 0.597 \\
+LoRA+LoCon & 0.532 & 0.433 & 0.527 & 0.631 & 0.608 & 0.624 \\
+Native matched tracks & 0.524 & 0.439 & 0.535 & 0.627 & 0.626 & 0.649 \\
 \bottomrule
 \end{tabular}
 \end{table}
 
 \begin{figure}[ht]
 \centering
-\includegraphics[width=\linewidth]{figures/v0data_gene_span_auroc_by_distance.pdf}
+\includegraphics[width=\linewidth]{figures/v0data_agfold1_gene_span_auroc_by_distance.pdf}
 \caption{Gene-span AUROC by distance between variant and TSS. The dashed line
 is chance.}
 \label{fig:distance}
@@ -215,12 +228,12 @@ is chance.}
 
 The trained tracks carry a small amount of cell-type-specific signal. Scoring
 each panel with every cell class's tracks, the matched class exceeds the
-unmatched ones by $0.024$--$0.032$ AUROC on SingleBrain and $0.033$--$0.057$ on
-XQTL, which is significant under permutation of the class assignment for
-every model. The effect is driven by microglia (XQTL AUROC $0.69$--$0.73$ with
-microglia tracks against at most $0.63$ with other tracks), astrocytes, and
-oligodendrocytes; excitatory and inhibitory neuron panels show little
-specificity. Predicted effects are largely shared across cell types, with
-median Spearman correlation $0.63$--$0.69$ between tracks.
+unmatched ones by $0.012$--$0.028$ AUROC on SingleBrain and $0.039$--$0.044$ on
+XQTL, which is significant under permutation of the class assignment for every
+model ($p\le 0.006$). The matched composite ranks first for microglia panels in
+every model and dataset and for most astrocyte and oligodendrocyte panels,
+whereas excitatory and inhibitory neuron panels show little specificity.
+Predicted effects are largely shared across cell types, with median Spearman
+correlation $0.61$--$0.72$ between tracks.
 
 \end{document}

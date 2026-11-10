@@ -31,7 +31,8 @@ def main() -> None:
     data = pd.concat(frames)
     data = data[(data["mode"] == "gene") & (data.distance_bin != "all")].copy()
     data["distance_bin"] = pd.Categorical(data.distance_bin, categories=BIN_ORDER, ordered=True)
-    data["model_label"] = pd.Categorical(data.model.map(MODEL_LABELS), categories=list(MODEL_LABELS.values()), ordered=True)
+    present = [label for model, label in MODEL_LABELS.items() if model in set(data.model)]
+    data["model_label"] = pd.Categorical(data.model.map(MODEL_LABELS), categories=present, ordered=True)
     data["dataset"] = pd.Categorical(data.dataset, categories=[v.partition("=")[0] for v in args.summary], ordered=True)
     plot = (
         ggplot(data, aes("distance_bin", "auroc", color="model_label", group="model_label"))
