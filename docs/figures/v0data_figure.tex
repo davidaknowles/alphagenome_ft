@@ -1,5 +1,7 @@
 \documentclass{article}
-\usepackage[paperwidth=7.3in,paperheight=8.5in,margin=0.08in]{geometry}
+% Compile with \def\noeqtl{} first to omit the eQTL panel (writeup version).
+\ifdefined\noeqtl\def\pageheight{7.85in}\else\def\pageheight{10.0in}\fi
+\usepackage[paperwidth=7.3in,paperheight=\pageheight,margin=0.08in]{geometry}
 \usepackage{graphicx}
 \usepackage[T1]{fontenc}\usepackage{lmodern}
 \renewcommand{\familydefault}{\sfdefault}
@@ -8,7 +10,9 @@
 % #1 letter, #2 width, #3 panel file
 \newcommand{\panel}[3]{\begin{minipage}[t]{#2}\vspace{0pt}{\fontsize{11}{11}\selectfont\textbf{#1}}\\[1pt]\includegraphics[width=#2]{v0data_figure_panels/#3}\end{minipage}}
 \begin{document}
-\panel{a}{3.15in}{panel_a.pdf}\hfill\panel{b}{3.95in}{panel_d.pdf}\\[4pt]
-\panel{c}{4.55in}{panel_b.pdf}\hfill\panel{d}{2.45in}{panel_c.pdf}\\[4pt]
-\panel{e}{7.1in}{panel_e.pdf}
+\panel{a}{3.15in}{panel_data.pdf}\hfill\panel{b}{3.95in}{panel_heldout.pdf}\\[4pt]
+\panel{c}{4.55in}{panel_tracks_high.pdf}\hfill\panel{d}{2.45in}{panel_rna_high.pdf}\\[4pt]
+\panel{e}{4.55in}{panel_tracks_median.pdf}\hfill\panel{f}{2.45in}{panel_rna_median.pdf}
+\ifdefined\noeqtl\else\\[4pt]
+\panel{g}{7.1in}{panel_eqtl.pdf}\fi
 \end{document}

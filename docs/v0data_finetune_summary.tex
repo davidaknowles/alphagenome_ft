@@ -28,7 +28,7 @@ RNA $0.33$--$0.35$). LoRA and LoRA with convolutional adapters (LoCon) perform
 similarly. On fine-mapped brain eQTLs, gene-span variant effects give AUROC up
 to $0.57$ (SingleBrain) and $0.64$ (XQTL). The frozen-backbone model is best
 for eQTLs, adapter training lowers eQTL discrimination, and discrimination is
-concentrated within 10 kb of the TSS (Figure~\ref{fig:overview}).
+concentrated within 10 kb of the TSS.
 
 An earlier version of this report fine-tuned from the \texttt{all\_folds}
 checkpoint and held out chromosomes 8 and 9, which that checkpoint was
@@ -36,8 +36,8 @@ pretrained on. Its held-out results (mean test $R$ $0.627$) are superseded.
 
 \begin{figure}[p]
 \centering
-\includegraphics[width=\linewidth]{figures/v0data_figure.pdf}
-\caption{Training data and performance of the FOLD\_1 fine-tuned models. (a) Pseudobulk cell groups per source for ATAC and RNA, colored by species. (b) Test $R$ per source on FOLD\_1 held-out regions with the Zemke 2023 ATAC blacklist applied. Dashed lines are means across sources. (c) Observed and predicted (LoRA) ATAC for five of 20 cell groups in a held-out 131 kb window of the Zemke 2023 human motor cortex source. Predictions are the 1 bp output averaged over 128 bp bins, in the units of the observed track. The window was picked from four held-out windows containing cell-type-specific genes, and its ATAC $R$ ($0.83$) is above the source mean ($0.68$). (d) Observed (y) against predicted (x) gene-level RNA across cell groups for two genes in the window in (c). Predicted CPM is the exon-weighted sum of 128 bp predictions, and $r$ is the Pearson correlation across cell groups. The gray line is $y=x$. (e) Gene-span AUROC for fine-mapped brain eQTLs by distance between variant and TSS. Native matched tracks are AlphaGenome's own tracks, selected on the same variants, so their values are optimistic. The dashed line is chance.}
+\includegraphics[width=0.9\linewidth]{figures/v0data_figure_writeup.pdf}
+\caption{Training data, held-out performance and example predictions of the FOLD\_1 fine-tuned models. (a) Pseudobulk cell groups per source for ATAC and RNA, colored by species. (b) Test $R$ per source on FOLD\_1 held-out regions with the Zemke 2023 ATAC blacklist applied. Dashed lines are means across sources. (c, e) Observed and predicted (LoRA) ATAC for five of 20 cell groups in two held-out 131 kb windows of the Zemke 2023 human motor cortex source, at the 90th percentile (c) and the median (e) of per-window ATAC $R$ over all 1,055 test windows. Each is the window closest to that percentile among windows containing at least one gene that reaches 10 CPM in some cell group, and genes meeting this threshold are drawn. Per-window $R$ omits variation between windows, so its median ($0.44$) is below the pooled test $R$ in (b). Predictions are the 1 bp output averaged over 128 bp bins, in the units of the observed track. (d, f) Observed against predicted gene-level RNA across cell groups for the expressed gene in each window with the largest observed variation across cell groups. Predicted CPM is the exon-weighted sum of 128 bp predictions, $r$ is the Pearson correlation across cell groups, and the gray line is $y=x$.}
 \label{fig:overview}
 \end{figure}
 

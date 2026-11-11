@@ -13,7 +13,6 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-from mizani.breaks import breaks_extended
 from plotnine import (
     aes, guide_legend, guides, coord_flip, element_blank, element_line, element_rect, element_text, facet_grid, facet_wrap,
     geom_abline, geom_area, geom_col, geom_hline, geom_line, geom_point, geom_rect,
@@ -90,32 +89,63 @@ def panel_data(out: Path) -> None:
         + theme(axis_text_x=element_text(size=6), axis_text_y=element_text(size=5.8), legend_position="none", panel_spacing_x=0.04)
         + coord_flip()
     )
-    save(plot, out / "panel_a", 3.15, 2.6)
+    save(plot, out / "panel_data", 3.15, 2.6)
 
 
-def panel_tracks(example: Path, out: Path, groups: list[str], label: str) -> None:
+def window_title(row) -> str:
+    return f"{row['percentile']:.0f}th-percentile test window, ATAC R = {row['atac_r']:.2f}" if row["percentile"] != 50 else f"Median test window, ATAC R = {row['atac_r']:.2f}"
+
+
+def gene_lanes(bodies: pd.DataFrame, lo: float, hi: float, kb_per_char: float, max_lanes: int = 3) -> pd.DataFrame:
+    """Assign gene bodies to lanes so bodies and labels do not overlap; drop genes that do not fit."""
+    bodies = bodies.sort_values("start").copy()
+    bodies["mid"] = ((bodies.start.clip(lower=lo) + bodies.end.clip(upper=hi)) / 2)
+    half = bodies.gene.str.len() * kb_per_char * 500
+    left, right = np.minimum(bodies.start, bodies.mid - half), np.maximum(bodies.end, bodies.mid + half)
+    lane_end = [-np.inf] * max_lanes
+    lanes = []
+    for l, r in zip(left, right):
+        lane = next((i for i, e in enumerate(lane_end) if l > e), None)
+        lanes.append(lane)
+        if lane is not None:
+            lane_end[lane] = r
+    bodies["lane"] = lanes
+    return bodies.dropna(subset=["lane"])
+
+
+def panel_tracks(example: Path, out: Path, groups: list[str], row, min_cpm: float) -> None:
+    chrom, start = row["chrom"], int(row["start"])
     atac = pd.read_csv(f"{example}_atac.tsv.gz", sep="\t")
     atac = atac[atac.group.isin(groups)].copy()
     atac["mb"] = atac.position / 1e6
     pretty = {group: group.replace("_", "/", 1).replace("_", " ") if group.startswith("L") else group for group in groups}
-    atac["track"] = pd.Categorical(atac.group.map(pretty), categories=[pretty[g] for g in groups] + ["Genes"], ordered=True)
-    genes = pd.read_csv(f"{example}_genes.tsv.gz", sep="\t")
-    keep = ["SLC38A3", "GNAI2", "SEMA3B", "HYAL1", "HYAL2", "TUSC2"]
-    genes = genes[genes.gene.isin(keep)]
-    bodies = genes.drop_duplicates("gene").copy()
-    bodies["y"] = np.where(np.arange(len(bodies)) % 2 == 0, 1.0, 0.0)
-    exons = genes.merge(bodies[["gene", "y"]], on="gene")
     track_levels = [pretty[g] for g in groups] + ["Genes"]
+    atac["track"] = pd.Categorical(atac.group.map(pretty), categories=track_levels, ordered=True)
+    genes = pd.read_csv(f"{example}_genes.tsv.gz", sep="\t")
+    rna = pd.read_csv(f"{example}_rna.tsv.gz", sep="\t")
+    expressed = rna[rna.valid].groupby("gene").observed_cpm.max()
+    genes = genes[genes.gene.isin(expressed[expressed >= min_cpm].index)]
+    lo, hi = start, start + 131072
+    bodies = gene_lanes(genes.drop_duplicates("gene")[["gene", "start", "end"]], lo, hi, kb_per_char=1.6)
+    bodies["start"], bodies["end"] = bodies.start.clip(lower=lo), bodies.end.clip(upper=hi)
+    n_lanes = int(bodies.lane.max()) + 1 if len(bodies) else 1
+    bodies["y"] = (n_lanes - 1 - bodies.lane) * 1.6
+    exons = genes.merge(bodies[["gene", "y"]], on="gene")
+    exons = exons[(exons.exon_end > lo) & (exons.exon_start < hi)].copy()
+    exons["exon_start"], exons["exon_end"] = exons.exon_start.clip(lower=lo), exons.exon_end.clip(upper=hi)
     for frame in (bodies, exons):
         frame["track"] = pd.Categorical(["Genes"] * len(frame), categories=track_levels, ordered=True)
-    headroom = pd.DataFrame({"mb": [atac.mb.min()], "y": [2.1], "track": pd.Categorical(["Genes"], categories=track_levels, ordered=True)})
-    bodies["mid"] = (bodies.start + bodies.end) / 2e6
+    headroom = pd.DataFrame({"mb": [atac.mb.min()] * 2, "y": [-0.4, (n_lanes - 1) * 1.6 + 1.5], "track": pd.Categorical(["Genes"] * 2, categories=track_levels, ordered=True)})
     long = atac.melt(id_vars=["mb", "track"], value_vars=["observed", "predicted"], var_name="series", value_name="signal")
     long["series"] = long.series.map({"observed": "Observed", "predicted": "Predicted (LoRA)"})
 
     def y_breaks(limits):
         # The gene track has no meaningful y scale.
-        return [] if limits[1] < 2.5 else breaks_extended(n=3)(limits)
+        if limits[1] < 5:
+            return []
+        # 0 and the largest one-significant-digit value below the facet maximum.
+        scale = 10 ** np.floor(np.log10(limits[1] * 0.95))
+        return [0, float(np.floor(limits[1] * 0.95 / scale) * scale)]
 
     plot = (
         ggplot()
@@ -126,18 +156,19 @@ def panel_tracks(example: Path, out: Path, groups: list[str], label: str) -> Non
         + scale_y_continuous(breaks=y_breaks)
         + geom_segment(bodies, aes(x="start/1e6", xend="end/1e6", y="y", yend="y"), color=INK, size=0.4)
         + geom_rect(exons, aes(xmin="exon_start/1e6", xmax="exon_end/1e6", ymin="y-0.22", ymax="y+0.22"), fill=INK)
-        + geom_text(bodies, aes("mid", "y+0.62", label="gene"), size=5.2, fontstyle="italic", color=INK)
+        + geom_text(bodies, aes("mid/1e6", "y+0.85", label="gene"), size=5.2, fontstyle="italic", color=INK)
         + geom_point(headroom, aes("mb", "y"), alpha=0)
         + facet_grid("track ~ .", scales="free_y")
         + scale_x_continuous(expand=(0, 0))
-        + labs(x=f"{label} (Mb)", y="ATAC signal (RPKM)")
+        + labs(x=f"{chrom} position, hg38 (Mb)", y="ATAC signal (RPKM)", title=window_title(row))
         + base_theme()
-        + theme(strip_text_y=element_text(angle=0, ha="left", size=6.5, weight="normal"), panel_grid_major_x=element_blank(), axis_text_y=element_text(size=5), legend_position="top", legend_title=element_blank(), legend_box_margin=0)
+        + theme(strip_text_y=element_text(angle=0, ha="left", size=6.5, weight="normal"), panel_grid_major_x=element_blank(), axis_text_y=element_text(size=5), legend_position="top", legend_title=element_blank(), legend_box_margin=0, plot_title=element_text(size=7, ha="left"))
     )
-    save(plot, out / "panel_b", 4.55, 2.9)
+    save(plot, out / f"panel_tracks_{row['name']}", 4.55, 2.2)
 
 
-def panel_rna(example: Path, out: Path, genes: list[str]) -> None:
+def panel_rna(example: Path, out: Path, row) -> None:
+    genes = row["genes"].split(",")
     rna = pd.read_csv(f"{example}_rna.tsv.gz", sep="\t")
     rna = rna[rna.gene.isin(genes) & rna.valid].copy()
     rna["obs"] = np.log10(1 + rna.observed_cpm)
@@ -146,13 +177,15 @@ def panel_rna(example: Path, out: Path, genes: list[str]) -> None:
     stats = rna.groupby("gene", observed=True).apply(lambda d: pd.Series({"r": np.corrcoef(d.obs, d.pred)[0, 1]})).reset_index()
     stats["text"] = stats.r.map(lambda v: f"r = {v:.2f}")
     top = rna.loc[rna.groupby("gene", observed=True).observed_cpm.idxmax()]
-    limit = float(max(rna.obs.max(), rna.pred.max())) * 1.08
+    pretty = lambda g: g.replace("_", "/", 1).replace("_", " ") if g.startswith("L") else g
+    top["label"] = top.group.map(pretty)
+    limit = float(max(rna.obs.max(), rna.pred.max())) * 1.1
     plot = (
         ggplot(rna, aes("pred", "obs"))
         + geom_abline(slope=1, intercept=0, linetype="dashed", color="#b5b4ae", size=0.3)
         + geom_point(color=MODEL_COLORS["LoRA"], size=1.3, stroke=0)
-        + geom_text(top, aes(label="group"), ha="right", va="bottom", nudge_x=-0.05, size=5.5, color=INK)
-        + geom_text(stats, aes(label="text"), x=0.05, y=limit * 0.93, ha="left", size=5.8, color=INK)
+        + geom_text(top, aes(label="label"), ha="right", va="bottom", nudge_x=-0.04, size=5.5, color=INK)
+        + geom_text(stats, aes(label="text"), x=0.04 * limit, y=limit * 0.93, ha="left", size=5.8, color=INK)
         + facet_wrap("~gene", ncol=1)
         + scale_x_continuous(limits=(0, limit))
         + scale_y_continuous(limits=(0, limit))
@@ -160,7 +193,7 @@ def panel_rna(example: Path, out: Path, genes: list[str]) -> None:
         + base_theme()
         + theme(strip_text=element_text(fontstyle="italic", weight="bold"))
     )
-    save(plot, out / "panel_c", 2.45, 2.9)
+    save(plot, out / f"panel_rna_{row['name']}", 2.45, 2.2)
 
 
 def panel_heldout(evaluation: Path, out: Path) -> None:
@@ -187,7 +220,7 @@ def panel_heldout(evaluation: Path, out: Path) -> None:
         + theme(legend_position="bottom", axis_text_y=element_text(size=5.8), panel_spacing_x=0.12)
         + coord_flip()
     )
-    save(plot, out / "panel_d", 3.95, 2.6)
+    save(plot, out / "panel_heldout", 3.95, 2.6)
 
 
 def panel_eqtl(summaries: dict[str, Path], out: Path) -> None:
@@ -211,7 +244,7 @@ def panel_eqtl(summaries: dict[str, Path], out: Path) -> None:
         + base_theme()
         + theme(axis_text_x=element_text(rotation=30, ha="right"), legend_position="right")
     )
-    save(plot, out / "panel_e", 7.1, 2.1)
+    save(plot, out / "panel_eqtl", 7.1, 2.0)
 
 
 def save(plot, stem: Path, width: float, height: float) -> None:
@@ -221,16 +254,20 @@ def save(plot, stem: Path, width: float, height: float) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--example", type=Path, required=True, help="Stem of predict_example_windows.py outputs")
-    parser.add_argument("--example-label", default="Chromosome 3 position")
+    parser.add_argument("--example-dir", type=Path, required=True, help="Directory of predict_example_windows.py outputs")
+    parser.add_argument("--selection", type=Path, required=True, help="select_example_windows.py output")
+    parser.add_argument("--example-prefix", default="zemke2023_human")
+    parser.add_argument("--min-cpm", type=float, default=10.0, help="Genes drawn in the gene track must reach this CPM")
     parser.add_argument("--evaluation", type=Path, required=True, help="Collated held-out evaluation JSON")
     parser.add_argument("--eqtl-summary", action="append", required=True, help="NAME=summary.tsv")
     parser.add_argument("--output-dir", type=Path, required=True)
     args = parser.parse_args()
     args.output_dir.mkdir(parents=True, exist_ok=True)
     panel_data(args.output_dir)
-    panel_tracks(args.example, args.output_dir, ["Endo", "ODC", "MGC", "ASC", "L2_3_IT"], args.example_label)
-    panel_rna(args.example, args.output_dir, ["HYAL2", "SEMA3B"])
+    for row in pd.read_csv(args.selection, sep="\t").to_dict("records"):
+        example = args.example_dir / f"{args.example_prefix}_{row['chrom']}_{row['start']}"
+        panel_tracks(example, args.output_dir, ["Endo", "ODC", "MGC", "ASC", "L2_3_IT"], row, args.min_cpm)
+        panel_rna(example, args.output_dir, row)
     panel_heldout(args.evaluation, args.output_dir)
     panel_eqtl(dict(v.split("=", 1) for v in args.eqtl_summary), args.output_dir)
 
