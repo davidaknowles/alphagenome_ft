@@ -148,7 +148,7 @@ def panel_rna(example: Path, out: Path, genes: list[str]) -> None:
     top = rna.loc[rna.groupby("gene", observed=True).observed_cpm.idxmax()]
     limit = float(max(rna.obs.max(), rna.pred.max())) * 1.08
     plot = (
-        ggplot(rna, aes("obs", "pred"))
+        ggplot(rna, aes("pred", "obs"))
         + geom_abline(slope=1, intercept=0, linetype="dashed", color="#b5b4ae", size=0.3)
         + geom_point(color=MODEL_COLORS["LoRA"], size=1.3, stroke=0)
         + geom_text(top, aes(label="group"), ha="right", va="bottom", nudge_x=-0.05, size=5.5, color=INK)
@@ -156,7 +156,7 @@ def panel_rna(example: Path, out: Path, genes: list[str]) -> None:
         + facet_wrap("~gene", ncol=1)
         + scale_x_continuous(limits=(0, limit))
         + scale_y_continuous(limits=(0, limit))
-        + labs(x="Observed, log10(1 + CPM)", y="Predicted, log10(1 + CPM)")
+        + labs(x="Predicted, log10(1 + CPM)", y="Observed, log10(1 + CPM)")
         + base_theme()
         + theme(strip_text=element_text(fontstyle="italic", weight="bold"))
     )
