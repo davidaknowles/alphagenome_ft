@@ -2,7 +2,7 @@
 
 SuSiE fine-mapping results for cis-eQTLs in six brain cell types. These are the files used for the XQTL variant-effect benchmark of the AlphaGenome v0data fine-tunes. They were copied unchanged from the lab's `mlxqtl_analysis` data release `susie_vars_pips_04_2024` (April 2024), cell-type sets named `*_mega_eQTL`.
 
-The source release does not document the cohorts or the eQTL mapping pipeline. Sibling directories in that release hold cohort-specific results (for example DeJager and Kellis sets for the same cell types), which suggests the `mega` sets combine cohorts, but this is not confirmed. Ask the data owners before relying on cohort, sample size or covariate details.
+Mega-analysis of DeJager and Kellis snRNA-seq from ROSMAP, part of the ROSMAP single-nucleus xQTL resource (Cao et al. 2025). Ask the data owners before relying on sample size or covariate details.
 
 ## Contents
 
@@ -80,6 +80,8 @@ The benchmark keeps rows whose gene is in GENCODE v38 basic on the same chromoso
 
 ## Agreement with SingleBrain fine-mapping
 
+SingleBrain is the single-nucleus brain eQTL meta-analysis of Jang et al. 2026.
+
 High-PIP (above 0.75) gene-variant pairs were compared with the broad SingleBrain panel for the same cell type after the same filters. Overlap is modest.
 
 | Cell type | XQTL high-PIP | SingleBrain high-PIP | Shared | Jaccard | XQTL recall | SingleBrain recall |
@@ -92,3 +94,8 @@ High-PIP (above 0.75) gene-variant pairs were compared with the broad SingleBrai
 | Oli | 852 | 1,820 | 283 | 0.118 | 0.332 | 0.155 |
 
 "XQTL recall" is the fraction of XQTL high-PIP pairs also high-PIP in SingleBrain; "SingleBrain recall" is the reverse.
+
+## References
+
+- Cao X, et al. Integrative multi-omics QTL colocalization maps regulatory architecture in aging human brain. medRxiv (2025). https://doi.org/10.1101/2025.04.17.25326042 (PMID 40385406)
+- Jang B, et al. A meta-analysis of single-nucleus expression quantitative trait loci linking genetic risk to brain disorders. Nat Genet 58, 737-747 (2026). https://doi.org/10.1038/s41588-026-02541-x

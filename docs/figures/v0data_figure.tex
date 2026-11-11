@@ -1,0 +1,14 @@
+\documentclass{article}
+\usepackage[paperwidth=7.3in,paperheight=8.5in,margin=0.08in]{geometry}
+\usepackage{graphicx}
+\usepackage[T1]{fontenc}\usepackage{lmodern}
+\renewcommand{\familydefault}{\sfdefault}
+\pagestyle{empty}
+\setlength{\parindent}{0pt}
+% #1 letter, #2 width, #3 panel file
+\newcommand{\panel}[3]{\begin{minipage}[t]{#2}\vspace{0pt}{\fontsize{11}{11}\selectfont\textbf{#1}}\\[1pt]\includegraphics[width=#2]{v0data_figure_panels/#3}\end{minipage}}
+\begin{document}
+\panel{a}{3.15in}{panel_a.pdf}\hfill\panel{b}{3.95in}{panel_d.pdf}\\[4pt]
+\panel{c}{4.55in}{panel_b.pdf}\hfill\panel{d}{2.45in}{panel_c.pdf}\\[4pt]
+\panel{e}{7.1in}{panel_e.pdf}
+\end{document}

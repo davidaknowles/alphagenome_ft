@@ -28,11 +28,18 @@ RNA $0.33$--$0.35$). LoRA and LoRA with convolutional adapters (LoCon) perform
 similarly. On fine-mapped brain eQTLs, gene-span variant effects give AUROC up
 to $0.57$ (SingleBrain) and $0.64$ (XQTL). The frozen-backbone model is best
 for eQTLs, adapter training lowers eQTL discrimination, and discrimination is
-concentrated within 10 kb of the TSS.
+concentrated within 10 kb of the TSS (Figure~\ref{fig:overview}).
 
 An earlier version of this report fine-tuned from the \texttt{all\_folds}
 checkpoint and held out chromosomes 8 and 9, which that checkpoint was
 pretrained on. Its held-out results (mean test $R$ $0.627$) are superseded.
+
+\begin{figure}[p]
+\centering
+\includegraphics[width=\linewidth]{figures/v0data_figure.pdf}
+\caption{Training data and performance of the FOLD\_1 fine-tuned models. (a) Pseudobulk cell groups per source for ATAC and RNA, colored by species. (b) Test $R$ per source on FOLD\_1 held-out regions with the Zemke 2023 ATAC blacklist applied. Dashed lines are means across sources. (c) Observed and predicted (LoRA) ATAC for five of 20 cell groups in a held-out 131 kb window of the Zemke 2023 human motor cortex source. Predictions are the 1 bp output averaged over 128 bp bins, in the units of the observed track. The window was picked from four held-out windows containing cell-type-specific genes, and its ATAC $R$ ($0.83$) is above the source mean ($0.68$). (d) Observed against predicted gene-level RNA across cell groups for two genes in the window in (c). Predicted CPM is the exon-weighted sum of 128 bp predictions, and $r$ is the Pearson correlation across cell groups. The gray line is $y=x$. (e) Gene-span AUROC for fine-mapped brain eQTLs by distance between variant and TSS. Native matched tracks are AlphaGenome's own tracks, selected on the same variants, so their values are optimistic. The dashed line is chance.}
+\label{fig:overview}
+\end{figure}
 
 \section{Data}
 Each study provides pseudobulk ATAC and RNA profiles for annotated cell groups
@@ -185,9 +192,11 @@ Mean & & 0.627 & 0.282 & 0.661 & 0.353 & 0.667 & 0.333 \\
 Positives are variants with SuSiE~\cite{wang2020} posterior inclusion
 probability (PIP) above $0.75$ and negatives have PIP below $0.01$, within
 512 kb of the gene's TSS.
-SingleBrain has 35 fine-mapping panels in seven brain cell classes (54,193
-variants), with summary statistics labeled as mmQTL~\cite{zeng2022} analyses;
-XQTL has six cell-type panels (10,452 variants). Each variant is
+SingleBrain~\cite{jang2026}, a single-nucleus eQTL meta-analysis of 983
+individuals whose summary statistics are labeled as mmQTL~\cite{zeng2022}
+analyses, contributes 35 fine-mapping panels in seven brain cell classes
+(54,193 variants). The ROSMAP single-nucleus xQTL resource~\cite{cao2025}
+contributes six cell-type panels (10,452 variants). Each variant is
 scored with the human Zemke 2023 RNA head on a 1 Mb window centered at the
 TSS. The gene-span effect is the absolute alternate-minus-reference
 difference in mean prediction over the gene's bins, averaged over the tracks
@@ -253,6 +262,8 @@ correlation $0.61$--$0.72$ between tracks.
 \bibitem{amemiya2019} Amemiya HM, Kundaje A, Boyle AP. The ENCODE blacklist: identification of problematic regions of the genome. \emph{Sci Rep} 9, 9354 (2019). \href{https://doi.org/10.1038/s41598-019-45839-z}{doi:10.1038/s41598-019-45839-z}
 \bibitem{wang2020} Wang G, Sarkar A, Carbonetto P, Stephens M. A simple new approach to variable selection in regression, with application to genetic fine mapping. \emph{J R Stat Soc Series B Stat Methodol} 82, 1273--1300 (2020). \href{https://doi.org/10.1111/rssb.12388}{doi:10.1111/rssb.12388}
 \bibitem{zeng2022} Zeng B, et al. Multi-ancestry eQTL meta-analysis of human brain identifies candidate causal variants for brain-related traits. \emph{Nat Genet} 54, 161--169 (2022). \href{https://doi.org/10.1038/s41588-021-00987-9}{doi:10.1038/s41588-021-00987-9}
+\bibitem{jang2026} Jang B, et al. A meta-analysis of single-nucleus expression quantitative trait loci linking genetic risk to brain disorders. \emph{Nat Genet} 58, 737--747 (2026). \href{https://doi.org/10.1038/s41588-026-02541-x}{doi:10.1038/s41588-026-02541-x}
+\bibitem{cao2025} Cao X, et al. Integrative multi-omics QTL colocalization maps regulatory architecture in aging human brain. \emph{medRxiv} (2025). \href{https://doi.org/10.1101/2025.04.17.25326042}{doi:10.1101/2025.04.17.25326042}
 \end{thebibliography}
 
 \end{document}
